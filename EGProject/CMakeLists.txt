@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-set (PROJ_NAME TemplateProject)
+set (PROJ_NAME eg_project)
 project(${PROJ_NAME})
 
 

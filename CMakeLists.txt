@@ -5,4 +5,4 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set(CMAKE_SUPPRESS_REGENERATION true)
 
-add_subdirectory(template_project)
+add_subdirectory(EGProject)

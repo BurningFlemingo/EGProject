@@ -5,7 +5,7 @@ import subprocess
 import platform
 
 buildType = "internal"
-projectName = "TemplateProject"
+projectName = "eg_project"
 
 buildPlatform = platform.system().lower();
 buildArgument = f"{buildPlatform}-{buildType}"
@@ -16,12 +16,7 @@ def buildPathFromRoot(*subdirs):
     return os.path.join(rootDir, *subdirs)
 
 binDir = buildPathFromRoot("build", buildArgument)
-binPath = buildPathFromRoot("build", buildArgument, projectName)
+binPath = buildPathFromRoot(binDir, projectName)
 
-callingDir = os.getcwd();
-
-os.chdir(binDir)
-
+print(binPath)
 subprocess.run([binPath])
-
-os.chdir(callingDir)
