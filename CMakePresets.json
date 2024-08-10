@@ -16,7 +16,8 @@
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_CXX_COMPILER": "cl.exe",
-				"CMAKE_CXX_FLAGS": "-DPLATFORM_WINDOWS"
+				"CMAKE_CXX_FLAGS": "-DPLATFORM_WINDOWS",
+				"CMAKE_EXE_LINKER_FLAGS": "-subsystem:windows"
             },
             "condition": {
                 "type": "equals",
