@@ -1,27 +1,60 @@
 #include <Windows.h>
+#include <iostream>
+
+struct WindowData {
+	bool running;
+};
 
 LRESULT CALLBACK
 	WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	LRESULT res{};
-	res = DefWindowProc(hwnd, uMsg, wParam, lParam);
+
+	WindowData* windowData{};
+	if (uMsg == WM_CREATE) {
+		CREATESTRUCT* createStruct{ reinterpret_cast<CREATESTRUCT*>(lParam) };
+		windowData =
+			reinterpret_cast<WindowData*>(createStruct->lpCreateParams);
+		SetWindowLongPtr(
+			hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(windowData)
+		);
+	} else {
+		windowData =
+			reinterpret_cast<WindowData*>(GetWindowLongPtr(hwnd, GWLP_USERDATA)
+			);
+	}
+
+	switch (uMsg) {
+		case WM_CLOSE: {
+			DestroyWindow(hwnd);
+		}
+		case WM_DESTROY: {
+			windowData->running = false;
+		} break;
+		default: {
+			res = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+	}
+
 	return res;
 }
 
 int main() {
 	HINSTANCE hInstance{ GetModuleHandle(0) };
 
-	const wchar_t windowClassName[]{ L"window class" };
+	const char windowClassName[]{ "window class" };
 
-	WNDCLASSW windowClass{ .lpfnWndProc = WindowProc,
-						   .hInstance = hInstance,
-						   .lpszClassName = windowClassName };
+	WNDCLASS windowClass{ .lpfnWndProc = WindowProc,
+						  .hInstance = hInstance,
+						  .lpszClassName = windowClassName };
 
-	RegisterClassW(&windowClass);
+	RegisterClass(&windowClass);
 
-	HWND hwnd{ CreateWindowExW(
+	WindowData windowData{ .running = true };
+
+	HWND hwnd{ CreateWindowEx(
 		0,
 		windowClassName,
-		L"App Name",
+		"App Name",
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
@@ -30,7 +63,7 @@ int main() {
 		0,
 		0,
 		hInstance,
-		0
+		&windowData
 	) };
 
 	if (hwnd == 0) {
@@ -39,5 +72,11 @@ int main() {
 
 	ShowWindow(hwnd, 1);
 
-	while (true) {}
+	while (windowData.running) {
+		MSG msg{};
+		while (GetMessage(&msg, 0, 0, 0) != 0 && windowData.running) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
 }
