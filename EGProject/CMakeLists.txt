@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.8)
 set (PROJ_NAME eg_project)
 project(${PROJ_NAME})
 
+find_package(VulkanHeaders CONFIG)
+find_package(Vulkan REQUIRED)
 
 set (SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set (VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
@@ -12,6 +14,7 @@ set(SRC_FILES
 	)
 
 add_executable(${PROJ_NAME} ${SRC_FILES})
+target_link_libraries(${PROJ_NAME} PRIVATE Vulkan::Headers Vulkan::Vulkan)
 
 add_custom_command(
 	TARGET ${PROJ_NAME} POST_BUILD

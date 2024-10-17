@@ -56,7 +56,8 @@
             "displayName": "Windows Debug",
             "inherits": "windows-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug", 
+				"CMAKE_EXE_LINKER_FLAGS": "-MDd"
             }
         },
         {
@@ -64,7 +65,8 @@
             "displayName": "Windows Release",
             "inherits": "windows-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_EXE_LINKER_FLAGS": "-MD"
             }
         },
         {
@@ -72,7 +74,8 @@
             "displayName": "Windows Internal",
             "inherits": "windows-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"CMAKE_EXE_LINKER_FLAGS": "-MDd"
             }
         },
         {
