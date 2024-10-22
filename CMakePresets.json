@@ -16,8 +16,18 @@
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_CXX_COMPILER": "cl.exe",
-				"CMAKE_CXX_FLAGS": "-DPLATFORM_WINDOWS",
-				"CMAKE_EXE_LINKER_FLAGS": "-subsystem:windows"
+				"CMAKE_CXX_FLAGS": "-DPLATFORM_WINDOWS -GS- -Gs1000000000 -GR- -Gm- -EHa- -Zl",
+				"CMAKE_CXX_FLAGS_DEBUG": "", 
+				"CMAKE_CXX_FLAGS_RELEASE": "", 
+				"CMAKE_CXX_FLAGS_RELWITHDEBINFO": "", 
+				"CMAKE_CXX_FLAGS_MINSIZEREL": "", 
+				"CMAKE_EXE_LINKER_FLAGS": "-NODEFAULTLIB -stack:0x200000,200000", 
+				"CMAKE_STATIC_LINKER_FLAGS": "-NODEFAULTLIB", 
+				"CMAKE_SHARED_LINKER_FLAGS": "-NODEFAULTLIB", 
+				"CMAKE_CXX_STANDARD_LIBRARIES": "", 
+				"CMAKE_CXX_COMPILER_FORCED": "TRUE", 
+				"CMAKE_CXX_STANDARD": "23"
+
             },
             "condition": {
                 "type": "equals",
@@ -57,7 +67,7 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug", 
-				"CMAKE_EXE_LINKER_FLAGS": "-MDd"
+				"CMAKE_EXE_LINKER_FLAGS": ""
             }
         },
         {
@@ -66,7 +76,7 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_EXE_LINKER_FLAGS": "-MD"
+				"CMAKE_EXE_LINKER_FLAGS": ""
             }
         },
         {
@@ -75,7 +85,7 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_EXE_LINKER_FLAGS": "-MDd"
+				"CMAKE_EXE_LINKER_FLAGS": ""
             }
         },
         {

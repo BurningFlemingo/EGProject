@@ -14,7 +14,7 @@ set(SRC_FILES
 	)
 
 add_executable(${PROJ_NAME} ${SRC_FILES})
-target_link_libraries(${PROJ_NAME} PRIVATE Vulkan::Headers Vulkan::Vulkan)
+target_link_libraries(${PROJ_NAME} PRIVATE Vulkan::Headers Vulkan::Vulkan user32 Kernel32 CRT)
 
 add_custom_command(
 	TARGET ${PROJ_NAME} POST_BUILD

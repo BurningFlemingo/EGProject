@@ -1,12 +1,10 @@
 #include "Base.h"
 #include <Windows.h>
-#include <iostream>
 #include <vulkan/vulkan.h>
-#include <assert.h>
 
-void ASSERT(bool expr) {
-	assert(expr);
-}
+#include "PConsole.h"
+
+void ASSERT(bool expr) {}
 
 #define Max(a, b) a > b ? a : b
 #define Min(a, b) a < b ? a : b
@@ -83,7 +81,7 @@ InputCode VirtualToInputCode(const char vcode) {
 			break;
 		case 0x0D:
 			keyCode = InputCode::ENTER;
-			break;	// enter
+			break;
 		case VK_ESCAPE:
 			keyCode = InputCode::ESC;
 			break;
@@ -242,12 +240,18 @@ int main() {
 	ShowWindow(hwnd, SW_SHOW);
 
 	// RenderInit
+
+	uint32_t extensionCount{};
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	// need vector
+
 	VkInstance instance{};
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",
-							   .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+							   .applicationVersion =
+								   VK_MAKE_API_VERSION(0, 1, 0, 0),
 							   .pEngineName = "NA",
-							   .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+							   .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
 							   .apiVersion = VK_API_VERSION_1_0 };
 
 	VkInstanceCreateInfo vkInstanceCI{
@@ -256,7 +260,7 @@ int main() {
 	};
 	VkResult res{ vkCreateInstance(&vkInstanceCI, nullptr, &instance) };
 	if (res != VK_SUCCESS) {
-		std::cout << "uh oh" << std::endl;
+		return 0;
 	}
 
 	while (windowData.isRunning) {
@@ -270,8 +274,10 @@ int main() {
 			size_t headIndex{ --windowData.eventBuffer.occupancy };
 			KeyEvent event{ windowData.eventBuffer[headIndex] };
 			if (event.action == InputAction::PRESSED) {
-				std::cout << "keypressed" << std::endl;
 				if (event.code == InputCode::TAB) {
+					Platform::consoleWrite(
+						Platform::createString("hello world :D\n")
+					);
 					windowData.isRunning = false;
 				}
 			}
