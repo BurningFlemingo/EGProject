@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-namespace Platform {
+namespace pstd {
 	enum AllocationType : uint32_t {
 		ALLOC_TYPE_COMMIT = 1,
 		ALLOC_TYPE_RESERVE = 2,
@@ -37,4 +37,4 @@ namespace Platform {
 
 	AllocationLimits getSystemAllocationLimits();
 
-}  // namespace Platform
+}  // namespace pstd

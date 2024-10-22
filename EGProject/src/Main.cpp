@@ -1,27 +1,13 @@
 #include "Base.h"
 #include <Windows.h>
 #include <vulkan/vulkan.h>
+#include "Arena.h"
+#include "Array.h"
 
 #include "PConsole.h"
 
-void ASSERT(bool expr) {}
-
 #define Max(a, b) a > b ? a : b
 #define Min(a, b) a < b ? a : b
-
-template<typename T>
-struct Array {
-	T& operator[](const size_t index) {
-		ASSERT(index < capacity);
-
-		T& element{ basePtr[index] };
-		return element;
-	}
-
-	T* basePtr;
-	size_t capacity;
-	size_t occupancy;
-};
 
 enum class InputAction : uint32_t {
 	INVALID = 0,
@@ -63,7 +49,7 @@ struct KeyEvent {
 
 struct WindowData {
 	bool isRunning;
-	Array<KeyEvent> eventBuffer;
+	FixedArray<KeyEvent, 1024> eventBuffer;
 };
 
 InputCode VirtualToInputCode(const char vcode) {
@@ -153,18 +139,14 @@ LRESULT CALLBACK
 		case WM_KEYUP: {
 			InputCode iCode{ VirtualToInputCode(wParam) };
 			InputAction iAction{ InputAction::RELEASED };
-			windowData->eventBuffer[windowData->eventBuffer.occupancy] = {
-				.action = iAction, .code = iCode
-			};
-			windowData->eventBuffer.occupancy++;
+			windowData->eventBuffer.pushBack({ .action = iAction,
+											   .code = iCode });
 		} break;
 		case WM_KEYDOWN: {
 			InputCode iCode{ VirtualToInputCode(wParam) };
 			InputAction iAction{ InputAction::PRESSED };
-			windowData->eventBuffer[windowData->eventBuffer.occupancy] = {
-				.action = iAction, .code = iCode
-			};
-			windowData->eventBuffer.occupancy++;
+			windowData->eventBuffer.pushBack({ .action = iAction,
+											   .code = iCode });
 		} break;
 		default: {
 			res = DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -190,9 +172,7 @@ int main() {
 	bool windowIsFullscreen{ false };
 
 	KeyEvent eventBuffer[1024];
-	WindowData windowData{ .isRunning = true,
-						   .eventBuffer = { .basePtr = eventBuffer,
-											.capacity = 1024 } };
+	WindowData windowData{ .isRunning = true };
 
 	LONG windowStyle{};
 
@@ -275,9 +255,7 @@ int main() {
 			KeyEvent event{ windowData.eventBuffer[headIndex] };
 			if (event.action == InputAction::PRESSED) {
 				if (event.code == InputCode::TAB) {
-					Platform::consoleWrite(
-						Platform::createString("hello world :D\n")
-					);
+					pstd::consoleWrite("hi world :D");
 					windowData.isRunning = false;
 				}
 			}

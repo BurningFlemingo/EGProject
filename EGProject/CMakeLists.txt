@@ -11,6 +11,7 @@ set (VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
 
 set(SRC_FILES
 	${SRC_DIR}/Main.cpp
+	${SRC_DIR}/Arena.cpp
 	)
 
 add_executable(${PROJ_NAME} ${SRC_FILES})

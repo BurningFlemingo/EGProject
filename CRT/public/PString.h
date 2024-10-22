@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-namespace Platform {
+namespace pstd {
 	struct String {
 		char* buffer;
 		uint32_t size;
@@ -10,4 +10,4 @@ namespace Platform {
 	uint32_t getCStringLength(const char* cString);
 
 	String createString(const char* cString);
-}  // namespace Platform
+}  // namespace pstd

@@ -3,13 +3,11 @@
 
 #include <Windows.h>
 
-using namespace Platform;
-
 namespace {
 	HANDLE g_Stdout{};
 }
 
-bool Platform::consoleWrite(const String string) {
+bool pstd::consoleWrite(const pstd::String string) {
 	if (g_Stdout == 0) {
 		g_Stdout = GetStdHandle(STD_OUTPUT_HANDLE);
 	}
@@ -22,4 +20,9 @@ bool Platform::consoleWrite(const String string) {
 	}
 
 	return res;
+}
+
+bool pstd::consoleWrite(const char* cString) {
+	pstd::String string{ pstd::createString(cString) };
+	return consoleWrite(string);
 }

@@ -2,6 +2,7 @@
 
 #include "PString.h"
 
-namespace Platform {
+namespace pstd {
 	bool consoleWrite(const String string);
-}
+	bool consoleWrite(const char* cString);
+}  // namespace pstd

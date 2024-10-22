@@ -1,9 +1,9 @@
 #include "PMemory.h"
 #include <Windows.h>
 
-using namespace Platform;
+using namespace pstd;
 
-Platform::Allocation Platform::allocMemory(
+pstd::Allocation pstd::allocMemory(
 	const size_t size, AllocationTypeFlagBits allocTypeFlags, void* baseAddress
 ) {
 	uint32_t win32AllocFlags{};
@@ -28,7 +28,7 @@ Platform::Allocation Platform::allocMemory(
 	return allocation;
 }
 
-bool Platform::freeMemory(
+bool pstd::freeMemory(
 	void* block, AllocationTypeFlagBits allocTypeFlags, size_t size
 ) {
 	uint32_t win32AllocFlags{};
@@ -51,17 +51,17 @@ bool Platform::freeMemory(
 	return res != 0;
 }
 
-void Platform::zeroMemory(void* dst, size_t size) {
+void pstd::zeroMemory(void* dst, size_t size) {
 	memset(dst, 0, size);
 }
-void Platform::cpyMemory(void* dst, const void* src, size_t size) {
+void pstd::cpyMemory(void* dst, const void* src, size_t size) {
 	memcpy(dst, src, size);
 }
-void Platform::setMemory(void* dst, int val, size_t size) {
+void pstd::setMemory(void* dst, int val, size_t size) {
 	memset(dst, val, size);
 }
 
-Platform::AllocationLimits Platform::getSystemAllocationLimits() {
+pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 	SYSTEM_INFO sysInfo{};
 	GetSystemInfo(&sysInfo);
 
