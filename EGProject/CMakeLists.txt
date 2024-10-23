@@ -11,10 +11,12 @@ set (VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
 
 set(SRC_FILES
 	${SRC_DIR}/Main.cpp
+	${SRC_DIR}/Platforms/Windows/Window.cpp
 	)
 
 add_executable(${PROJ_NAME} ${SRC_FILES})
 target_link_libraries(${PROJ_NAME} PRIVATE Vulkan::Headers Vulkan::Vulkan user32 Kernel32 CRT)
+target_include_directories(${PROJ_NAME} PRIVATE ${SRC_DIR})
 
 add_custom_command(
 	TARGET ${PROJ_NAME} POST_BUILD

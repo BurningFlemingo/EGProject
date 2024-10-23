@@ -8,220 +8,21 @@
 #include "PConsole.h"
 #include "PString.h"
 
-#define Max(a, b) a > b ? a : b
-#define Min(a, b) a < b ? a : b
-
-enum class InputAction : uint32_t {
-	INVALID = 0,
-	PRESSED = 1,
-	RELEASED = 2,
-	REPEATING = 3,
-
-	COUNT
-};
-
-enum class InputCode : uint32_t {
-	INVALID = 0,
-	BACKSPACE = 8,
-	TAB = 9,
-	ENTER = 27,
-	ESC = 27,
-	SPACE = 32,
-
-	SHIFT = 128,
-	CTRL,
-	ALT,
-
-	LEFT_MB,
-	RIGHT_MB,
-	MIDDLE_MB,
-
-	UP,
-	DOWN,
-	LEFT,
-	RIGHT,
-
-	COUNT
-};
-
-struct KeyEvent {
-	InputAction action;
-	InputCode code;
-};
-
-struct WindowData {
-	bool isRunning;
-	pstd::FixedArray<KeyEvent, 1024> eventBuffer;
-};
-
-InputCode VirtualToInputCode(const char vcode) {
-	if (vcode >= 'A' && vcode <= 'Z' || vcode >= '0' && vcode <= '9') {
-		return static_cast<InputCode>(vcode);
-	}
-
-	InputCode keyCode{};
-	switch (vcode) {
-		case VK_BACK:
-			keyCode = InputCode::BACKSPACE;
-			break;
-		case VK_TAB:
-			keyCode = InputCode::TAB;
-			break;
-		case 0x0D:
-			keyCode = InputCode::ENTER;
-			break;
-		case VK_ESCAPE:
-			keyCode = InputCode::ESC;
-			break;
-		case VK_SPACE:
-			keyCode = InputCode::SPACE;
-			break;
-		case VK_SHIFT:
-			keyCode = InputCode::SHIFT;
-			break;
-		case VK_CONTROL:
-			keyCode = InputCode::CTRL;
-			break;
-		case VK_MENU:
-			keyCode = InputCode::ALT;
-			break;
-		case VK_LBUTTON:
-			keyCode = InputCode::LEFT_MB;
-			break;
-		case VK_RBUTTON:
-			keyCode = InputCode::RIGHT_MB;
-			break;
-		case VK_MBUTTON:
-			keyCode = InputCode::MIDDLE_MB;
-			break;
-		case VK_UP:
-			keyCode = InputCode::UP;
-			break;
-		case VK_DOWN:
-			keyCode = InputCode::DOWN;
-			break;
-		case VK_LEFT:
-			keyCode = InputCode::LEFT;
-			break;
-		case VK_RIGHT:
-			keyCode = InputCode::RIGHT;
-			break;
-		default:
-			keyCode = InputCode::INVALID;
-			break;
-	}
-	return keyCode;
-}
-
-LRESULT CALLBACK
-	WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	LRESULT res{};
-
-	WindowData* windowData{};
-	if (uMsg == WM_CREATE) {
-		CREATESTRUCT* createStruct{ reinterpret_cast<CREATESTRUCT*>(lParam) };
-		windowData =
-			reinterpret_cast<WindowData*>(createStruct->lpCreateParams);
-		SetWindowLongPtr(
-			hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(windowData)
-		);
-	} else {
-		windowData =
-			reinterpret_cast<WindowData*>(GetWindowLongPtr(hwnd, GWLP_USERDATA)
-			);
-	}
-
-	switch (uMsg) {
-		case WM_CLOSE: {
-			DestroyWindow(hwnd);
-		}
-		case WM_DESTROY: {
-			windowData->isRunning = false;
-		} break;
-		case WM_KEYUP: {
-			InputCode iCode{ VirtualToInputCode(wParam) };
-			InputAction iAction{ InputAction::RELEASED };
-			windowData->eventBuffer.pushBack({ .action = iAction,
-											   .code = iCode });
-		} break;
-		case WM_KEYDOWN: {
-			InputCode iCode{ VirtualToInputCode(wParam) };
-			InputAction iAction{ InputAction::PRESSED };
-			windowData->eventBuffer.pushBack({ .action = iAction,
-											   .code = iCode });
-		} break;
-		default: {
-			res = DefWindowProc(hwnd, uMsg, wParam, lParam);
-		}
-	}
-
-	return res;
-}
+#include "Platforms/Window.h"
 
 int main() {
-	HINSTANCE hInstance{ GetModuleHandle(0) };
+	// TODO: for alignment errors, find a better solution
+	size_t allocPadding{ 100 };
+	size_t systemAllocSize{ Platform::getPlatformAllocSize() + allocPadding };
+	pstd::FixedArena systemArena{ pstd::allocateFixedArena(systemAllocSize) };
+	Platform::State platformState{
+		Platform::startup(&systemArena, "uru", 1920 / 2, 1080 / 2)
+	};
 
-	const char windowClassName[]{ "window class" };
+	pstd::FixedArray<KeyEvent> eventBuffer{
+		Platform::getKeyEventBuffer(platformState)
+	};
 
-	WNDCLASS windowClass{ .lpfnWndProc = WindowProc,
-						  .hInstance = hInstance,
-						  .lpszClassName = windowClassName };
-
-	RegisterClass(&windowClass);
-
-	int32_t windowWidth{ 1920 / 2 };
-	int32_t windowHeight{ 1080 / 2 };
-	bool windowIsFullscreen{ false };
-
-	KeyEvent eventBuffer[1024];
-	WindowData windowData{ .isRunning = true };
-
-	LONG windowStyle{};
-
-	LONG adjustedWindowWidth{};
-	LONG adjustedWindowHeight{};
-	if (windowIsFullscreen) {
-		windowStyle = static_cast<LONG>(WS_POPUPWINDOW);
-		adjustedWindowWidth = GetSystemMetrics(SM_CXSCREEN);
-		adjustedWindowHeight = GetSystemMetrics(SM_CYSCREEN);
-	} else {
-		windowStyle = WS_OVERLAPPEDWINDOW;
-		LONG clientWindowWidth{};
-		LONG clientWindowHeight{};
-
-		clientWindowWidth = windowWidth;
-		clientWindowHeight = windowHeight;
-
-		RECT clientRect{ .right = clientWindowWidth,
-						 .bottom = clientWindowHeight };
-		AdjustWindowRectEx(&clientRect, windowStyle, false, 0);
-
-		adjustedWindowWidth = clientRect.right - clientRect.left;
-		adjustedWindowHeight = clientRect.bottom - clientRect.top;
-	}
-
-	HWND hwnd{ CreateWindowExA(
-		0,
-		windowClassName,
-		"App Name",
-		windowStyle,
-		CW_USEDEFAULT,
-		CW_USEDEFAULT,
-		adjustedWindowWidth,
-		adjustedWindowHeight,
-		0,
-		0,
-		hInstance,
-		&windowData
-	) };
-
-	if (hwnd == 0) {
-		return 0;
-	}
-
-	ShowWindow(hwnd, SW_SHOW);
-
-	// RenderInit
 	pstd::FixedArena vulkanArena{ pstd::allocateFixedArena(1024) };
 	pstd::saveArenaOffset(&vulkanArena);
 
@@ -255,27 +56,27 @@ int main() {
 		return 0;
 	}
 
-	while (windowData.isRunning) {
+	bool isRunning{ true };
+	while (isRunning && Platform::isRunning(platformState)) {
 		MSG msg{};
-		while (PeekMessageA(&msg, 0, 0, 0, true) != 0 && windowData.isRunning) {
+		while (PeekMessageA(&msg, 0, 0, 0, true) != 0 && isRunning) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
 
-		if (windowData.eventBuffer.occupancy >= 1) {
-			size_t headIndex{ --windowData.eventBuffer.occupancy };
-			KeyEvent event{ windowData.eventBuffer[headIndex] };
+		if (eventBuffer.occupancy >= 1) {
+			size_t headIndex{ --eventBuffer.occupancy };
+			KeyEvent event{ eventBuffer[headIndex] };
 			if (event.action == InputAction::PRESSED) {
 				if (event.code == InputCode::TAB) {
 					pstd::Allocation<char> buffer{
 						pstd::fixedArenaAlloc<char>(&vulkanArena, 100)
 					};
 					pstd::consoleWrite(pstd::uint32_tToString(buffer, 123));
-					windowData.isRunning = false;
+					isRunning = false;
 				}
 			}
 		}
 	}
-
-	DestroyWindow(hwnd);
+	Platform::shutdown(platformState);
 }

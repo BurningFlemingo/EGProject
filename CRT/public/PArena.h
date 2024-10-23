@@ -18,12 +18,13 @@ namespace pstd {
 		const size_t bytesToAllocate{ count * sizeof(T) };
 		allocateFixedArena(bytesToAllocate, baseAddress);
 	}
+
 	Allocation<void> fixedArenaAlloc(
 		FixedArena* arena, const size_t size, const uint32_t alignment
 	);
 
 	template<typename T>
-	Allocation<T> fixedArenaAlloc(FixedArena* arena, const size_t count) {
+	Allocation<T> fixedArenaAlloc(FixedArena* arena, const size_t count = 1) {
 		uint32_t alignment{ sizeof(T) };
 		Allocation voidAllocation{ fixedArenaAlloc(arena, count, alignment) };
 		Allocation<T> allocation{ .block = (T*)voidAllocation.block,

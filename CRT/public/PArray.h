@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 namespace pstd {
-	template<typename T, uint16_t count = 1>
+	template<typename T>
 	struct FixedArray {
 		T& operator[](const size_t index) {
 			ASSERT(index < capacity);
@@ -25,8 +25,8 @@ namespace pstd {
 			return element;
 		}
 
-		T arr[count];
-		size_t capacity{ count };
+		T* arr;
+		size_t capacity;
 		size_t occupancy;
 	};
 }  // namespace pstd
