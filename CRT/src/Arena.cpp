@@ -19,12 +19,7 @@ pstd::FixedArena
 	return arena;
 };
 
-void pstd::resetArena(pstd::FixedArena* arena) {
-	arena->currentOffset = 0;
-	arena->savedOffset = 0;
-}
-
-pstd::Allocation<void> pstd::fixedArenaAlloc(
+pstd::Allocation pstd::fixedAlloc(
 	pstd::FixedArena* arena, const size_t size, const uint32_t alignment
 ) {
 	const size_t initialHeadOffset{ arena->currentOffset };
@@ -53,7 +48,7 @@ pstd::Allocation<void> pstd::fixedArenaAlloc(
 	return allocation;
 }
 
-void pstd::destroyFixedArena(pstd::FixedArena* arena) {
+void pstd::dealloc(pstd::FixedArena* arena) {
 	if (arena->allocation.block != nullptr) {
 		pstd::freeMemory(arena->allocation.block, pstd::ALLOC_TYPE_RELEASE);
 	}

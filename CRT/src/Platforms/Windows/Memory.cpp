@@ -26,7 +26,7 @@ size_t pstd::alignToPageBoundary(size_t size) {
 	return alignedSize;
 }
 
-pstd::Allocation<void> pstd::allocMemory(
+pstd::Allocation pstd::allocMemory(
 	const size_t size, AllocationTypeFlagBits allocTypeFlags, void* baseAddress
 ) {
 	const MemorySystemState& state{ g_State };

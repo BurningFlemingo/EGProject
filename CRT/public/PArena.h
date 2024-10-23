@@ -4,7 +4,7 @@
 
 namespace pstd {
 	struct FixedArena {
-		Allocation<void> allocation;
+		Allocation allocation;
 		size_t currentOffset;
 		size_t savedOffset;
 	};
@@ -19,20 +19,19 @@ namespace pstd {
 		allocateFixedArena(bytesToAllocate, baseAddress);
 	}
 
-	Allocation<void> fixedArenaAlloc(
+	Allocation fixedAlloc(
 		FixedArena* arena, const size_t size, const uint32_t alignment
 	);
 
 	template<typename T>
-	Allocation<T> fixedArenaAlloc(FixedArena* arena, const size_t count = 1) {
+	Allocation fixedAlloc(FixedArena* arena, const size_t count = 1) {
 		uint32_t alignment{ sizeof(T) };
-		Allocation voidAllocation{ fixedArenaAlloc(arena, count, alignment) };
-		Allocation<T> allocation{ .block = (T*)voidAllocation.block,
-								  .size = voidAllocation.size };
+		size_t allocSize{ count * alignment };
+		Allocation allocation{ fixedAlloc(arena, allocSize, alignment) };
 		return allocation;
 	}
 
-	void destroyFixedArena(FixedArena* arena);
+	void dealloc(FixedArena* arena);
 
 	inline void saveArenaOffset(FixedArena* arena) {
 		arena->savedOffset = arena->currentOffset;
@@ -42,5 +41,8 @@ namespace pstd {
 		arena->currentOffset = arena->savedOffset;
 	}
 
-	void resetArena(FixedArena* arena);
+	inline void resetArena(FixedArena* arena) {
+		arena->currentOffset = 0;
+		arena->savedOffset = 0;
+	}
 }  // namespace pstd

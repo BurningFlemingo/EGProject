@@ -12,7 +12,7 @@ namespace pstd {
 
 	String createString(const char* cString);
 
-	String uint32_tToString(Allocation<char> buffer, uint32_t number);
+	String uint32_tToString(Allocation buffer, uint32_t number);
 
 	// String formatString(Allocation<char> buffer, String format);
 	// String

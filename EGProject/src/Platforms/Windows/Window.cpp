@@ -41,10 +41,11 @@ Platform::State Platform::startup(
 	const int windowWidth,
 	const int windowHeight
 ) {
-	auto stateAllocation{ pstd::fixedArenaAlloc<StateImpl>(arena) };
+	pstd::Allocation stateAllocation{ pstd::fixedAlloc<StateImpl>(arena) };
 	StateImpl* state{ new (stateAllocation.block) StateImpl{ .windowData{
 		.isRunning = true,
-		.eventBuffer = pstd::fixedArenaAlloc<KeyEvent>(arena, 1024).block } } };
+		.eventBuffer =
+			(KeyEvent*)pstd::fixedAlloc<KeyEvent>(arena, 1024).block } } };
 
 	HINSTANCE hInstance{ GetModuleHandle(0) };
 

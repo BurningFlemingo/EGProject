@@ -4,6 +4,7 @@
 #include <vulkan/vulkan_core.h>
 #include "PArena.h"
 #include "PArray.h"
+#include "PCircularBuffer.h"
 
 #include "PConsole.h"
 #include "PString.h"
@@ -28,13 +29,13 @@ int main() {
 
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	pstd::Allocation<VkExtensionProperties> extensionPropsAllocation{
-		pstd::fixedArenaAlloc<VkExtensionProperties>(
-			&vulkanArena, extensionCount
-		)
+	pstd::Allocation extensionPropsAllocation{
+		pstd::fixedAlloc<VkExtensionProperties>(&vulkanArena, extensionCount)
 	};
 	vkEnumerateInstanceExtensionProperties(
-		nullptr, &extensionCount, extensionPropsAllocation.block
+		nullptr,
+		&extensionCount,
+		(VkExtensionProperties*)extensionPropsAllocation.block
 	);
 	pstd::restoreArenaOffset(&vulkanArena);
 
@@ -56,6 +57,25 @@ int main() {
 		return 0;
 	}
 
+	int arr[5]{};
+	pstd::CircularBuffer<int> cBuf{
+		.allocation{ .block = (void*)arr, .size = 5 },
+	};
+
+	pstd::pushBack(&cBuf, 1);
+	pstd::pushBack(&cBuf, 2);
+	pstd::pushBack(&cBuf, 3);
+	pstd::pushBack(&cBuf, 4);
+	pstd::pushBack(&cBuf, 5);
+	pstd::pushBack(&cBuf, 6);
+
+	pstd::Allocation buffer{ pstd::fixedAlloc<char>(&vulkanArena, 100) };
+
+	int var{ pstd::indexRead(cBuf, 0) };
+	uint32_t offset{ (uint32_t)cBuf.headOffset };
+	pstd::consoleWrite("headOffset: ");
+	pstd::consoleWrite(pstd::uint32_tToString(buffer, offset));
+
 	bool isRunning{ true };
 	while (isRunning && Platform::isRunning(platformState)) {
 		MSG msg{};
@@ -69,9 +89,6 @@ int main() {
 			KeyEvent event{ eventBuffer[headIndex] };
 			if (event.action == InputAction::PRESSED) {
 				if (event.code == InputCode::TAB) {
-					pstd::Allocation<char> buffer{
-						pstd::fixedArenaAlloc<char>(&vulkanArena, 100)
-					};
 					pstd::consoleWrite(pstd::uint32_tToString(buffer, 123));
 					isRunning = false;
 				}

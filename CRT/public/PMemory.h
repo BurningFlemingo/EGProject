@@ -10,9 +10,8 @@ namespace pstd {
 	};
 	using AllocationTypeFlagBits = uint32_t;
 
-	template<typename T = void>
 	struct Allocation {
-		T* block;
+		void* block;
 		size_t size;  // always in bytes
 	};
 
@@ -21,7 +20,7 @@ namespace pstd {
 		uint32_t pageSize;
 	};
 
-	Allocation<void> allocMemory(
+	Allocation allocMemory(
 		const size_t size,
 		const AllocationTypeFlagBits allocTypeFlags,
 		void* baseAddress = nullptr

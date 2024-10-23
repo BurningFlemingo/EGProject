@@ -22,7 +22,7 @@ pstd::String pstd::createString(const char* cString) {
 }
 
 // TODO: im tired, ill refactor in the morning
-String pstd::uint32_tToString(Allocation<char> buffer, uint32_t number) {
+String pstd::uint32_tToString(Allocation buffer, uint32_t number) {
 	uint32_t count{ 0 };
 	uint32_t numberCopy{ number };
 	while (numberCopy > 0 && count < buffer.size) {
@@ -32,13 +32,13 @@ String pstd::uint32_tToString(Allocation<char> buffer, uint32_t number) {
 	for (uint32_t i{ count }; i != 0; i--) {
 		uint32_t digit{ number % 10 };
 		char digitLetter{ (char)((uint32_t)'0' + digit) };
-		buffer.block[i] = digitLetter;
+		((char*)buffer.block)[i] = digitLetter;
 		number /= 10;
 	}
 
-	String string{ .buffer = (const char*)buffer.block, .size = count };
+	String string{ .buffer = (const char*)buffer.block, .size = count + 1 };
 
-	return { .buffer = (const char*)buffer.block, .size = 10 };
+	return string;
 }
 
 // String pstd::formatString(Allocation<char> buffer, String format) {
