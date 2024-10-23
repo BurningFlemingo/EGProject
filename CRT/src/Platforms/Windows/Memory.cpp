@@ -1,11 +1,36 @@
 #include "PMemory.h"
+#include "private/PMemory.h"
 #include <Windows.h>
+#include "PAssert.h"
+#include "PAssert.h"
 
 using namespace pstd;
 
-pstd::Allocation pstd::allocMemory(
+namespace {
+	struct MemorySystemState {
+		AllocationLimits allocLimits;
+	};
+
+	MemorySystemState g_State;
+
+}  // namespace
+
+void pstd::cleanupMemorySystem() {}
+
+size_t pstd::alignToPageBoundary(size_t size) {
+	const MemorySystemState& state{ g_State };
+
+	size_t alignedSize{ ((size + state.allocLimits.pageSize - 1) /
+						 state.allocLimits.pageSize) *
+						state.allocLimits.pageSize };
+	return alignedSize;
+}
+
+pstd::Allocation<void> pstd::allocMemory(
 	const size_t size, AllocationTypeFlagBits allocTypeFlags, void* baseAddress
 ) {
+	const MemorySystemState& state{ g_State };
+
 	uint32_t win32AllocFlags{};
 	uint32_t win32SecurityFlags{ PAGE_NOACCESS };
 	if (allocTypeFlags & ALLOC_TYPE_RESERVE) {
@@ -19,11 +44,15 @@ pstd::Allocation pstd::allocMemory(
 		return {};
 	}
 
-	void* block{
-		VirtualAlloc(baseAddress, size, win32AllocFlags, win32SecurityFlags)
-	};
-
-	Allocation allocation{ .block = block, .size = size };
+	size_t alignedSize{ alignToPageBoundary(size) };
+	if (alignedSize < state.allocLimits.minAllocSize &&
+		win32AllocFlags & MEM_RESERVE) {
+		alignedSize = state.allocLimits.minAllocSize;
+	}
+	void* block{ VirtualAlloc(
+		baseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
+	) };
+	Allocation allocation{ .block = block, .size = alignedSize };
 
 	return allocation;
 }
@@ -31,16 +60,21 @@ pstd::Allocation pstd::allocMemory(
 bool pstd::freeMemory(
 	void* block, AllocationTypeFlagBits allocTypeFlags, size_t size
 ) {
+	const MemorySystemState& state{ g_State };
+
+	ASSERT(~allocTypeFlags & (ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE))
+
+	ASSERT(((size_t)block % state.allocLimits.pageSize) == 0);
+
 	uint32_t win32AllocFlags{};
-	if (allocTypeFlags & (ALLOC_TYPE_RESERVE | ALLOC_TYPE_COMMIT)) {
-		return 0;
+	size_t alignedSize{};
+	if (allocTypeFlags & ALLOC_TYPE_DECOMMIT) {
+		win32AllocFlags |= MEM_DECOMMIT;
+		size = alignToPageBoundary(size);
 	}
-	if (allocTypeFlags & ALLOC_TYPE_RESERVE) {
+	if (allocTypeFlags & ALLOC_TYPE_RELEASE) {
 		win32AllocFlags |= MEM_RELEASE;
 		size = 0;
-	}
-	if (allocTypeFlags & ALLOC_TYPE_COMMIT) {
-		win32AllocFlags |= MEM_DECOMMIT;
 	}
 	if (win32AllocFlags == 0) {
 		return 0;
@@ -71,4 +105,8 @@ pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 	};
 
 	return limits;
+}
+
+void pstd::initializeMemorySystem() {
+	g_State.allocLimits = getSystemAllocationLimits();
 }

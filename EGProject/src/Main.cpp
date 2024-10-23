@@ -1,10 +1,12 @@
 #include "Base.h"
 #include <Windows.h>
 #include <vulkan/vulkan.h>
-#include "Arena.h"
-#include "Array.h"
+#include <vulkan/vulkan_core.h>
+#include "PArena.h"
+#include "PArray.h"
 
 #include "PConsole.h"
+#include "PString.h"
 
 #define Max(a, b) a > b ? a : b
 #define Min(a, b) a < b ? a : b
@@ -49,7 +51,7 @@ struct KeyEvent {
 
 struct WindowData {
 	bool isRunning;
-	FixedArray<KeyEvent, 1024> eventBuffer;
+	pstd::FixedArray<KeyEvent, 1024> eventBuffer;
 };
 
 InputCode VirtualToInputCode(const char vcode) {
@@ -220,10 +222,20 @@ int main() {
 	ShowWindow(hwnd, SW_SHOW);
 
 	// RenderInit
+	pstd::FixedArena vulkanArena{ pstd::allocateFixedArena(1024) };
+	pstd::saveArenaOffset(&vulkanArena);
 
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	// need vector
+	pstd::Allocation<VkExtensionProperties> extensionPropsAllocation{
+		pstd::fixedArenaAlloc<VkExtensionProperties>(
+			&vulkanArena, extensionCount
+		)
+	};
+	vkEnumerateInstanceExtensionProperties(
+		nullptr, &extensionCount, extensionPropsAllocation.block
+	);
+	pstd::restoreArenaOffset(&vulkanArena);
 
 	VkInstance instance{};
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -255,7 +267,10 @@ int main() {
 			KeyEvent event{ windowData.eventBuffer[headIndex] };
 			if (event.action == InputAction::PRESSED) {
 				if (event.code == InputCode::TAB) {
-					pstd::consoleWrite("hi world :D");
+					pstd::Allocation<char> buffer{
+						pstd::fixedArenaAlloc<char>(&vulkanArena, 100)
+					};
+					pstd::consoleWrite(pstd::uint32_tToString(buffer, 123));
 					windowData.isRunning = false;
 				}
 			}
