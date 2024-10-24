@@ -7,15 +7,17 @@
 #include "PCircularBuffer.h"
 
 #include "PConsole.h"
+#include "PMemory.h"
 #include "PString.h"
 
 #include "Platforms/Window.h"
 
 int main() {
-	// TODO: for alignment errors, find a better solution
+	// TODO: for possible alignment errors, find a better solution
 	size_t allocPadding{ 100 };
 	size_t systemAllocSize{ Platform::getPlatformAllocSize() + allocPadding };
-	pstd::FixedArena systemArena{ pstd::allocateFixedArena(systemAllocSize) };
+	pstd::FixedArena systemArena{ .allocation =
+									  pstd::heapAlloc(systemAllocSize) };
 	Platform::State platformState{
 		Platform::startup(&systemArena, "uru", 1920 / 2, 1080 / 2)
 	};
@@ -24,22 +26,27 @@ int main() {
 		Platform::getKeyEventBuffer(platformState)
 	};
 
-	pstd::FixedArena vulkanArena{ pstd::allocateFixedArena(1024) };
-	pstd::saveArenaOffset(&vulkanArena);
+	pstd::FixedArena vulkanArena{ .allocation = pstd::heapAlloc(1024) };
+	{
+		pstd::FixedArena stack{ vulkanArena };
 
-	uint32_t extensionCount{};
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	pstd::Allocation extensionPropsAllocation{
-		pstd::fixedAlloc<VkExtensionProperties>(&vulkanArena, extensionCount)
-	};
-	vkEnumerateInstanceExtensionProperties(
-		nullptr,
-		&extensionCount,
-		(VkExtensionProperties*)extensionPropsAllocation.block
-	);
-	pstd::restoreArenaOffset(&vulkanArena);
+		uint32_t extensionCount{};
+		vkEnumerateInstanceExtensionProperties(
+			nullptr, &extensionCount, nullptr
+		);
+		pstd::Allocation extensionPropsAllocation{
+			pstd::bufferAlloc<VkExtensionProperties>(&stack, extensionCount)
+		};
+		vkEnumerateInstanceExtensionProperties(
+			nullptr,
+			&extensionCount,
+			(VkExtensionProperties*)extensionPropsAllocation.block
+		);
+	}
+	pstd::heapFree(&vulkanArena.allocation);
 
 	VkInstance instance{};
+
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",
 							   .applicationVersion =
@@ -56,10 +63,11 @@ int main() {
 	if (res != VK_SUCCESS) {
 		return 0;
 	}
+	vkDestroyInstance(instance, nullptr);
+	instance = {};
 
-	int arr[5]{};
 	pstd::CircularBuffer<int> cBuf{
-		.allocation{ .block = (void*)arr, .size = 5 },
+		.allocation{ pstd::heapAlloc<int>(4) },
 	};
 
 	pstd::pushBack(&cBuf, 1);
@@ -69,10 +77,10 @@ int main() {
 	pstd::pushBack(&cBuf, 5);
 	pstd::pushBack(&cBuf, 6);
 
-	pstd::Allocation buffer{ pstd::fixedAlloc<char>(&vulkanArena, 100) };
+	pstd::Allocation buffer{ pstd::heapAlloc(100) };
 
 	int var{ pstd::indexRead(cBuf, 0) };
-	uint32_t offset{ (uint32_t)cBuf.headOffset };
+	uint32_t offset{ (uint32_t)cBuf.headIndex };
 	pstd::consoleWrite("headOffset: ");
 	pstd::consoleWrite(pstd::uint32_tToString(buffer, offset));
 
@@ -95,5 +103,7 @@ int main() {
 			}
 		}
 	}
+	pstd::heapFree(&vulkanArena.allocation);
+	pstd::heapFree(&cBuf.allocation);
 	Platform::shutdown(platformState);
 }

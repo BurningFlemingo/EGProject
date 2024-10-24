@@ -1,55 +1,43 @@
-#include "PArena.h"
-#include "PMemory.h"
-#include "PAssert.h"
+#include "public/PArena.h"
+#include "public/PMemory.h"
+#include "public/PAssert.h"
 
-pstd::FixedArena
-	pstd::allocateFixedArena(const size_t size, void* baseAddress) {
-	bool precond{ size != 0 };
-	if (precond != true) {
-		return {};
+namespace {
+	uint32_t calcAddressAlignmentPadding(
+		const void* address, const uint32_t alignment
+	) {
+		uint32_t bytesUnaligned{ (uint32_t)((size_t)address % alignment) };
+		// the last % alignment is to set the bytes required to align to zero if
+		// the address is already aligned
+		uint32_t bytesRequiredToAlign{ (alignment - bytesUnaligned) %
+									   alignment };
+		return bytesRequiredToAlign;
 	}
 
-	pstd::Allocation allocation{ pstd::allocMemory(
-		size, pstd::ALLOC_TYPE_COMMIT | pstd::ALLOC_TYPE_RESERVE, baseAddress
-	) };
+}  // namespace
 
-	FixedArena arena{
-		.allocation = allocation,
-	};
-	return arena;
-};
-
-pstd::Allocation pstd::fixedAlloc(
+pstd::Allocation pstd::bufferAlloc(
 	pstd::FixedArena* arena, const size_t size, const uint32_t alignment
 ) {
-	const size_t initialHeadOffset{ arena->currentOffset };
+	ASSERT(arena != nullptr);
+	ASSERT(arena->allocation.block != nullptr);
+	ASSERT(size != 0);
+	ASSERT(alignment != 0);
 
-	bool precond{ (arena->currentOffset + size <= arena->allocation.size) &&
-				  (arena->allocation.block != nullptr) && (size != 0) &&
-				  (alignment != 0) && (arena != nullptr) &&
-				  (arena->currentOffset + size <= arena->allocation.size) };
-	ASSERT(precond);
-
-	size_t headAddress{
-		((size_t)arena->allocation.block + arena->currentOffset)
+	uint32_t alignmentPadding{
+		calcAddressAlignmentPadding(arena->allocation.block, alignment)
 	};
 
-	const size_t addressAlignmentDifference{
-		(alignment - (headAddress % alignment)) % alignment
-	};
-	headAddress += addressAlignmentDifference;
-	arena->currentOffset += size + addressAlignmentDifference;
-	if (arena->currentOffset > arena->allocation.size) {
-		arena->currentOffset = initialHeadOffset;
-		ASSERT(0);
-	}
+	ASSERT((arena->offset + size + alignmentPadding) <= arena->allocation.size);
 
-	pstd::Allocation allocation{ .block = (void*)headAddress, .size = size };
+	size_t initialHeadOffset{ arena->offset };
+
+	size_t alignedHeadAddress{
+		((size_t)arena->allocation.block + arena->offset + alignmentPadding)
+	};
+	arena->offset += size + alignmentPadding;
+
+	pstd::Allocation allocation{ .block = (void*)alignedHeadAddress,
+								 .size = size };
 	return allocation;
-}
-
-void pstd::dealloc(pstd::FixedArena* arena) {
-	if (arena->allocation.block != nullptr) {
-		pstd::freeMemory(arena->allocation.block, pstd::ALLOC_TYPE_RELEASE);
-	}
 }

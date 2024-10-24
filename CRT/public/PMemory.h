@@ -20,22 +20,19 @@ namespace pstd {
 		uint32_t pageSize;
 	};
 
-	Allocation allocMemory(
-		const size_t size,
-		const AllocationTypeFlagBits allocTypeFlags,
-		void* baseAddress = nullptr
-	);
+	Allocation heapAlloc(const size_t size, void* baseAddress = nullptr);
 
-	// returns true on success and false on failure
-	bool freeMemory(
-		void* baseAddress,
-		const AllocationTypeFlagBits allocTypeFlags,
-		const size_t size = 0
-	);
+	template<typename T>
+	Allocation heapAlloc(const size_t count, void* baseAddress = nullptr) {
+		const size_t bytesToAllocate{ count * sizeof(T) };
+		Allocation allocation{ heapAlloc(bytesToAllocate, baseAddress) };
+		return allocation;
+	}
+	void heapFree(Allocation* allocation);
 
-	void setMemory(void* dst, int val, size_t size);
-	void zeroMemory(void* dst, size_t size);
-	void cpyMemory(void* dst, const void* src, size_t size);
+	void memSet(void* dst, int val, size_t size);
+	void memZero(void* dst, size_t size);
+	void memCpy(void* dst, const void* src, size_t size);
 
 	AllocationLimits getSystemAllocationLimits();
 	size_t alignToPageBoundary(size_t size);

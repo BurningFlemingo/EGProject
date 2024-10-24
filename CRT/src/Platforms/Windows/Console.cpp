@@ -1,5 +1,5 @@
-#include "PConsole.h"
-#include "PString.h"
+#include "public/PConsole.h"
+#include "public/PString.h"
 
 #include <Windows.h>
 

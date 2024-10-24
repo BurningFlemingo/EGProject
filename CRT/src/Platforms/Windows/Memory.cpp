@@ -1,8 +1,9 @@
-#include "PMemory.h"
-#include "private/PMemory.h"
 #include <Windows.h>
-#include "PAssert.h"
-#include "PAssert.h"
+
+#include "public/PMemory.h"
+#include "private/PMemory.h"
+#include "public/PAssert.h"
+#include "public/PAssert.h"
 
 using namespace pstd;
 
@@ -26,9 +27,11 @@ size_t pstd::alignToPageBoundary(size_t size) {
 	return alignedSize;
 }
 
-pstd::Allocation pstd::allocMemory(
+pstd::Allocation pstd::allocPages(
 	const size_t size, AllocationTypeFlagBits allocTypeFlags, void* baseAddress
 ) {
+	ASSERT(~allocTypeFlags & (ALLOC_TYPE_DECOMMIT | ALLOC_TYPE_RELEASE))
+
 	const MemorySystemState& state{ g_State };
 
 	uint32_t win32AllocFlags{};
@@ -57,8 +60,8 @@ pstd::Allocation pstd::allocMemory(
 	return allocation;
 }
 
-bool pstd::freeMemory(
-	void* block, AllocationTypeFlagBits allocTypeFlags, size_t size
+bool pstd::freePages(
+	const Allocation& allocation, AllocationTypeFlagBits allocTypeFlags
 ) {
 	const MemorySystemState& state{ g_State };
 
@@ -68,31 +71,32 @@ bool pstd::freeMemory(
 
 	uint32_t win32AllocFlags{};
 	size_t alignedSize{};
+	size_t freeSize{ allocation.size };
 	if (allocTypeFlags & ALLOC_TYPE_DECOMMIT) {
 		win32AllocFlags |= MEM_DECOMMIT;
-		size = alignToPageBoundary(size);
+		freeSize = alignToPageBoundary(freeSize);
 	}
 	if (allocTypeFlags & ALLOC_TYPE_RELEASE) {
 		win32AllocFlags |= MEM_RELEASE;
-		size = 0;
+		freeSize = 0;
 	}
 	if (win32AllocFlags == 0) {
 		return 0;
 	}
 
-	int res{ VirtualFree(block, size, win32AllocFlags) };
+	int res{ VirtualFree(allocation.block, freeSize, win32AllocFlags) };
 
 	return res != 0;
 }
 
-void pstd::zeroMemory(void* dst, size_t size) {
+void pstd::memSet(void* dst, int val, size_t size) {
+	memset(dst, val, size);
+}
+void pstd::memZero(void* dst, size_t size) {
 	memset(dst, 0, size);
 }
-void pstd::cpyMemory(void* dst, const void* src, size_t size) {
+void pstd::memCpy(void* dst, const void* src, size_t size) {
 	memcpy(dst, src, size);
-}
-void pstd::setMemory(void* dst, int val, size_t size) {
-	memset(dst, val, size);
 }
 
 pstd::AllocationLimits pstd::getSystemAllocationLimits() {
