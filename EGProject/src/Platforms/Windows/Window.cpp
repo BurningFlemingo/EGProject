@@ -41,12 +41,6 @@ Platform::State Platform::startup(
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{ pstd::bufferAlloc<StateImpl>(arena) };
-	StateImpl* state{ new (stateAllocation.block) StateImpl{ .windowData{
-		.isRunning = true,
-		.eventBuffer =
-			(KeyEvent*)pstd::bufferAlloc<KeyEvent>(arena, 1024).block } } };
-
 	HINSTANCE hInstance{ GetModuleHandle(0) };
 
 	const char windowClassName[]{ "window class" };
@@ -83,6 +77,10 @@ Platform::State Platform::startup(
 		adjustedWindowHeight = clientRect.bottom - clientRect.top;
 	}
 
+	WindowData windowData{
+		.isRunning = true,
+		.eventBuffer = (KeyEvent*)pstd::bufferAlloc<KeyEvent>(arena, 1024).block
+	};
 	HWND hwnd{ CreateWindowExA(
 		0,
 		windowClassName,
@@ -95,7 +93,7 @@ Platform::State Platform::startup(
 		0,
 		0,
 		hInstance,
-		&state->windowData
+		&windowData
 	) };
 
 	if (hwnd == 0) {
@@ -104,8 +102,11 @@ Platform::State Platform::startup(
 
 	ShowWindow(hwnd, SW_SHOW);
 
-	state->hwnd = hwnd;
-	state->hInstance = hInstance;
+	pstd::Allocation stateAllocation{ pstd::bufferAlloc<StateImpl>(arena) };
+
+	new (stateAllocation.block) StateImpl{ .windowData = windowData,
+										   .hwnd = hwnd,
+										   .hInstance = hInstance };
 
 	return stateAllocation.block;
 }
