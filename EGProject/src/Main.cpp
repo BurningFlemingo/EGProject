@@ -9,6 +9,7 @@
 #include "PConsole.h"
 #include "PMemory.h"
 #include "PString.h"
+#include "PVector.h"
 
 #include "Platforms/Window.h"
 
@@ -64,6 +65,15 @@ int main() {
 		.allocation{ pstd::heapAlloc<int>(4) },
 	};
 
+	pstd::Allocation msgBuffer{ pstd::heapAlloc(100) };
+
+	pstd::v2<int> myVec1{ .x = 1, .y = 2 };
+	pstd::v2<int> myVec2{ .x = 2, .y = 3 };
+	pstd::v2<int> vec{ myVec1 + myVec2 };
+
+	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, vec.x));
+	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, vec.y));
+
 	pstd::pushBack(&cBuf, 1);
 	pstd::pushBack(&cBuf, 2);
 	pstd::pushBack(&cBuf, 3);
@@ -71,12 +81,10 @@ int main() {
 	pstd::pushBack(&cBuf, 5);
 	pstd::pushBack(&cBuf, 6);
 
-	pstd::Allocation buffer{ pstd::heapAlloc(100) };
-
 	int var{ pstd::indexRead(cBuf, 0) };
 	uint32_t offset{ (uint32_t)cBuf.headIndex };
 	pstd::consoleWrite("headOffset: ");
-	pstd::consoleWrite(pstd::uint32_tToString(buffer, offset));
+	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, offset));
 
 	bool isRunning{ true };
 	while (isRunning && Platform::isRunning(platformState)) {
