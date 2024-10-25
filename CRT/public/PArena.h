@@ -23,7 +23,7 @@ namespace pstd {
 		return allocation;
 	}
 
-	constexpr inline void resetArena(FixedArena* arena) {
+	constexpr inline void reset(FixedArena* arena) {
 		ASSERT(arena);
 
 		arena->offset = 0;

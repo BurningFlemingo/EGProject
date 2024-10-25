@@ -2,12 +2,14 @@
 #include <stdint.h>
 #include "PArray.h"
 #include "PArena.h"
+#include "PCircularBuffer.h"
+
 #include "Events.h"
 
 namespace Platform {
 	using State = void*;
 
-	size_t getPlatformAllocSize();
+	size_t getSubsystemAllocSize();
 
 	State startup(
 		pstd::FixedArena* arena,
@@ -16,7 +18,7 @@ namespace Platform {
 		const int windowHeight
 	);
 
-	pstd::FixedArray<KeyEvent> getKeyEventBuffer(State iState);
+	pstd::FixedArray<KeyEvent> popKeyEvents(State iState);
 	bool isRunning(State iState);
 
 	void shutdown(State state);

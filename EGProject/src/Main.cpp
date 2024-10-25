@@ -15,34 +15,28 @@
 int main() {
 	// TODO: for possible alignment errors, find a better solution
 	size_t allocPadding{ 100 };
-	size_t systemAllocSize{ Platform::getPlatformAllocSize() + allocPadding };
-	pstd::FixedArena systemArena{ .allocation =
-									  pstd::heapAlloc(systemAllocSize) };
-	Platform::State platformState{
-		Platform::startup(&systemArena, "uru", 1920 / 2, 1080 / 2)
-	};
+	size_t subsystemAllocSize{ Platform::getSubsystemAllocSize() };
 
-	pstd::FixedArray<KeyEvent> eventBuffer{
-		Platform::getKeyEventBuffer(platformState)
+	pstd::FixedArena subsystemArena{ .allocation =
+										 pstd::heapAlloc(subsystemAllocSize) };
+	Platform::State platformState{
+		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
 
 	pstd::FixedArena vulkanArena{ .allocation = pstd::heapAlloc(1024) };
-	{
-		pstd::FixedArena stack{ vulkanArena };
 
-		uint32_t extensionCount{};
-		vkEnumerateInstanceExtensionProperties(
-			nullptr, &extensionCount, nullptr
-		);
-		pstd::Allocation extensionPropsAllocation{
-			pstd::bufferAlloc<VkExtensionProperties>(&stack, extensionCount)
-		};
-		vkEnumerateInstanceExtensionProperties(
-			nullptr,
-			&extensionCount,
-			(VkExtensionProperties*)extensionPropsAllocation.block
-		);
-	}
+	uint32_t extensionCount{};
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	pstd::Allocation extensionPropsAllocation{
+		pstd::bufferAlloc<VkExtensionProperties>(&vulkanArena, extensionCount)
+	};
+	vkEnumerateInstanceExtensionProperties(
+		nullptr,
+		&extensionCount,
+		(VkExtensionProperties*)extensionPropsAllocation.block
+	);
+	pstd::reset(&vulkanArena);
+
 	pstd::heapFree(&vulkanArena.allocation);
 
 	VkInstance instance{};
@@ -92,12 +86,15 @@ int main() {
 			DispatchMessage(&msg);
 		}
 
-		if (eventBuffer.occupancy >= 1) {
-			size_t headIndex{ --eventBuffer.occupancy };
-			KeyEvent event{ eventBuffer[headIndex] };
+		pstd::FixedArray<KeyEvent> eventBuffer{
+			Platform::popKeyEvents(platformState)
+		};
+
+		for (int i{}; i < eventBuffer.count; i++) {
+			KeyEvent event{ pstd::indexRead(eventBuffer, i) };
 			if (event.action == InputAction::PRESSED) {
 				if (event.code == InputCode::TAB) {
-					pstd::consoleWrite(pstd::uint32_tToString(buffer, 123));
+					// pstd::consoleWrite(pstd::uint32_tToString(buffer, 123));
 					isRunning = false;
 				}
 			}

@@ -2,6 +2,7 @@
 #include "PMemory.h"
 #include "PAlgorithm.h"
 #include "PAssert.h"
+#include "PArray.h"
 
 namespace pstd {
 	template<typename T>
@@ -13,20 +14,32 @@ namespace pstd {
 
 	template<typename T>
 	constexpr size_t getCapacity(const CircularBuffer<T>& buffer) {
-		const size_t capacity{ buffer.allocation.size / sizeof(T) };
+		size_t capacity{ buffer.allocation.size / sizeof(T) };
 		return capacity;
 	}
 
 	template<typename T>
-	size_t getElementCount(const CircularBuffer<T>& buffer) {
+	size_t getCount(const CircularBuffer<T>& buffer) {
 		size_t occupancy{};
 		if (buffer.headIndex > buffer.tailIndex) {
 			occupancy = buffer.headIndex - buffer.tailIndex;
 		} else {
-			const size_t capacity{ getCapacity(buffer) };
+			size_t capacity{ getCapacity(buffer) };
 			occupancy = capacity - (buffer.tailIndex - buffer.headIndex);
 		}
 		return occupancy;
+	}
+
+	template<typename T>
+	FixedArray<T> getContents(const CircularBuffer<T>& buffer) {
+		size_t address{ (size_t)buffer.allocation.block + buffer.tailIndex };
+		size_t count{ getCount(buffer) };
+		pstd::FixedArray<T> contentsArray{
+			.allocation = { .block = (void*)address,
+							.size = count * sizeof(T) },
+			.count = count
+		};
+		return contentsArray;
 	}
 
 	template<typename T>

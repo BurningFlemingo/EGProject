@@ -1,5 +1,6 @@
 #include "Platforms/Window.h"
 
+#include "PCircularBuffer.h"
 #include "PMemory.h"
 #include "Events.h"
 
@@ -11,14 +12,13 @@
 #include "PAlgorithm.h"
 #include <new>
 
-#include "PConsole.h"
-#include "PString.h"
-
 namespace {
 	struct WindowData {
 		bool isRunning;
-		pstd::FixedArray<KeyEvent> eventBuffer;
+		static constexpr size_t eventBufferCapacity{ 1024 };
+		pstd::CircularBuffer<KeyEvent> eventBuffer{};
 	};
+
 	struct StateImpl {
 		WindowData windowData;
 		HWND hwnd;
@@ -31,8 +31,14 @@ namespace {
 	InputCode virtualToInputCode(const char vcode);
 }  // namespace
 
-size_t Platform::getPlatformAllocSize() {
-	return sizeof(StateImpl);
+size_t Platform::getSubsystemAllocSize() {
+	size_t stateTypeSize{ sizeof(StateImpl) };
+	size_t bufferSize{ sizeof(KeyEvent) * WindowData::eventBufferCapacity };
+	// TODO: this is a temp fix, find padding required for state type through a
+	// function
+	size_t padding{ 4 };
+	size_t totalSize{ stateTypeSize + bufferSize + padding };
+	return totalSize;
 }
 
 Platform::State Platform::startup(
@@ -41,6 +47,11 @@ Platform::State Platform::startup(
 	const int windowWidth,
 	const int windowHeight
 ) {
+	pstd::Allocation stateAllocation{ pstd::bufferAlloc<StateImpl>(arena) };
+	pstd::Allocation eventBufferAllocation{
+		pstd::bufferAlloc<KeyEvent>(arena, WindowData::eventBufferCapacity)
+	};
+
 	HINSTANCE hInstance{ GetModuleHandle(0) };
 
 	const char windowClassName[]{ "window class" };
@@ -77,10 +88,8 @@ Platform::State Platform::startup(
 		adjustedWindowHeight = clientRect.bottom - clientRect.top;
 	}
 
-	WindowData windowData{
-		.isRunning = true,
-		.eventBuffer = (KeyEvent*)pstd::bufferAlloc<KeyEvent>(arena, 1024).block
-	};
+	// the window data pointer passed here cant be local since it will be
+	// refrenced after this function in windowProc
 	HWND hwnd{ CreateWindowExA(
 		0,
 		windowClassName,
@@ -93,7 +102,7 @@ Platform::State Platform::startup(
 		0,
 		0,
 		hInstance,
-		&windowData
+		&((StateImpl*)stateAllocation.block)->windowData
 	) };
 
 	if (hwnd == 0) {
@@ -102,7 +111,9 @@ Platform::State Platform::startup(
 
 	ShowWindow(hwnd, SW_SHOW);
 
-	pstd::Allocation stateAllocation{ pstd::bufferAlloc<StateImpl>(arena) };
+	WindowData windowData{ .isRunning = true,
+						   .eventBuffer = { .allocation =
+												eventBufferAllocation } };
 
 	new (stateAllocation.block) StateImpl{ .windowData = windowData,
 										   .hwnd = hwnd,
@@ -121,15 +132,21 @@ bool Platform::isRunning(Platform::State iState) {
 	return state->windowData.isRunning;
 }
 
-pstd::FixedArray<KeyEvent> Platform::getKeyEventBuffer(Platform::State iState) {
+pstd::FixedArray<KeyEvent> Platform::popKeyEvents(Platform::State iState) {
 	const auto state{ (StateImpl*)iState };
-	return state->windowData.eventBuffer;
-};
+	pstd::FixedArray<KeyEvent> eventArray{
+		pstd::getContents(state->windowData.eventBuffer)
+	};
+	state->windowData.eventBuffer.tailIndex =
+		state->windowData.eventBuffer.headIndex;
+
+	return eventArray;
+}
 
 namespace {
 	InputCode virtualToInputCode(const char vcode) {
-		if (vcode >= 'A' && vcode <= 'Z' || vcode >= '0' && vcode <= '9') {
-			return static_cast<InputCode>(vcode);
+		if ((vcode >= 'A' && vcode <= 'Z') || (vcode >= '0' && vcode <= '9')) {
+			return (InputCode)vcode;
 		}
 
 		InputCode keyCode{};
@@ -215,14 +232,14 @@ namespace {
 			case WM_KEYUP: {
 				InputCode iCode{ virtualToInputCode(wParam) };
 				InputAction iAction{ InputAction::RELEASED };
-				windowData->eventBuffer.pushBack({ .action = iAction,
-												   .code = iCode });
+				KeyEvent event{ .action = iAction, .code = iCode };
+				pstd::pushBack(&windowData->eventBuffer, event);
 			} break;
 			case WM_KEYDOWN: {
 				InputCode iCode{ virtualToInputCode(wParam) };
 				InputAction iAction{ InputAction::PRESSED };
-				windowData->eventBuffer.pushBack({ .action = iAction,
-												   .code = iCode });
+				KeyEvent event{ .action = iAction, .code = iCode };
+				pstd::pushBack(&windowData->eventBuffer, event);
 			} break;
 			default: {
 				res = DefWindowProc(hwnd, uMsg, wParam, lParam);
