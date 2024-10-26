@@ -1,15 +1,27 @@
 #pragma once
-#include <stdint.h>
+#include "PTypes.h"
 #include "PAssert.h"
 
 namespace pstd {
 	template<uint32_t count, typename T>
-	struct v;
+	struct v {
+		v() = default;
+	};
 
 	template<typename T>
 	struct v<2, T> {
+		T& operator[](const size_t index) {
+			ASSERT(index < 2);
+			T& res{ e[index] };
+			return res;
+		}
+		const T& operator[](const size_t index) const {
+			ASSERT(index < 2);
+			const T& res{ e[index] };
+			return res;
+		}
 		union {
-			T elements[2];
+			T e[2];
 			struct {
 				T x;
 				T y;
@@ -19,8 +31,18 @@ namespace pstd {
 
 	template<typename T>
 	struct v<3, T> {
+		T& operator[](const size_t index) {
+			ASSERT(index < 3);
+			T& res{ e[index] };
+			return res;
+		}
+		const T& operator[](const size_t index) const {
+			ASSERT(index < 3);
+			const T& res{ e[index] };
+			return res;
+		}
 		union {
-			T elements[3];
+			T e[3];
 			struct {
 				T x;
 				T y;
@@ -31,8 +53,18 @@ namespace pstd {
 
 	template<typename T>
 	struct v<4, T> {
+		T& operator[](const size_t index) {
+			ASSERT(index < 4);
+			T& res{ e[index] };
+			return res;
+		}
+		const T& operator[](const size_t index) const {
+			ASSERT(index < 4);
+			const T& res{ e[index] };
+			return res;
+		}
 		union {
-			T elements[4];
+			T e[4];
 			struct {
 				T x;
 				T y;
@@ -45,63 +77,62 @@ namespace pstd {
 	using v2 = v<2, T>;
 
 	template<typename T>
-	using v3 = v<2, T>;
+	using v3 = v<3, T>;
 
 	template<typename T>
 	using v4 = v<4, T>;
 
 	template<uint32_t n, typename T>
-	v<n, T> operator+(const v<n, T>& a, const v<n, T>& b) {
-		ASSERT(n >= 2 && n <= 4);
+	v<n, T> operator+(const v<n, T>& a, const v<n, T>& b);
 
-		v<n, T> res{};
-		for (uint32_t i{}; i < n; i++) {
-			res.elements[i] = a.elements[i] + b.elements[i];
-		}
-		return res;
+	template<uint32_t n, typename T>
+	v<n, T> operator-(const v<n, T>& a, const v<n, T>& b);
+
+	template<uint32_t n, typename T>
+	v<n, T> operator/(const v<n, T>& a, const v<n, T>& b);
+
+	template<uint32_t n, typename T>
+	v<n, T> operator*(const v<n, T>& a, const v<n, T>& b);
+
+	template<uint32_t n, typename T>
+	v<n, T>& operator+=(v<n, T>& a, const v<n, T>& b) {
+		a = a + b;
+		return a;
 	}
 
 	template<uint32_t n, typename T>
-	v<n, T> operator-(const v<n, T>& a, const v<n, T>& b) {
-		ASSERT(n >= 2 && n <= 4);
-
-		v<n, T> res{};
-		for (uint32_t i{}; i < n; i++) {
-			res.elements[i] = a.elements[i] - b.elements[i];
-		}
-		return res;
+	v<n, T>& operator-=(v<n, T>& a, const v<n, T>& b) {
+		a = a - b;
+		return a;
 	}
 
 	template<uint32_t n, typename T>
-	v<n, T> operator/(const v<n, T>& a, const v<n, T>& b) {
-		ASSERT(n >= 2 && n <= 4);
-
-		v<n, T> res{};
-		for (uint32_t i{}; i < n; i++) {
-			res.elements[i] = a.elements[i] / b.elements[i];
-		}
-		return res;
+	v<n, T>& operator/=(v<n, T>& a, const v<n, T>& b) {
+		a = a / b;
+		return a;
 	}
 
 	template<uint32_t n, typename T>
-	v<n, T> operator*(const v<n, T>& a, const v<n, T>& b) {
-		ASSERT(n >= 2 && n <= 4);
-
-		v<n, T> res{};
-		for (uint32_t i{}; i < n; i++) {
-			res.elements[i] = a.elements[i] * b.elements[i];
-		}
-		return res;
+	v<n, T>& operator*=(v<n, T>& a, const v<n, T>& b) {
+		a = a * b;
+		return a;
 	}
+
 	template<uint32_t n, typename T>
-	v<n, T> dot(const v<n, T>& a, const v<n, T>& b) {
-		ASSERT(n >= 2 && n <= 4);
+	v<n, T> vFill(const T& val);
 
-		T res{};
-		for (uint32_t i{}; i < n; i++) {
-			res += a.elements[i] * b.elements[i];
-		}
-		return res;
-	}
+	template<uint32_t n, typename T>
+	v<n, T> scale(const v<n, T>& a, const T& scaleFactor);
 
+	template<uint32_t n, typename T>
+	T dot(const v<n, T>& a, const v<n, T>& b);
+
+	template<uint32_t n, typename T>
+	T magnitude(const v<n, T>& a);
+
+	template<uint32_t n, typename T>
+	T length(const v<n, T>& a, const v<n, T>& b);
+
+	template<uint32_t n, typename T>
+	v<n, T> normalize(const v<n, T>& a);
 }  // namespace pstd

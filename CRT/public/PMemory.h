@@ -1,5 +1,5 @@
 #pragma once
-#include <stdint.h>
+#include "PTypes.h"
 
 namespace pstd {
 	enum AllocationType : uint32_t {

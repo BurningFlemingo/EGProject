@@ -3,7 +3,6 @@
 
 namespace pstd {
 	void initializeMemorySystem();
-	void cleanupMemorySystem();
 
 	Allocation allocPages(
 		const size_t size,

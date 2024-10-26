@@ -1,7 +1,7 @@
 #pragma once
 #include "PAssert.h"
 #include "PMemory.h"
-#include <stdint.h>
+#include "PTypes.h"
 
 namespace pstd {
 	template<typename T>

@@ -1,5 +1,5 @@
 #pragma once
-#include <stdint.h>
+#include "PTypes.h"
 
 enum class InputAction : uint32_t {
 	INVALID = 0,

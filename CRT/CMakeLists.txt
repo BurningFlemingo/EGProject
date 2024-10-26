@@ -14,7 +14,8 @@ set(SRC_FILES
 	${SRC_DIR}/String.cpp
 	${SRC_DIR}/Arena.cpp
 	${SRC_DIR}/Memory.cpp
-	${SRC_DIR}/Math.cpp
+	${SRC_DIR}/Vector.cpp
+	${SRC_DIR}/Matrix.cpp
 	)
 
 add_library(${PROJ_NAME} ${SRC_FILES})

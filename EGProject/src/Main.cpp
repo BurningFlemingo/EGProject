@@ -10,6 +10,7 @@
 #include "PMemory.h"
 #include "PString.h"
 #include "PVector.h"
+#include "PMath.h"
 
 #include "Platforms/Window.h"
 
@@ -85,6 +86,10 @@ int main() {
 	uint32_t offset{ (uint32_t)cBuf.headIndex };
 	pstd::consoleWrite("headOffset: ");
 	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, offset));
+
+	volatile float test1{ pstd::sqrtfNewton(9) };
+	test1 = pstd::sqrtfNewton(8);
+	test1 = pstd::sqrtfNewton(2);
 
 	bool isRunning{ true };
 	while (isRunning && Platform::isRunning(platformState)) {

@@ -1,5 +1,5 @@
 #pragma once
-#include <stdint.h>
+#include "PTypes.h"
 #include "PMemory.h"
 
 namespace pstd {

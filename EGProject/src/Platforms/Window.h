@@ -1,5 +1,5 @@
 #pragma once
-#include <stdint.h>
+#include "PTypes.h"
 #include "PArray.h"
 #include "PArena.h"
 #include "PCircularBuffer.h"

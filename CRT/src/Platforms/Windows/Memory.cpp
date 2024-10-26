@@ -16,8 +16,6 @@ namespace {
 
 }  // namespace
 
-void pstd::cleanupMemorySystem() {}
-
 size_t pstd::alignToPageBoundary(size_t size) {
 	const MemorySystemState& state{ g_State };
 

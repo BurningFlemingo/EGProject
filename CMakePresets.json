@@ -21,7 +21,7 @@
 				"CMAKE_CXX_FLAGS_RELEASE": "", 
 				"CMAKE_CXX_FLAGS_RELWITHDEBINFO": "", 
 				"CMAKE_CXX_FLAGS_MINSIZEREL": "", 
-				"CMAKE_EXE_LINKER_FLAGS": "-NODEFAULTLIB -stack:0x200000,200000", 
+				"CMAKE_EXE_LINKER_FLAGS": "-SUBSYSTEM:CONSOLE -NODEFAULTLIB -stack:0x200000,200000", 
 				"CMAKE_STATIC_LINKER_FLAGS": "-NODEFAULTLIB", 
 				"CMAKE_SHARED_LINKER_FLAGS": "-NODEFAULTLIB", 
 				"CMAKE_CXX_STANDARD_LIBRARIES": "", 
@@ -67,7 +67,8 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug", 
-				"CMAKE_EXE_LINKER_FLAGS": ""
+				"CMAKE_CXX_FLAGS": "-Zi",
+				"CMAKE_EXE_LINKER_FLAGS": "-DEBUG -Zi"
             }
         },
         {
@@ -85,7 +86,8 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_EXE_LINKER_FLAGS": ""
+				"CMAKE_CXX_FLAGS": "-Zi",
+				"CMAKE_EXE_LINKER_FLAGS": "-DEBUG"
             }
         },
         {

@@ -1,16 +1,16 @@
 #include <Windows.h>
-#include <stdint.h>
+#include "PTypes.h"
 
 #include "private/PMemory.h"
+#include "private/PConsole.h"
 
 int main();
 
 extern "C" int mainCRTStartup() {
 	pstd::initializeMemorySystem();
+	pstd::initializeConsole();
 
 	int exitCode{ main() };
-
-	pstd::cleanupMemorySystem();
 
 	ExitProcess(exitCode);
 

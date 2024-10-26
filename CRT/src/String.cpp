@@ -1,6 +1,6 @@
-#include "PString.h"
-#include <stdint.h>
-#include "PAlgorithm.h"
+#include "public/PString.h"
+#include "public/PTypes.h"
+#include "public/PAlgorithm.h"
 
 using namespace pstd;
 

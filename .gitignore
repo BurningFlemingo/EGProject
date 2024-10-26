@@ -4,4 +4,7 @@ build/**
 .cache
 .cache/**
 
+.vs
+.vs/**
+
 compile_commands.json
