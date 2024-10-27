@@ -9,6 +9,27 @@ namespace pstd {
 		size_t offset;
 	};
 
+	template<typename T>
+	constexpr size_t getCount(const FixedArena* arena) {
+		size_t res{ arena->offset };
+		res /= sizeof(T);
+		return res;
+	}
+	template<typename T>
+	constexpr size_t getAvaliableCount(const FixedArena& arena) {
+		size_t allocPadding{ pstd::calcAddressAlignmentPadding<T>(
+			(void*)((size_t)arena.allocation.block + arena.offset)
+		) };
+		size_t offset{ arena.offset + allocPadding };
+
+		size_t res{};
+		if (arena.allocation.size < offset) {
+			return res;
+		}
+		res = (arena.allocation.size - offset) / sizeof(T);
+		return res;
+	}
+
 	Allocation bufferAlloc(
 		FixedArena* arena, const size_t size, const uint32_t alignment
 	);
@@ -21,6 +42,15 @@ namespace pstd {
 		size_t allocSize{ count * alignment };
 		Allocation allocation{ bufferAlloc(arena, allocSize, alignment) };
 		return allocation;
+	}
+
+	template<typename T>
+	void* getNextAllocAddress(const FixedArena& arena) {
+		size_t headAddress{ (size_t)arena.allocation.block + arena.offset };
+		size_t padding{ pstd::calcAddressAlignmentPadding<T>((void*)headAddress
+		) };
+		size_t res{ headAddress + padding };
+		return (void*)res;
 	}
 
 	constexpr inline void reset(FixedArena* arena) {

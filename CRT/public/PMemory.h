@@ -37,4 +37,15 @@ namespace pstd {
 	AllocationLimits getSystemAllocationLimits();
 	size_t alignToPageBoundary(size_t size);
 
+	uint32_t calcAddressAlignmentPadding(
+		const void* address, const uint32_t alignment
+	);
+
+	template<typename T>
+	uint32_t calcAddressAlignmentPadding(const void* address) {
+		uint32_t alignment{ alignof(T) };
+		uint32_t res{ calcAddressAlignmentPadding(address, alignment) };
+		return res;
+	}
+
 }  // namespace pstd

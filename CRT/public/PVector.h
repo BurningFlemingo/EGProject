@@ -3,6 +3,7 @@
 #include "PAssert.h"
 
 namespace pstd {
+
 	template<uint32_t count, typename T>
 	struct v;  // vector
 
@@ -88,6 +89,10 @@ namespace pstd {
 
 	template<typename T>
 	using v4 = v<4, T>;
+
+	constexpr v3<float> UP{ .y = 1.f };
+	constexpr v3<float> RIGHT{ .x = 1.f };
+	constexpr v3<float> FORWARD{ .z = 1.f };  // vulkan points into the screen
 
 	template<uint32_t n, typename T>
 	v<n, T> operator+(const v<n, T>& a, const v<n, T>& b);

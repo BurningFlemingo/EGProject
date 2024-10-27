@@ -66,14 +66,21 @@ int main() {
 		.allocation{ pstd::heapAlloc<int>(4) },
 	};
 
-	pstd::Allocation msgBuffer{ pstd::heapAlloc(100) };
-
 	pstd::v2<int> myVec1{ .x = 1, .y = 2 };
 	pstd::v2<int> myVec2{ .x = 2, .y = 3 };
 	pstd::v2<int> vec{ myVec1 + myVec2 };
 
-	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, vec.x));
-	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, vec.y));
+	pstd::FixedArena msgBuffer{ .allocation = pstd::heapAlloc(100) };
+
+	pstd::consoleWrite(
+		pstd::formatString(&msgBuffer, "this is my %u st string\n", 1)
+	);
+	pstd::consoleWrite(
+		pstd::formatString(&msgBuffer, "this is my %f string\n", -1.001f)
+	);
+	pstd::consoleWrite(
+		pstd::formatString(&msgBuffer, "this is my %i st string\n", -1)
+	);
 
 	pstd::pushBack(&cBuf, 1);
 	pstd::pushBack(&cBuf, 2);
@@ -81,11 +88,6 @@ int main() {
 	pstd::pushBack(&cBuf, 4);
 	pstd::pushBack(&cBuf, 5);
 	pstd::pushBack(&cBuf, 6);
-
-	int var{ pstd::indexRead(cBuf, 0) };
-	uint32_t offset{ (uint32_t)cBuf.headIndex };
-	pstd::consoleWrite("headOffset: ");
-	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, offset));
 
 	volatile float test1{ pstd::atanPade(0) };
 	test1 = pstd::atanPade(1);
@@ -110,7 +112,6 @@ int main() {
 			KeyEvent event{ pstd::indexRead(eventBuffer, i) };
 			if (event.action == InputAction::PRESSED) {
 				if (event.code == InputCode::TAB) {
-					// pstd::consoleWrite(pstd::uint32_tToString(buffer, 123));
 					isRunning = false;
 				}
 			}

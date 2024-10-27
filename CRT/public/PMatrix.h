@@ -98,4 +98,10 @@ namespace pstd {
 	template<typename T>
 	T det(const m<2, T>& mat);
 
+	template<typename T>
+	m<4, T> ortho();
+
+	template<typename T>
+	m<4, T> perspective();
+
 }  // namespace pstd
