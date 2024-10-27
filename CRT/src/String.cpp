@@ -95,9 +95,7 @@ namespace {
 
 		int32_t integerPart{ (int32_t)number };
 		String integerPartString{ int32_tToString(buffer, integerPart) };
-		uint32_t decimalPartSize{
-			1 + precision
-		};	// the plus one is for the decimal itself
+		uint32_t decimalPartSize{ precision };
 
 		decimalPartSize = min(decimalPartSize, initialBufferCountAvaliable);
 
