@@ -87,9 +87,12 @@ int main() {
 	pstd::consoleWrite("headOffset: ");
 	pstd::consoleWrite(pstd::uint32_tToString(msgBuffer, offset));
 
-	volatile float test1{ pstd::sqrtfNewton(9) };
-	test1 = pstd::sqrtfNewton(8);
-	test1 = pstd::sqrtfNewton(2);
+	volatile float test1{ pstd::atanPade(0) };
+	test1 = pstd::atanPade(1);
+	test1 = pstd::atanPade(-1);
+	test1 = pstd::atanPade(10000);
+	test1 = pstd::atanPade(-10000);
+	test1 = pstd::atanPade(0.00001);
 
 	bool isRunning{ true };
 	while (isRunning && Platform::isRunning(platformState)) {

@@ -66,9 +66,13 @@ T pstd::det(const m<2, T>& mat) {
 
 #define INIT_DET(n, T) template T pstd::det(const m<n, T>& mat);
 
-#define INIT_TYPES(func, n)                                               \
-	func(n, uint32_t) func(n, int32_t) func(n, uint64_t) func(n, int64_t) \
-		func(n, float) func(n, double)
+#define INIT_TYPES(func, n) \
+	func(n, uint32_t);      \
+	func(n, int32_t);       \
+	func(n, uint64_t);      \
+	func(n, int64_t);       \
+	func(n, float);         \
+	func(n, double);
 
 INIT_TYPES(INIT_FUNCTIONS, 2)
 INIT_TYPES(INIT_FUNCTIONS, 3)

@@ -4,9 +4,7 @@
 
 namespace pstd {
 	template<uint32_t count, typename T>
-	struct v {
-		v() = default;
-	};
+	struct v;  // vector
 
 	template<typename T>
 	struct v<2, T> {
@@ -73,6 +71,15 @@ namespace pstd {
 			};
 		};
 	};
+
+	template<typename T>
+	struct rot3 {  // rotor
+		T scalar;
+		T xy;
+		T yz;
+		T zx;
+	};
+
 	template<typename T>
 	using v2 = v<2, T>;
 
@@ -90,9 +97,6 @@ namespace pstd {
 
 	template<uint32_t n, typename T>
 	v<n, T> operator/(const v<n, T>& a, const v<n, T>& b);
-
-	template<uint32_t n, typename T>
-	v<n, T> operator*(const v<n, T>& a, const v<n, T>& b);
 
 	template<uint32_t n, typename T>
 	v<n, T>& operator+=(v<n, T>& a, const v<n, T>& b) {
@@ -127,12 +131,28 @@ namespace pstd {
 	template<uint32_t n, typename T>
 	T dot(const v<n, T>& a, const v<n, T>& b);
 
+	template<typename T>
+	v3<T> cross(const v3<T>& a, const v3<T> b);
+
 	template<uint32_t n, typename T>
-	T magnitude(const v<n, T>& a);
+	T mag(const v<n, T>& a);
 
 	template<uint32_t n, typename T>
 	T length(const v<n, T>& a, const v<n, T>& b);
 
 	template<uint32_t n, typename T>
 	v<n, T> normalize(const v<n, T>& a);
+
+	template<typename T>
+	rot3<T> createRotor(v3<T> a, v3<T> b);	// from a to b
+
+	template<typename T>
+	rot3<T> createRotor(v3<T> a, v3<T> b, T angle);	 // from a to b
+
+	template<typename T>
+	v3<T> rotate(const rot3<T>& rotor, const v3<T>& vec);
+
+	template<typename T>
+	rot3<T> composeRoters(rot3<T>& a, rot3<T>& b);
+
 }  // namespace pstd
