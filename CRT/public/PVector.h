@@ -152,7 +152,7 @@ namespace pstd {
 	rot3<T> createRotor(v3<T> a, v3<T> b);	// from a to b
 
 	template<typename T>
-	rot3<T> createRotor(v3<T> a, v3<T> b, T angle);	 // from a to b
+	rot3<T> createRotor(v3<T> a, v3<T> b, T radians);  // from a to b
 
 	template<typename T>
 	v3<T> rotate(const rot3<T>& rotor, const v3<T>& vec);

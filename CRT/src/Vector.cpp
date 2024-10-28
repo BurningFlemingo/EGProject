@@ -99,27 +99,26 @@ rot3<T> pstd::createRotor(v3<T> a, v3<T> b) {
 	// half way between a and b because rotors go double the angle
 	v3<T> halfway{ pstd::normalize(a + b) };
 
-	rot3<T> res{ .scalar = pstd::dot(halfway, b),
-				 .xy = halfway.x * b.y - halfway.y * b.x,
-				 .yz = halfway.y * b.z - halfway.z * b.y,
-				 .zx = halfway.z * b.x - halfway.x * b.z };
+	rot3<T> res{ .scalar = pstd::dot(halfway, a),
+				 .xy = halfway.x * a.y - halfway.y * a.x,
+				 .yz = halfway.y * a.z - halfway.z * a.y,
+				 .zx = halfway.z * a.x - halfway.x * a.z };
 	return res;
 }
 
 template<typename T>
-rot3<T> pstd::createRotor(v3<T> a, v3<T> b, T angle) {
+rot3<T> pstd::createRotor(v3<T> a, v3<T> b, T radians) {
 	a = pstd::normalize(a);
 	b = pstd::normalize(b);
-	angle *= 0.5;
+	radians *= 0.5;
 
-	T cosAngle{ (T)pstd::cosfTaylor(angle) };
-	T sinAngle{ (T)pstd::sinfTaylor(angle) };
+	T cosAngle{ (T)pstd::cosfTaylor(radians) };
+	T sinAngle{ (T)pstd::sinfTaylor(radians) };
 
-	rot3<T> res{ .scalar = pstd::dot(a, b),
-				 .xy = a.x * b.y - a.y * b.x,
-				 .yz = a.y * b.z - a.z * b.y,
-				 .zx = a.z * b.x - a.x * b.z };
-	res.scalar *= cosAngle;
+	rot3<T> res{ .scalar = cosAngle,
+				 .xy = b.x * a.y - b.y * a.x,
+				 .yz = b.y * a.z - b.z * a.y,
+				 .zx = b.z * a.x - b.x * a.z };
 	res.xy *= sinAngle;
 	res.yz *= sinAngle;
 	res.zx *= sinAngle;

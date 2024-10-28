@@ -74,6 +74,16 @@ int main() {
 
 	pstd::FixedArena msgBuffer{ .allocation = pstd::heapAlloc(100) };
 
+	pstd::rot3 rotor{ pstd::createRotor(pstd::UP, pstd::RIGHT, pstd::HALF_PI) };
+
+	pstd::v3<float> myVec{ .y = 1.f, .z = 1.f };
+
+	myVec = pstd::rotate(rotor, myVec);
+
+	Console::log("x = %f \n", myVec.x);
+	Console::log("y = %f \n", myVec.y);
+	Console::log("z = %f \n", myVec.z);
+
 	LOG_ERROR("my favorite number is %f cus its cool", -0.3f);
 
 	pstd::pushBack(&cBuf, 1);
