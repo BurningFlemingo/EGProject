@@ -3,7 +3,7 @@
 
 namespace pstd {
 	template<uint32_t count, typename T>
-	struct m;
+	struct m;  // column major ordered
 
 	template<typename T>
 	struct m<2, T> {

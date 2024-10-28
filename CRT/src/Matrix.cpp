@@ -55,7 +55,7 @@ m<n, T> pstd::getIdentityMatrix() {
 template<typename T>
 T pstd::det(const m<2, T>& mat) {
 	T res{};
-	res = (mat[0][0] * mat[1][1]) - (mat[0][1] * mat[0][1]);
+	res = (mat[0][0] * mat[1][1]) - (mat[1][0] * mat[0][1]);
 	return res;
 }
 
