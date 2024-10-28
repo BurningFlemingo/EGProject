@@ -31,7 +31,7 @@ namespace pstd {
 		const FileShare& shareFlags,
 		const FileCreate& createFlags
 	);
-	
+
 	void closeFile(const FileHandle& handle);
 
 	size_t getFileSize(const FileHandle& handle);

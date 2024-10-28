@@ -66,7 +66,7 @@ namespace pstd {
 				v<4, T> v1;
 				v<4, T> v2;
 				v<4, T> v3;
-				v<4, T> v4;
+				v<4, T> v4{ (T)1 };
 			};
 		};
 	};
@@ -99,9 +99,12 @@ namespace pstd {
 	T det(const m<2, T>& mat);
 
 	template<typename T>
-	m<4, T> ortho();
+	m<4, T> ortho(T left, T right, T top, T bottom, T near, T far);
 
 	template<typename T>
-	m<4, T> perspective();
+	m<4, T> perspective(T near, T far, T aspectRatio, T fov);
+
+	template<typename T>
+	m<4, T> lookAt(const v<3, T>& from, const v<3, T>& to, v<3, T> up);
 
 }  // namespace pstd

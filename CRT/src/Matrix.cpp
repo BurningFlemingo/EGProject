@@ -1,4 +1,6 @@
+#include "PVector.h"
 #include "public/PMatrix.h"
+#include "public/PMath.h"
 
 using namespace pstd;
 
@@ -54,6 +56,45 @@ template<typename T>
 T pstd::det(const m<2, T>& mat) {
 	T res{};
 	res = (mat[0][0] * mat[1][1]) - (mat[0][1] * mat[0][1]);
+	return res;
+}
+
+template<typename T>
+m<4, T> pstd::ortho(T l, T r, T t, T b, T n, T f) {
+	m<4, T> res{ .v1 = { .x = 2 / (r - l), .w = -(r + l) / (r - l) },
+				 .v2 = { .y = 2 / (t - b), .w = -(t + b) / (t - b) },
+				 .v3 = { .z = 1 / (f - n), .w = -n / (f - n) },
+				 .v4 = { .w = 1 } };
+	return res;
+}
+
+template<typename T>
+m<4, T> pstd::perspective(T n, T f, T aspectRatio, T fov) {
+	T t{ (T)pstd::tanfTaylor<T>(fov) * n };
+	T b{ -t };
+	T r{ t * aspectRatio };
+	T l{ -r };
+
+	m<4, T> res{
+		.v1 = { .x = (2 * n) / (r - l), .w = -(r + l) / (r - l) },
+		.v2 = { .y = (2 * n) / (t - b), .w = -(t + b) / (t - b),},
+		.v3 = { .z = 1 / (f - n), .w = -n / (f - n) }, 
+		.v4 = {.z = 1}
+	};
+	return res;
+}
+
+template<typename T>
+m<4, T> pstd::lookAt(const v<3, T>& from, const v<3, T>& to, v<3, T> up) {
+	v<3, T> forward{ pstd::normalize(to - from) };
+	v<3, T> right{ pstd::normalize(pstd::cross(up, forward)) };
+	up = pstd::cross(forward, right);
+	m<4, T> res{
+		.v1{ .x = right.x, .y = up.x, .z = forward.x, .w = -from.x },
+		.v2{ .x = right.y, .y = up.y, .z = forward.y, .w = -from.y },
+		.v3{ .x = right.z, .y = up.z, .z = forward.z, .w = -from.z },
+		.v4{ .w = 1 },
+	};
 	return res;
 }
 
