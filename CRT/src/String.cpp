@@ -4,6 +4,7 @@
 #include "public/PAlgorithm.h"
 #include "public/PArray.h"
 #include "public/PMath.h"
+#include "public/PMemory.h"
 
 using namespace pstd;
 
@@ -35,6 +36,37 @@ pstd::String pstd::createString(const char* cString) {
 	uint32_t stringSize{ getCStringLength(cString) };
 	pstd::String string{ .buffer = cString, .size = stringSize };
 	return string;
+}
+
+String pstd::makeNullTerminated(FixedArena* buffer, const String& string) {
+	ASSERT(string.buffer);
+	String nullTerminatedString{};
+	if (string.size == 0) {
+		return string;
+	}
+
+	size_t lastLetterIndex{ string.size - 1 };
+	if (string.buffer[lastLetterIndex] == '\0') {
+		return string;
+	}
+
+	void* const initialBufferAddress{ pstd::getNextAllocAddress<char>(*buffer
+	) };
+	const size_t initialBufferCountAvaliable{
+		pstd::getAvaliableCount<char>(*buffer)
+	};
+
+	size_t lettersToCopy{ min(initialBufferCountAvaliable, string.size) };
+	Allocation stringAllocation{
+		pstd::bufferAlloc<char>(buffer, lettersToCopy)
+	};
+	pstd::memCpy(stringAllocation.block, string.buffer, lettersToCopy);
+	letterToString(buffer, '\0');
+
+	size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer) };
+	size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
+	String res{ .buffer = (const char*)initialBufferAddress, .size = size };
+	return res;
 }
 
 template<typename T>

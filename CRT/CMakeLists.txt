@@ -11,6 +11,7 @@ set(SRC_FILES
 	${SRC_DIR}/Platforms/Windows/Entry.cpp
 	${SRC_DIR}/Platforms/Windows/Memory.cpp
 	${SRC_DIR}/Platforms/Windows/Console.cpp
+	${SRC_DIR}/Platforms/Windows/FileIO.cpp
 	${SRC_DIR}/String.cpp
 	${SRC_DIR}/Arena.cpp
 	${SRC_DIR}/Memory.cpp

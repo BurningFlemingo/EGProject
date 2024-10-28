@@ -13,6 +13,7 @@ namespace pstd {
 	uint32_t getCStringLength(const char* cString);
 
 	String createString(const char* cString);
+	String makeNullTerminated(FixedArena* buffer, const String& string);
 
 	template<typename T>
 	String formatString(pstd::FixedArena* buffer, const String& format, T val);

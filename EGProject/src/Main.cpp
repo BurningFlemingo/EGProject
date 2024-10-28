@@ -12,6 +12,7 @@
 #include "PString.h"
 #include "PVector.h"
 #include "PMath.h"
+#include "PFileIO.h"
 
 #include "Platforms/Window.h"
 #include "Logging.h"
