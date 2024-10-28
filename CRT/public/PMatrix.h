@@ -66,7 +66,7 @@ namespace pstd {
 				v<4, T> v1;
 				v<4, T> v2;
 				v<4, T> v3;
-				v<4, T> v4{ (T)1 };
+				v<4, T> v4;
 			};
 		};
 	};

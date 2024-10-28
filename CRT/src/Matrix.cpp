@@ -90,9 +90,9 @@ m<4, T> pstd::lookAt(const v<3, T>& from, const v<3, T>& to, v<3, T> up) {
 	v<3, T> right{ pstd::normalize(pstd::cross(up, forward)) };
 	up = pstd::cross(forward, right);
 	m<4, T> res{
-		.v1{ .x = right.x, .y = up.x, .z = forward.x, .w = -from.x },
-		.v2{ .x = right.y, .y = up.y, .z = forward.y, .w = -from.y },
-		.v3{ .x = right.z, .y = up.z, .z = forward.z, .w = -from.z },
+		.v1{ .x = right.x, .y = right.y, .z = right.z, .w = -from.x },
+		.v2{ .x = up.x, .y = up.y, .z = up.z, .w = -from.y },
+		.v3{ .x = forward.x, .y = forward.y, .z = forward.z, .w = -from.z },
 		.v4{ .w = 1 },
 	};
 	return res;
@@ -105,7 +105,15 @@ m<4, T> pstd::lookAt(const v<3, T>& from, const v<3, T>& to, v<3, T> up) {
 	template void pstd::setDiagonal(m<n, T>* mat, const T& val);              \
 	template m<n, T> pstd::getIdentityMatrix();
 
-#define INIT_DET(n, T) template T pstd::det(const m<n, T>& mat);
+#define INIT_SINGLE_FUNCTIONS(n, T)                                          \
+	template T pstd::det(const m<2, T>& mat);                                \
+	template m<4, T> pstd::ortho(                                            \
+		T left, T right, T top, T bottom, T near, T far                      \
+	);                                                                       \
+	template m<4, T> pstd::perspective(T near, T far, T aspectRatio, T fov); \
+	template m<4, T> pstd::lookAt(                                           \
+		const v<3, T>& from, const v<3, T>& to, v<3, T> up                   \
+	);
 
 #define INIT_TYPES(func, n) \
 	func(n, uint32_t);      \
@@ -118,4 +126,4 @@ m<4, T> pstd::lookAt(const v<3, T>& from, const v<3, T>& to, v<3, T> up) {
 INIT_TYPES(INIT_FUNCTIONS, 2)
 INIT_TYPES(INIT_FUNCTIONS, 3)
 INIT_TYPES(INIT_FUNCTIONS, 4)
-INIT_TYPES(INIT_DET, 2)
+INIT_TYPES(INIT_SINGLE_FUNCTIONS, 0)
