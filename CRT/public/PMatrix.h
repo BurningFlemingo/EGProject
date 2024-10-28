@@ -2,109 +2,200 @@
 #include "PVector.h"
 
 namespace pstd {
-	template<uint32_t count, typename T>
-	struct m;  // column major ordered
+	template<uint32_t count>
+	struct Mat;	 // column major ordered
 
-	template<typename T>
-	struct m<2, T> {
-		v<2, T>& operator[](const size_t index) {
+	template<>
+	struct Mat<2> {
+		Vec2& operator[](const size_t index) {
 			ASSERT(index < 2);
-			v<2, T>& res{ e[index] };
+			Vec2& res{ e[index] };
 			return res;
 		}
-		const v<2, T>& operator[](const size_t index) const {
+		const Vec2& operator[](const size_t index) const {
 			ASSERT(index < 2);
-			const v<2, T>& res{ e[index] };
+			const Vec2& res{ e[index] };
 			return res;
 		}
 		union {
-			v<2, T> e[2];
+			Vec2 e[2];
 			struct {
-				v<2, T> v1;
-				v<2, T> v2;
+				Vec2 col1;
+				Vec2 col2;
 			};
 		};
 	};
 
-	template<typename T>
-	struct m<3, T> {
-		v<3, T>& operator[](const size_t index) {
+	template<>
+	struct Mat<3> {
+		Vec3& operator[](const size_t index) {
 			ASSERT(index < 3);
-			v<3, T>& res{ e[index] };
+			Vec3& res{ e[index] };
 			return res;
 		}
-		const v<3, T>& operator[](const size_t index) const {
+		const Vec3& operator[](const size_t index) const {
 			ASSERT(index < 3);
-			const v<3, T>& res{ e[index] };
+			const Vec3& res{ e[index] };
 			return res;
 		}
 		union {
-			v<3, T> e[3];
+			Vec3 e[3];
 			struct {
-				v<3, T> v1;
-				v<3, T> v2;
-				v<3, T> v3;
+				Vec3 col1;
+				Vec3 col2;
+				Vec3 col3;
 			};
 		};
 	};
 
-	template<typename T>
-	struct m<4, T> {
-		v<4, T>& operator[](const size_t index) {
+	template<>
+	struct Mat<4> {
+		Vec4& operator[](const size_t index) {
 			ASSERT(index < 4);
-			v<4, T>& res{ e[index] };
+			Vec4& res{ e[index] };
 			return res;
 		}
-		const v<4, T>& operator[](const size_t index) const {
+		const Vec4& operator[](const size_t index) const {
 			ASSERT(index < 4);
-			const v<4, T>& res{ e[index] };
+			const Vec4& res{ e[index] };
 			return res;
 		}
 		union {
-			v<4, T> e[4];
 			struct {
-				v<4, T> v1;
-				v<4, T> v2;
-				v<4, T> v3;
-				v<4, T> v4;
+				Vec4 col1;
+				Vec4 col2;
+				Vec4 col3;
+				Vec4 col4;
 			};
+			Vec4 e[4];
 		};
 	};
 
-	template<typename T>
-	using m2x2 = m<2, T>;
+	using Mat2 = Mat<2>;
+	using Mat3 = Mat<3>;
+	using Mat4 = Mat<4>;
 
-	template<typename T>
-	using m3x3 = m<3, T>;
+	template<uint32_t n>
+	Vec<n> operator*(const Mat<n>& mat, const Vec<n>& vec);
 
-	template<typename T>
-	using m4x4 = m<4, T>;
+	template<uint32_t n>
+	Mat<n> operator*(const Mat<n>& mat1, const Mat<n>& mat2);
 
-	template<uint32_t n, typename T>
-	v<n, T> operator*(const m<n, T>& mat, const v<n, T>& vec);
+	template<uint32_t n>
+	Mat<n>& operator*=(Mat<n>& mat1, const Mat<n>& mat2) {
+		mat1 = mat1 * mat2;
+		return mat1;
+	}
 
-	template<uint32_t n, typename T>
-	m<n, T> operator*(const m<n, T>& mat1, m<n, T> mat2);
+	template<uint32_t n>
+	constexpr Mat<n> getIdentityMatrix() {
+		if constexpr (n == 2) {
+			return Mat2 {
+			.col1 = {.x = 1,}, 
+			.col2 = {.y = 1}
+		};
+		}
+		if constexpr (n == 3) {
+			return Mat3{
+			.col1 = {.x = 1,}, 
+			.col2 = {.y = 1}, 
+			.col3 = {.z = 1}
+		};
+		}
+		if constexpr (n == 4) {
+			return Mat4 {
+			.col1 = {.x = 1,}, 
+			.col2 = {.y = 1}, 
+			.col3 = {.z = 1}, 
+			.col4 = {.w = 1}, 
+		};
+		}
+		return {};
+	}
 
-	template<uint32_t n, typename T>
-	m<n, T> transpose(const m<n, T>& mat);
+	template<uint32_t n>
+	void scale(Mat<n>* mat, const Vec<n>& factor);
 
-	template<uint32_t n, typename T>
-	void setDiagonal(m<n, T>* mat, const T& val);
+	template<uint32_t n>
+	void scale(Mat<n>* mat, const float& factor) {
+		Vec<n> scaleVec{ pstd::getFilledVector<n>() };
+		scale(mat, scaleVec);
+	}
 
-	template<uint32_t n, typename T>
-	m<n, T> getIdentityMatrix();
+	template<uint32_t n>
+	Mat<n> calcScaled(const Mat<n>& mat, const Vec<n>& factor) {
+		Mat<n> res{ mat };
+		scale(&res, factor);
+		return res;
+	}
 
-	template<typename T>
-	T det(const m<2, T>& mat);
+	template<uint32_t n>
+	Mat<n> calcScaled(const Mat<n>& mat, float factor) {
+		Mat<n> res{ mat };
+		Vec<n> scaleVec{ pstd::getFilledVector<n>() };
+		scale(&res, scaleVec);
+		return res;
+	}
 
-	template<typename T>
-	m<4, T> ortho(T left, T right, T top, T bottom, T near, T far);
+	void translate(Mat4* mat, const Vec3& offset) {
+		ASSERT(mat);
+		mat->col1.w += offset.x;
+		mat->col2.x += offset.y;
+		mat->col3.w += offset.z;
+	}
 
-	template<typename T>
-	m<4, T> perspective(T near, T far, T aspectRatio, T fov);
+	Mat4 calcTranlated(const Mat4& mat, const Vec3& offset) {
+		Mat4 res{ mat };
+		translate(&res, offset);
+		return res;
+	}
 
-	template<typename T>
-	m<4, T> lookAt(const v<3, T>& from, const v<3, T>& to, v<3, T> up);
+	void rotate(Mat4* mat, const Rot3& rotor);
+
+	template<uint32_t n>
+	Mat<n> calcRotated(const Mat<n>& mat, const Rot3& rotor) {
+		Mat<n> res{ mat };
+		rotate(&res, rotor);
+		return res;
+	}
+
+	template<uint32_t n>
+	Mat<n> calcRotateMatrix(const Rot3& rotor) {
+		Mat<n> res{ getIdentityMatrix<4>() };
+		rotate(&res, rotor);
+		return res;
+	}
+
+	template<uint32_t n>
+	void transpose(Mat<n>* mat);
+
+	template<uint32_t n>
+	Mat<n> calcTranspose(const Mat<n>& mat) {
+		Mat<n> res{ mat };
+		transpose(&res);
+		return res;
+	}
+
+	template<uint32_t n>
+	void setDiagonal(Mat<n>* mat, const float& val);
+
+	template<uint32_t n>
+	Mat<n> calcDiagonalMatrix(const Mat<n>& mat, const float& Vecal) {
+		Mat<n> res{ mat };
+		setDiagonal(&res, Vecal);
+		return res;
+	}
+
+	float calcDet(const Mat2& mat);
+
+	Mat4 calcOrthoMatrix(
+		float left, float right, float top, float bottom, float near, float far
+	);
+
+	Mat4 calcPerspectiveMatrix(
+		float near, float far, float aspectRatio, float foVec
+	);
+
+	Mat4 calcLookAtMatrix(const Vec3& from, const Vec3& to, Vec3 up);
 
 }  // namespace pstd

@@ -8,6 +8,7 @@
 #include "PCircularBuffer.h"
 
 #include "PConsole.h"
+#include "PMatrix.h"
 #include "PMemory.h"
 #include "PString.h"
 #include "PVector.h"
@@ -69,17 +70,18 @@ int main() {
 		.allocation{ pstd::heapAlloc<int>(4) },
 	};
 
-	pstd::v2<int> myVec1{ .x = 1, .y = 2 };
-	pstd::v2<int> myVec2{ .x = 2, .y = 3 };
-	pstd::v2<int> vec{ myVec1 + myVec2 };
+	pstd::Vec2 myVec1{ .x = 1, .y = 2 };
+	pstd::Vec2 myVec2{ .x = 2, .y = 3 };
+	pstd::Vec2 vec{ myVec1 + myVec2 };
+	pstd::Mat4 myMat{ pstd::getIdentityMatrix<4>() };
 
 	pstd::FixedArena msgBuffer{ .allocation = pstd::heapAlloc(100) };
 
-	pstd::rot3 rotor{ pstd::createRotor(pstd::UP, pstd::RIGHT, pstd::HALF_PI) };
+	pstd::Rot3 rotor{ pstd::calcRotor(pstd::UP, pstd::RIGHT, pstd::HALF_PI) };
 
-	pstd::v3<float> myVec{ .y = 1.f, .z = 1.f };
+	pstd::Vec3 myVec{ .y = 1.f, .z = 1.f };
 
-	myVec = pstd::rotate(rotor, myVec);
+	myVec = pstd::calcRotated(myVec, rotor);
 
 	Console::log("x = %f \n", myVec.x);
 	Console::log("y = %f \n", myVec.y);
@@ -94,12 +96,12 @@ int main() {
 	pstd::pushBack(&cBuf, 5);
 	pstd::pushBack(&cBuf, 6);
 
-	volatile float test1{ pstd::atanPade(0) };
-	test1 = pstd::atanPade(1);
-	test1 = pstd::atanPade(-1);
-	test1 = pstd::atanPade(10000);
-	test1 = pstd::atanPade(-10000);
-	test1 = pstd::atanPade(0.00001);
+	volatile float test1{ pstd::atanf(0) };
+	test1 = pstd::atanf(1);
+	test1 = pstd::atanf(-1);
+	test1 = pstd::atanf(10000);
+	test1 = pstd::atanf(-10000);
+	test1 = pstd::atanf(0.00001);
 
 	bool isRunning{ true };
 	while (isRunning && Platform::isRunning(platformState)) {

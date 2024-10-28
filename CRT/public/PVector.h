@@ -4,160 +4,177 @@
 
 namespace pstd {
 
-	template<uint32_t count, typename T>
-	struct v;  // vector
+	template<uint32_t count>
+	struct Vec;
 
-	template<typename T>
-	struct v<2, T> {
-		T& operator[](const size_t index) {
+	template<>
+	struct Vec<2> {
+		float& operator[](const size_t index) {
 			ASSERT(index < 2);
-			T& res{ e[index] };
+			float& res{ e[index] };
 			return res;
 		}
-		const T& operator[](const size_t index) const {
+		const float& operator[](const size_t index) const {
 			ASSERT(index < 2);
-			const T& res{ e[index] };
+			const float& res{ e[index] };
 			return res;
 		}
 		union {
-			T e[2];
 			struct {
-				T x;
-				T y;
+				float x;
+				float y;
 			};
+			float e[2];
 		};
 	};
 
-	template<typename T>
-	struct v<3, T> {
-		T& operator[](const size_t index) {
+	template<>
+	struct Vec<3> {
+		float& operator[](const size_t index) {
 			ASSERT(index < 3);
-			T& res{ e[index] };
+			float& res{ e[index] };
 			return res;
 		}
-		const T& operator[](const size_t index) const {
+		const float& operator[](const size_t index) const {
 			ASSERT(index < 3);
-			const T& res{ e[index] };
+			const float& res{ e[index] };
 			return res;
 		}
 		union {
-			T e[3];
 			struct {
-				T x;
-				T y;
-				T z;
+				float x;
+				float y;
+				float z;
 			};
+			float e[3];
 		};
 	};
 
-	template<typename T>
-	struct v<4, T> {
-		T& operator[](const size_t index) {
+	template<>
+	struct Vec<4> {
+		float& operator[](const size_t index) {
 			ASSERT(index < 4);
-			T& res{ e[index] };
+			float& res{ e[index] };
 			return res;
 		}
-		const T& operator[](const size_t index) const {
+		const float& operator[](const size_t index) const {
 			ASSERT(index < 4);
-			const T& res{ e[index] };
+			const float& res{ e[index] };
 			return res;
 		}
 		union {
-			T e[4];
 			struct {
-				T x;
-				T y;
-				T z;
-				T w;
+				float x;
+				float y;
+				float z;
+				float w;
 			};
+			float e[4];
 		};
 	};
 
-	template<typename T>
-	struct rot3 {  // rotor
-		T scalar;
-		T xy;
-		T yz;
-		T zx;
+	struct Rot3 {  // rotor
+		float scalar;
+		float xy;
+		float yz;
+		float zx;
 	};
 
-	template<typename T>
-	using v2 = v<2, T>;
+	using Vec2 = Vec<2>;
+	using Vec3 = Vec<3>;
+	using Vec4 = Vec<4>;
 
-	template<typename T>
-	using v3 = v<3, T>;
+	constexpr Vec3 UP{ .y = 1.f };
+	constexpr Vec3 RIGHT{ .x = 1.f };
+	constexpr Vec3 FORWARD{ .z = 1.f };	 // vulkan points into the screen
 
-	template<typename T>
-	using v4 = v<4, T>;
+	template<uint32_t n>
+	Vec<n> operator+(const Vec<n>& a, const Vec<n>& b);
 
-	constexpr v3<float> UP{ .y = 1.f };
-	constexpr v3<float> RIGHT{ .x = 1.f };
-	constexpr v3<float> FORWARD{ .z = 1.f };  // vulkan points into the screen
+	template<uint32_t n>
+	Vec<n> operator-(const Vec<n>& a, const Vec<n>& b);
 
-	template<uint32_t n, typename T>
-	v<n, T> operator+(const v<n, T>& a, const v<n, T>& b);
+	template<uint32_t n>
+	Vec<n> operator/(const Vec<n>& a, const Vec<n>& b);
 
-	template<uint32_t n, typename T>
-	v<n, T> operator-(const v<n, T>& a, const v<n, T>& b);
-
-	template<uint32_t n, typename T>
-	v<n, T> operator/(const v<n, T>& a, const v<n, T>& b);
-
-	template<uint32_t n, typename T>
-	v<n, T>& operator+=(v<n, T>& a, const v<n, T>& b) {
+	template<uint32_t n>
+	Vec<n>& operator+=(Vec<n>& a, const Vec<n>& b) {
 		a = a + b;
 		return a;
 	}
 
-	template<uint32_t n, typename T>
-	v<n, T>& operator-=(v<n, T>& a, const v<n, T>& b) {
+	template<uint32_t n>
+	Vec<n>& operator-=(Vec<n>& a, const Vec<n>& b) {
 		a = a - b;
 		return a;
 	}
 
-	template<uint32_t n, typename T>
-	v<n, T>& operator/=(v<n, T>& a, const v<n, T>& b) {
+	template<uint32_t n>
+	Vec<n>& operator/=(Vec<n>& a, const Vec<n>& b) {
 		a = a / b;
 		return a;
 	}
 
-	template<uint32_t n, typename T>
-	v<n, T>& operator*=(v<n, T>& a, const v<n, T>& b) {
-		a = a * b;
-		return a;
+	template<uint32_t n>
+	constexpr Vec<n> getFilledVector(float val) {
+		if constexpr (n == 2) {
+			return Vec<n>{ .x = val, .y = val };
+		}
+		if constexpr (n == 3) {
+			return Vec<n>{ .x = val, .y = val, .z = val };
+		}
+		if constexpr (n == 4) {
+			return Vec<n>{ .x = val, .y = val, .z = val, .w = val };
+		}
+		return {};
 	}
 
-	template<uint32_t n, typename T>
-	v<n, T> vFill(const T& val);
+	template<uint32_t n>
+	float dot(const Vec<n>& a, const Vec<n>& b);
 
-	template<uint32_t n, typename T>
-	v<n, T> scale(const v<n, T>& a, const T& scaleFactor);
+	Vec3 cross(const Vec3& a, const Vec3 b);
 
-	template<uint32_t n, typename T>
-	T dot(const v<n, T>& a, const v<n, T>& b);
+	template<uint32_t n>
+	Vec<n> hadamard(const Vec<n>& a, const Vec<n> b);
 
-	template<typename T>
-	v3<T> cross(const v3<T>& a, const v3<T> b);
+	template<uint32_t n>
+	float calcMagnitude(const Vec<n>& a);
 
-	template<uint32_t n, typename T>
-	T mag(const v<n, T>& a);
+	template<uint32_t n>
+	float calcDistance(const Vec<n>& a, const Vec<n>& b);
 
-	template<uint32_t n, typename T>
-	T length(const v<n, T>& a, const v<n, T>& b);
+	Rot3 calcRotor(Vec3 a, Vec3 b);	 // from a to b
 
-	template<uint32_t n, typename T>
-	v<n, T> normalize(const v<n, T>& a);
+	Rot3 calcRotor(Vec3 a, Vec3 b, float radians);	// from a to b
 
-	template<typename T>
-	rot3<T> createRotor(v3<T> a, v3<T> b);	// from a to b
+	template<uint32_t n>
+	void scale(Vec<n>* a, const float& scaleFactor);
 
-	template<typename T>
-	rot3<T> createRotor(v3<T> a, v3<T> b, T radians);  // from a to b
+	template<uint32_t n>
+	Vec<n> calcScaled(const Vec<n>& a, const float& scaleFactor) {
+		Vec<n> res{ a };
+		scale(&res, scaleFactor);
+		return res;
+	}
 
-	template<typename T>
-	v3<T> rotate(const rot3<T>& rotor, const v3<T>& vec);
+	template<uint32_t n>
+	void normalize(Vec<n>* a);
 
-	template<typename T>
-	rot3<T> composeRoters(rot3<T>& a, rot3<T>& b);
+	template<uint32_t n>
+	Vec<n> calcNormalized(const Vec<n>& a) {
+		Vec<n> res{ a };
+		normalize(&res);
+		return res;
+	}
+
+	void rotate(Vec3* Vec, const Rot3& rotor);
+
+	inline Vec3 calcRotated(const Vec3& Vec, const Rot3& rotor) {
+		Vec3 res{ Vec };
+		rotate(&res, rotor);
+		return res;
+	}
+
+	Rot3 composeRoter(Rot3& a, Rot3& b);
 
 }  // namespace pstd

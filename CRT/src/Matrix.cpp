@@ -4,40 +4,59 @@
 
 using namespace pstd;
 
-template<uint32_t n, typename T>
-v<n, T> pstd::operator*(const m<n, T>& mat, const v<n, T>& vec) {
-	v<n, T> res{};
+template<uint32_t n>
+Vec<n> pstd::operator*(const Mat<n>& mat, const Vec<n>& vec) {
+	Vec<n> res{};
 	for (uint32_t i{}; i < n; i++) {
 		res[i] = pstd::dot(mat[i], vec);
 	}
 	return res;
 }
 
-template<uint32_t n, typename T>
-m<n, T> transpose(const m<n, T>& mat) {
-	m<n, T> res{};
-	for (uint32_t row{}; row < n; row++) {
-		for (uint32_t col{}; col < n; col++) {
-			res[col][row] = mat[row][col];
-		}
-	}
-	return res;
-}
-
-template<uint32_t n, typename T>
-m<n, T> pstd::operator*(const m<n, T>& mat1, m<n, T> mat2) {
-	m<n, T> res{};
-	mat2 = pstd::transpose(mat2);
+template<uint32_t n>
+Mat<n> pstd::operator*(const Mat<n>& mat1, const Mat<n>& mat2) {
+	Mat<n> res{};
+	Mat<n> transposed{ pstd::calcTranspose(mat1) };
 	for (uint32_t i{}; i < n; i++) {
 		for (uint32_t j{}; j < n; j++) {
-			res[i][j] = pstd::dot(mat1[i], mat2[j]);
+			res[i][j] = pstd::dot(transposed[i], mat2[j]);
 		}
 	}
 	return res;
 }
 
-template<uint32_t n, typename T>
-void pstd::setDiagonal(m<n, T>* mat, const T& val) {
+template<uint32_t n>
+void pstd::scale(Mat<n>* mat, const Vec<n>& factor) {
+	for (uint32_t i{}; i < n; i++) {
+		(*mat)[i] = pstd::hadamard((*mat)[i], factor);
+	}
+}
+
+void pstd::rotate(Mat4* mat, const Rot3& rotor) {
+	Vec3 basisX{ pstd::calcRotated(Vec3{ .x = 1 }, rotor) };
+	Vec3 basisY{ pstd::calcRotated(Vec3{ .y = 1 }, rotor) };
+	Vec3 basisZ{ pstd::calcRotated(Vec3{ .z = 1 }, rotor) };
+
+	Mat4 rotMatrix{ .col1 = { .x = basisX.x, .y = basisX.y, .z = basisX.z },
+					.col2 = { .x = basisY.x, .y = basisY.y, .z = basisY.z },
+					.col3 = { .x = basisZ.x, .y = basisZ.y, .z = basisZ.z },
+					.col4 = { .w = 1 } };
+	*mat = rotMatrix * (*mat);
+}
+
+template<uint32_t n>
+void pstd::transpose(Mat<n>* mat) {
+	for (uint32_t row{}; row < n; row++) {
+		for (uint32_t col{}; col < row; col++) {
+			float tmp{ (*mat)[col][row] };
+			(*mat)[col][row] = (*mat)[row][col];
+			(*mat)[row][col] = tmp;
+		}
+	}
+}
+
+template<uint32_t n>
+void pstd::setDiagonal(Mat<n>* mat, const float& val) {
 	ASSERT(mat != nullptr);
 
 	for (uint32_t i{}; i < n; i++) {
@@ -45,85 +64,59 @@ void pstd::setDiagonal(m<n, T>* mat, const T& val) {
 	}
 }
 
-template<uint32_t n, typename T>
-m<n, T> pstd::getIdentityMatrix() {
-	m<n, T> res{};
-	pstd::setDiagonal(&res, (T)1);
-	return res;
-}
-
-template<typename T>
-T pstd::det(const m<2, T>& mat) {
-	T res{};
+float pstd::calcDet(const Mat2& mat) {
+	float res{};
 	res = (mat[0][0] * mat[1][1]) - (mat[1][0] * mat[0][1]);
 	return res;
 }
 
-template<typename T>
-m<4, T> pstd::ortho(T l, T r, T t, T b, T n, T f) {
-	m<4, T> res{ .v1 = { .x = 2 / (r - l), .w = -(r + l) / (r - l) },
-				 .v2 = { .y = 2 / (t - b), .w = -(t + b) / (t - b) },
-				 .v3 = { .z = 1 / (f - n), .w = -n / (f - n) },
-				 .v4 = { .w = 1 } };
+Mat4 pstd::calcOrthoMatrix(
+	float l, float r, float t, float b, float n, float f
+) {
+	Mat4 res{ .col1 = { .x = 2 / (r - l), .w = -(r + l) / (r - l) },
+			  .col2 = { .y = 2 / (t - b), .w = -(t + b) / (t - b) },
+			  .col3 = { .z = 1 / (f - n), .w = -n / (f - n) },
+			  .col4 = { .w = 1 } };
 	return res;
 }
 
-template<typename T>
-m<4, T> pstd::perspective(T n, T f, T aspectRatio, T fov) {
-	T t{ (T)pstd::tanfTaylor<T>(fov) * n };
-	T b{ -t };
-	T r{ t * aspectRatio };
-	T l{ -r };
+Mat4 pstd::calcPerspectiveMatrix(
+	float n, float f, float aspectRatio, float fov
+) {
+	float t{ pstd::tanf(fov) * n };
+	float b{ -t };
+	float r{ t * aspectRatio };
+	float l{ -r };
 
-	m<4, T> res{
-		.v1 = { .x = (2 * n) / (r - l), .w = -(r + l) / (r - l) },
-		.v2 = { .y = (2 * n) / (t - b), .w = -(t + b) / (t - b),},
-		.v3 = { .z = 1 / (f - n), .w = -n / (f - n) }, 
-		.v4 = {.z = 1}
+	Mat4 res{
+		.col1 = { .x = (2 * n) / (r - l), .w = -(r + l) / (r - l) },
+		.col2 = { .y = (2 * n) / (t - b), .w = -(t + b) / (t - b),},
+		.col3 = { .z = 1 / (f - n), .w = -n / (f - n) }, 
+		.col4 = {.z = 1}
 	};
 	return res;
 }
 
-template<typename T>
-m<4, T> pstd::lookAt(const v<3, T>& from, const v<3, T>& to, v<3, T> up) {
-	v<3, T> forward{ pstd::normalize(to - from) };
-	v<3, T> right{ pstd::normalize(pstd::cross(up, forward)) };
+Mat4 pstd::calcLookAtMatrix(const Vec3& from, const Vec3& to, Vec3 up) {
+	Vec3 forward{ pstd::calcNormalized(to - from) };
+	Vec3 right{ pstd::calcNormalized(pstd::cross(up, forward)) };
 	up = pstd::cross(forward, right);
-	m<4, T> res{
-		.v1{ .x = right.x, .y = right.y, .z = right.z, .w = -from.x },
-		.v2{ .x = up.x, .y = up.y, .z = up.z, .w = -from.y },
-		.v3{ .x = forward.x, .y = forward.y, .z = forward.z, .w = -from.z },
-		.v4{ .w = 1 },
+	Mat4 res{
+		.col1{ .x = right.x, .y = up.x, .z = forward.x, .w = -from.x },
+		.col2{ .x = right.y, .y = up.y, .z = forward.y, .w = -from.y },
+		.col3{ .x = right.z, .y = up.z, .z = forward.z, .w = -from.z },
+		.col4{ .w = 1 },
 	};
 	return res;
 }
 
-#define INIT_FUNCTIONS(n, T)                                                  \
-	template v<n, T> pstd::operator*(const m<n, T>& mat, const v<n, T>& vec); \
-	template m<n, T> pstd::operator*(const m<n, T>& mat1, m<n, T> mat2);      \
-	template m<n, T> pstd::transpose(const m<n, T>& mat);                     \
-	template void pstd::setDiagonal(m<n, T>* mat, const T& val);              \
-	template m<n, T> pstd::getIdentityMatrix();
+#define INIT_FUNCTIONS(n)                                                    \
+	template Vec<n> pstd::operator*(const Mat<n>& mat, const Vec<n>& vec);   \
+	template Mat<n> pstd::operator*(const Mat<n>& mat1, const Mat<n>& mat2); \
+	template void pstd::scale(Mat<n>* mat, const Vec<n>& factor);            \
+	template void pstd::transpose(Mat<n>* mat);                              \
+	template void pstd::setDiagonal(Mat<n>* mat, const float& val);
 
-#define INIT_SINGLE_FUNCTIONS(n, T)                                          \
-	template T pstd::det(const m<2, T>& mat);                                \
-	template m<4, T> pstd::ortho(                                            \
-		T left, T right, T top, T bottom, T near, T far                      \
-	);                                                                       \
-	template m<4, T> pstd::perspective(T near, T far, T aspectRatio, T fov); \
-	template m<4, T> pstd::lookAt(                                           \
-		const v<3, T>& from, const v<3, T>& to, v<3, T> up                   \
-	);
-
-#define INIT_TYPES(func, n) \
-	func(n, uint32_t);      \
-	func(n, int32_t);       \
-	func(n, uint64_t);      \
-	func(n, int64_t);       \
-	func(n, float);         \
-	func(n, double);
-
-INIT_TYPES(INIT_FUNCTIONS, 2)
-INIT_TYPES(INIT_FUNCTIONS, 3)
-INIT_TYPES(INIT_FUNCTIONS, 4)
-INIT_TYPES(INIT_SINGLE_FUNCTIONS, 0)
+INIT_FUNCTIONS(2)
+INIT_FUNCTIONS(3)
+INIT_FUNCTIONS(4)
