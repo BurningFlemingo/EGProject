@@ -38,7 +38,8 @@ pstd::String pstd::createString(const char* cString) {
 }
 
 template<typename T>
-String pstd::formatString(pstd::FixedArena* buffer, String format, T val) {
+String
+	pstd::formatString(pstd::FixedArena* buffer, const String& format, T val) {
 	void* const initialBufferAddress{ pstd::getNextAllocAddress<char>(*buffer
 	) };
 	const size_t initialBufferCountAvaliable{
@@ -79,6 +80,28 @@ String pstd::formatString(pstd::FixedArena* buffer, String format, T val) {
 	return res;
 }
 
+String pstd::getFileName(const String& string) {
+	size_t fileNameSize{};
+	for (uint32_t i{}; i < string.size; i++) {
+		uint32_t reverseI{ (uint32_t)(string.size) - 1 - i };
+
+		char letter{ string.buffer[reverseI] };
+		if (letter == '\\' || letter == '/') {
+			break;
+		}
+		fileNameSize++;
+	}
+	size_t pathSize{ string.size - fileNameSize };
+	const char* address{ string.buffer + pathSize };
+	String fileName{ .buffer = address, .size = fileNameSize };
+	return fileName;
+}
+
+String pstd::getFileName(const char* cString) {
+	String res{ getFileName(pstd::createString(cString)) };
+	return res;
+}
+
 namespace {
 	String floatToString(
 		pstd::FixedArena* buffer, float number, uint32_t precision
@@ -93,24 +116,24 @@ namespace {
 			pstd::getAvaliableCount<char>(*buffer)
 		};
 
-		int32_t integerPart{ (int32_t)number };
-		String integerPartString{ int32_tToString(buffer, integerPart) };
-		uint32_t decimalPartSize{ precision };
-
-		decimalPartSize = min(decimalPartSize, initialBufferCountAvaliable);
-
-		if (decimalPartSize > 0) {
-			FixedArray<char> decimalArray{
-				.allocation = pstd::bufferAlloc<char>(buffer, 1)
-			};
-			pstd::indexWrite(&decimalArray, 0, '.');
+		if (number < 0) {
+			letterToString(buffer, '-');
+			number *= -1.f;
 		}
 
+		uint32_t wholePart{ (uint32_t)number };
+		String wholePartString{ uint32_tToString(buffer, wholePart) };
+
+		letterToString(buffer, '.');
+
+		uint32_t decimalPartSize{
+			min(precision, (uint32_t)initialBufferCountAvaliable)
+		};
 		FixedArray<char> decimalPartArray{
 			.allocation = pstd::bufferAlloc<char>(buffer, decimalPartSize)
 		};
 
-		float decimalPart{ pstd::absf(number - integerPart) };
+		float decimalPart{ pstd::absf(number - wholePart) };
 		for (uint32_t i{}; i < decimalPartSize; i++) {
 			decimalPart *= 10.f;
 			uint32_t digit{ (uint32_t)decimalPart % 10 };
@@ -140,10 +163,7 @@ namespace {
 			return string;
 		}
 
-		pstd::FixedArray<char> signLetter{
-			.allocation = pstd::bufferAlloc<char>(buffer, 1)
-		};
-		pstd::indexWrite(&signLetter, 0, '-');
+		letterToString(buffer, '-');
 
 		// this avoids overflow since |INT_MIN| = |INT_MAX| + 1
 		uint32_t positiveNumber{ (uint32_t)(-(number + 1) + 1) };
@@ -202,7 +222,7 @@ namespace {
 			return res;
 		}
 		pstd::FixedArray<char> letterArray{
-			pstd::bufferAlloc<char>(buffer, 1)
+			.allocation = pstd::bufferAlloc<char>(buffer, 1)
 		};
 		pstd::indexWrite(&letterArray, 0, letter);
 		res = { .buffer = (const char*)letterArray.allocation.block,
@@ -211,9 +231,12 @@ namespace {
 	}
 }  // namespace
 
-template String
-	pstd::formatString(pstd::FixedArena* buffer, String format, uint32_t val);
-template String
-	pstd::formatString(pstd::FixedArena* buffer, String format, int32_t val);
-template String
-	pstd::formatString(pstd::FixedArena* buffer, String format, float val);
+template String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, uint32_t val
+);
+template String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, int32_t val
+);
+template String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, float val
+);

@@ -15,7 +15,11 @@ namespace pstd {
 	String createString(const char* cString);
 
 	template<typename T>
-	String formatString(pstd::FixedArena* buffer, String format, T val);
+	String formatString(pstd::FixedArena* buffer, const String& format, T val);
+
+	String getFileName(const String& string);
+
+	String getFileName(const char* cString);
 
 	template<typename T>
 	String formatString(pstd::FixedArena* buffer, const char* format, T val) {

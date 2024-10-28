@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+#include "Logging.h"
 #include "PArena.h"
 #include "PArray.h"
 #include "PCircularBuffer.h"
@@ -13,6 +14,7 @@
 #include "PMath.h"
 
 #include "Platforms/Window.h"
+#include "Logging.h"
 
 int main() {
 	// TODO: for possible alignment errors, find a better solution
@@ -72,15 +74,7 @@ int main() {
 
 	pstd::FixedArena msgBuffer{ .allocation = pstd::heapAlloc(100) };
 
-	pstd::consoleWrite(
-		pstd::formatString(&msgBuffer, "this is my %u st string\n", 1)
-	);
-	pstd::consoleWrite(
-		pstd::formatString(&msgBuffer, "this is my %f string\n", -1.001f)
-	);
-	pstd::consoleWrite(
-		pstd::formatString(&msgBuffer, "this is my %i st string\n", -1)
-	);
+	LOG_ERROR("my favorite number is %f cus its cool", -0.3f);
 
 	pstd::pushBack(&cBuf, 1);
 	pstd::pushBack(&cBuf, 2);
