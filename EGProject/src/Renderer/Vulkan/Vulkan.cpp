@@ -26,14 +26,20 @@ Renderer::State Renderer::startup(
 		(VkExtensionProperties*)extensionProps.allocation.block
 	);
 
-	constexpr size_t requiredExtensionCount{ 2 };
-	pstd::FixedArray<pstd::String, requiredExtensionCount> arr{
+	pstd::BoundedArray<pstd::String, 2> requiredExtensions{
 		.staticArray = { Platform::getPlatformSurfaceExtension(),
-						 VK_KHR_SURFACE_EXTENSION_NAME }
+						 VK_KHR_SURFACE_EXTENSION_NAME },
+		.count = 2
 	};
 
 	for (int i{}; i < pstd::getCapacity(extensionProps); i++) {
-		LOG_INFO(extensionProps[i].extensionName);
+		pstd::String avaliableName{
+			pstd::createString(extensionProps[i].extensionName)
+		};
+		pstd::String requiredName{ requiredExtensions[i] };
+		if (pstd::stringsMatch(avaliableName, requiredName)) {
+			LOG_INFO(requiredName);
+		}
 	}
 
 	VkInstance instance{};
