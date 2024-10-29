@@ -198,7 +198,7 @@ namespace {
 		letterToString(buffer, '-');
 
 		// this avoids overflow since |INT_MIN| = |INT_MAX| + 1
-		uint32_t positiveNumber{ (uint32_t)(-(number + 1) + 1) };
+		uint32_t positiveNumber{ (uint32_t)(-(number + 1)) + 1 };
 		String positiveString{ uint32_tToString(buffer, positiveNumber) };
 
 		size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
