@@ -3,19 +3,16 @@
 #include "private/PMemory.h"
 #include "public/PAssert.h"
 
-using namespace _pstd;
-using namespace pstd;
-
-FixedArena pstd::allocateFixedArena(const size_t size) {
-	const pstd::Allocation allocation{ heapAlloc(size) };
+pstd::FixedArena pstd::allocateFixedArena(const size_t size) {
+	const pstd::Allocation allocation{ pstd::internal::heapAlloc(size) };
 	FixedArena arena{ .allocation = allocation };
 	return arena;
 }
 void pstd::freeFixedArena(FixedArena* arena) {
-	heapFree(&arena->allocation);
+	pstd::internal::heapFree(&arena->allocation);
 }
 
-pstd::Allocation pstd::bufferAlloc(
+pstd::Allocation pstd::arenaAlloc(
 	pstd::FixedArena* arena, const size_t size, const uint32_t alignment
 ) {
 	ASSERT(arena != nullptr);

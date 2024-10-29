@@ -9,17 +9,19 @@
 namespace Platform {
 	using State = void*;
 
-	size_t getSubsystemAllocSize();
+	size_t getSizeofState();
 
 	State startup(
-		pstd::FixedArena* arena,
+		pstd::FixedArena* stateArena,
 		const char* windowName,
 		const int windowWidth,
 		const int windowHeight
 	);
 
-	pstd::FixedArray<KeyEvent> popKeyEvents(State iState);
-	bool isRunning(State iState);
+	pstd::FixedArray<KeyEvent> popKeyEvents(State state);
+	bool isRunning(State state);
+
+	void update(State state);
 
 	void shutdown(State state);
 }  // namespace Platform

@@ -3,17 +3,15 @@
 #include "public/PMemory.h"
 #include "public/PAssert.h"
 
-using namespace pstd;
-using namespace _pstd;
-
-pstd::Allocation _pstd::heapAlloc(const size_t size, void* baseAddress) {
+pstd::Allocation
+	pstd::internal::heapAlloc(const size_t size, void* baseAddress) {
 	pstd::Allocation allocation{
 		allocPages(size, ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE, baseAddress)
 	};
 	return allocation;
 }
 
-void _pstd::heapFree(pstd::Allocation* allocation) {
+void pstd::internal::heapFree(pstd::Allocation* allocation) {
 	ASSERT(allocation);
 
 	freePages(*allocation, ALLOC_TYPE_RELEASE);

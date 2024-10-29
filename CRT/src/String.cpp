@@ -58,7 +58,7 @@ String pstd::makeNullTerminated(FixedArena* buffer, const String& string) {
 
 	size_t lettersToCopy{ min(initialBufferCountAvaliable, string.size) };
 	Allocation stringAllocation{
-		pstd::bufferAlloc<char>(buffer, lettersToCopy)
+		pstd::arenaAlloc<char>(buffer, lettersToCopy)
 	};
 	pstd::memCpy(stringAllocation.block, string.buffer, lettersToCopy);
 	letterToString(buffer, '\0');
@@ -162,7 +162,7 @@ namespace {
 			min(precision, (uint32_t)initialBufferCountAvaliable)
 		};
 		FixedArray<char> decimalPartArray{
-			.allocation = pstd::bufferAlloc<char>(buffer, decimalPartSize)
+			.allocation = pstd::arenaAlloc<char>(buffer, decimalPartSize)
 		};
 
 		float decimalPart{ pstd::absf(number - wholePart) };
@@ -230,7 +230,7 @@ namespace {
 		}
 
 		pstd::FixedArray<char> letterArray{
-			.allocation = pstd::bufferAlloc<char>(buffer, count),
+			.allocation = pstd::arenaAlloc<char>(buffer, count),
 		};
 
 		for (uint32_t i{}; i < count; i++) {
@@ -254,7 +254,7 @@ namespace {
 			return res;
 		}
 		pstd::FixedArray<char> letterArray{
-			.allocation = pstd::bufferAlloc<char>(buffer, 1)
+			.allocation = pstd::arenaAlloc<char>(buffer, 1)
 		};
 		pstd::indexWrite(&letterArray, 0, letter);
 		res = { .buffer = (const char*)letterArray.allocation.block,

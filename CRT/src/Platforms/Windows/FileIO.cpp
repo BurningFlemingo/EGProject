@@ -51,7 +51,7 @@ pstd::FileHandle pstd::openFile(
 
 	ASSERT(hFile != INVALID_HANDLE_VALUE);
 
-	Allocation fileHandleAlloc{ pstd::bufferAlloc<FileHandleImpl>(arena) };
+	Allocation fileHandleAlloc{ pstd::arenaAlloc<FileHandleImpl>(arena) };
 	pstd::FileHandle handle{ new (fileHandleAlloc.block)
 								 FileHandleImpl{ .hFile = hFile } };
 	return handle;
@@ -106,7 +106,7 @@ pstd::Allocation
 
 	ASSERT(fileSize < pstd::getAvaliableCount<char>(*arena));
 
-	pstd::Allocation fileAlloc{ pstd::bufferAlloc<char>(arena, fileSize) };
+	pstd::Allocation fileAlloc{ pstd::arenaAlloc<char>(arena, fileSize) };
 	if (ReadFile(
 			handleImpl->hFile, fileAlloc.block, fileSize, &bytesRead, &ol
 		) == false) {

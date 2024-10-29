@@ -25,7 +25,7 @@ size_t pstd::alignToPageBoundary(size_t size) {
 	return alignedSize;
 }
 
-pstd::Allocation _pstd::allocPages(
+pstd::Allocation pstd::internal::allocPages(
 	const size_t size, AllocationTypeFlagBits allocTypeFlags, void* baseAddress
 ) {
 	ASSERT(~allocTypeFlags & (ALLOC_TYPE_DECOMMIT | ALLOC_TYPE_RELEASE))
@@ -60,7 +60,7 @@ pstd::Allocation _pstd::allocPages(
 	return allocation;
 }
 
-bool _pstd::freePages(
+bool pstd::internal::freePages(
 	const Allocation& allocation, AllocationTypeFlagBits allocTypeFlags
 ) {
 	const MemorySystemState& state{ g_State };
@@ -112,6 +112,6 @@ pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 	return limits;
 }
 
-void _pstd::initializeMemorySystem() {
+void pstd::internal::initializeMemorySystem() {
 	g_State.allocLimits = getSystemAllocationLimits();
 }

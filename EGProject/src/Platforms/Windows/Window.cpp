@@ -31,7 +31,7 @@ namespace {
 	InputCode virtualToInputCode(const char vcode);
 }  // namespace
 
-size_t Platform::getSubsystemAllocSize() {
+size_t Platform::getSizeofState() {
 	size_t stateTypeSize{ sizeof(StateImpl) };
 	size_t bufferSize{ sizeof(KeyEvent) * WindowData::eventBufferCapacity };
 	// TODO: this is a temp fix, find padding required for state type through a
@@ -42,14 +42,14 @@ size_t Platform::getSubsystemAllocSize() {
 }
 
 Platform::State Platform::startup(
-	pstd::FixedArena* arena,
+	pstd::FixedArena* stateArena,
 	const char* windowName,
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{ pstd::bufferAlloc<StateImpl>(arena) };
+	pstd::Allocation stateAllocation{ pstd::arenaAlloc<StateImpl>(stateArena) };
 	pstd::Allocation eventBufferAllocation{
-		pstd::bufferAlloc<KeyEvent>(arena, WindowData::eventBufferCapacity)
+		pstd::arenaAlloc<KeyEvent>(stateArena, WindowData::eventBufferCapacity)
 	};
 
 	HINSTANCE hInstance{ GetModuleHandle(0) };
@@ -122,18 +122,29 @@ Platform::State Platform::startup(
 	return stateAllocation.block;
 }
 
-void Platform::shutdown(Platform::State iState) {
-	const auto state{ (StateImpl*)iState };
+void Platform::shutdown(Platform::State pState) {
+	const auto state{ (StateImpl*)pState };
 	DestroyWindow(state->hwnd);
 }
 
-bool Platform::isRunning(Platform::State iState) {
-	const auto state{ (StateImpl*)iState };
+void Platform::update(State pState) {
+	const auto& state{ (StateImpl*)pState };
+
+	MSG msg{};
+	bool windowRunning{ state->windowData.isRunning };
+	while (PeekMessageA(&msg, 0, 0, 0, true) != 0 && windowRunning) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
+
+bool Platform::isRunning(Platform::State pState) {
+	const auto state{ (StateImpl*)pState };
 	return state->windowData.isRunning;
 }
 
-pstd::FixedArray<KeyEvent> Platform::popKeyEvents(Platform::State iState) {
-	const auto state{ (StateImpl*)iState };
+pstd::FixedArray<KeyEvent> Platform::popKeyEvents(Platform::State pState) {
+	const auto state{ (StateImpl*)pState };
 	pstd::FixedArray<KeyEvent> eventArray{
 		pstd::getContents(state->windowData.eventBuffer)
 	};

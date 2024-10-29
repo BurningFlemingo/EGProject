@@ -2,21 +2,11 @@
 #include "PTypes.h"
 
 namespace pstd {
-	enum AllocationType : uint32_t {
-		ALLOC_TYPE_COMMIT = 1,
-		ALLOC_TYPE_RESERVE = 2,
-		ALLOC_TYPE_DECOMMIT = 4,
-		ALLOC_TYPE_RELEASE = 8,
-	};
-	using AllocationTypeFlagBits = uint32_t;
 
 	struct Allocation {
 		void* block;
 		size_t size;  // always in bytes
-		bool ownsMemory;  // if true, this means this allocation was not
-						  // allocated from a buffer, and instead was obtained
-						  // by calling an allocation function which allocs real
-						  // system memory
+		bool ownsMemory;  // if true, memory was allocated from the system
 	};
 
 	struct AllocationLimits {

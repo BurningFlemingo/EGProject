@@ -13,6 +13,7 @@ set(SRC_FILES
 	${SRC_DIR}/Main.cpp
 	${SRC_DIR}/Logging.cpp
 	${SRC_DIR}/Platforms/Windows/Window.cpp
+	${SRC_DIR}/Renderer/Vulkan/Vulkan.cpp
 	)
 
 add_executable(${PROJ_NAME} ${SRC_FILES})

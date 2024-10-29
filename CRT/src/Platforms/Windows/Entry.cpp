@@ -7,8 +7,8 @@
 int main();
 
 extern "C" int mainCRTStartup() {
-	_pstd::initializeMemorySystem();
-	_pstd::initializeConsole();
+	pstd::internal::initializeMemorySystem();
+	pstd::internal::initializeConsole();
 
 	int exitCode{ main() };
 
