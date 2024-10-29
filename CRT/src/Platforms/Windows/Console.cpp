@@ -10,7 +10,7 @@ namespace {
 	HANDLE g_Stdout{};
 }
 
-void pstd::initializeConsole() {
+void _pstd::initializeConsole() {
 	g_Stdout = GetStdHandle(STD_OUTPUT_HANDLE);
 }
 

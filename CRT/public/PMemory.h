@@ -13,22 +13,16 @@ namespace pstd {
 	struct Allocation {
 		void* block;
 		size_t size;  // always in bytes
+		bool ownsMemory;  // if true, this means this allocation was not
+						  // allocated from a buffer, and instead was obtained
+						  // by calling an allocation function which allocs real
+						  // system memory
 	};
 
 	struct AllocationLimits {
 		uint32_t minAllocSize;
 		uint32_t pageSize;
 	};
-
-	Allocation heapAlloc(const size_t size, void* baseAddress = nullptr);
-
-	template<typename T>
-	Allocation heapAlloc(const size_t count, void* baseAddress = nullptr) {
-		const size_t bytesToAllocate{ count * sizeof(T) };
-		Allocation allocation{ heapAlloc(bytesToAllocate, baseAddress) };
-		return allocation;
-	}
-	void heapFree(Allocation* allocation);
 
 	void memSet(void* dst, int val, size_t size);
 	void memZero(void* dst, size_t size);

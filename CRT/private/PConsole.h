@@ -1,5 +1,5 @@
 #pragma once
 
-namespace pstd {
+namespace _pstd {
 	void initializeConsole();
-}  // namespace pstd
+}  // namespace _pstd

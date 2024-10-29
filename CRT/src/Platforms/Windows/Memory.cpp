@@ -25,7 +25,7 @@ size_t pstd::alignToPageBoundary(size_t size) {
 	return alignedSize;
 }
 
-pstd::Allocation pstd::allocPages(
+pstd::Allocation _pstd::allocPages(
 	const size_t size, AllocationTypeFlagBits allocTypeFlags, void* baseAddress
 ) {
 	ASSERT(~allocTypeFlags & (ALLOC_TYPE_DECOMMIT | ALLOC_TYPE_RELEASE))
@@ -53,12 +53,14 @@ pstd::Allocation pstd::allocPages(
 	void* block{ VirtualAlloc(
 		baseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
 	) };
-	Allocation allocation{ .block = block, .size = alignedSize };
+	Allocation allocation{ .block = block,
+						   .size = alignedSize,
+						   .ownsMemory = true };
 
 	return allocation;
 }
 
-bool pstd::freePages(
+bool _pstd::freePages(
 	const Allocation& allocation, AllocationTypeFlagBits allocTypeFlags
 ) {
 	const MemorySystemState& state{ g_State };
@@ -66,6 +68,7 @@ bool pstd::freePages(
 	ASSERT(~allocTypeFlags & (ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE))
 
 	ASSERT(((size_t)block % state.allocLimits.pageSize) == 0);
+	ASSERT(allocation.ownsMemory)
 
 	uint32_t win32AllocFlags{};
 	size_t alignedSize{};
@@ -109,6 +112,6 @@ pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 	return limits;
 }
 
-void pstd::initializeMemorySystem() {
+void _pstd::initializeMemorySystem() {
 	g_State.allocLimits = getSystemAllocationLimits();
 }

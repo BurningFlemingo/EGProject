@@ -1,6 +1,19 @@
 #include "public/PArena.h"
 #include "public/PMemory.h"
+#include "private/PMemory.h"
 #include "public/PAssert.h"
+
+using namespace _pstd;
+using namespace pstd;
+
+FixedArena pstd::allocateFixedArena(const size_t size) {
+	const pstd::Allocation allocation{ heapAlloc(size) };
+	FixedArena arena{ .allocation = allocation };
+	return arena;
+}
+void pstd::freeFixedArena(FixedArena* arena) {
+	heapFree(&arena->allocation);
+}
 
 pstd::Allocation pstd::bufferAlloc(
 	pstd::FixedArena* arena, const size_t size, const uint32_t alignment
