@@ -5,8 +5,10 @@
 
 namespace pstd {
 	struct FixedArena {
-		Allocation allocation;
+		const Allocation allocation;
 		size_t offset;
+
+		bool isAllocated;
 	};
 
 	template<typename T>

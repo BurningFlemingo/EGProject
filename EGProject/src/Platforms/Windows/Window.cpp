@@ -9,22 +9,11 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include "PArray.h"
+#include "Platforms/Windows/Types.h"
 #include "PAlgorithm.h"
 #include <new>
 
 namespace {
-	struct WindowData {
-		bool isRunning;
-		static constexpr size_t eventBufferCapacity{ 1024 };
-		pstd::CircularBuffer<KeyEvent> eventBuffer{};
-	};
-
-	struct StateImpl {
-		WindowData windowData;
-		HWND hwnd;
-		HINSTANCE hInstance;
-	};
-
 	LRESULT CALLBACK
 		windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -32,7 +21,7 @@ namespace {
 }  // namespace
 
 size_t Platform::getSizeofState() {
-	size_t stateTypeSize{ sizeof(StateImpl) };
+	size_t stateTypeSize{ sizeof(InternalState) };
 	size_t bufferSize{ sizeof(KeyEvent) * WindowData::eventBufferCapacity };
 	// TODO: this is a temp fix, find padding required for state type through a
 	// function
@@ -47,7 +36,8 @@ Platform::State Platform::startup(
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{ pstd::arenaAlloc<StateImpl>(stateArena) };
+	pstd::Allocation stateAllocation{ pstd::arenaAlloc<InternalState>(stateArena
+	) };
 	pstd::Allocation eventBufferAllocation{
 		pstd::arenaAlloc<KeyEvent>(stateArena, WindowData::eventBufferCapacity)
 	};
@@ -102,7 +92,7 @@ Platform::State Platform::startup(
 		0,
 		0,
 		hInstance,
-		&((StateImpl*)stateAllocation.block)->windowData
+		&((InternalState*)stateAllocation.block)->windowData
 	) };
 
 	if (hwnd == 0) {
@@ -115,20 +105,20 @@ Platform::State Platform::startup(
 						   .eventBuffer = { .allocation =
 												eventBufferAllocation } };
 
-	new (stateAllocation.block) StateImpl{ .windowData = windowData,
-										   .hwnd = hwnd,
-										   .hInstance = hInstance };
+	new (stateAllocation.block) InternalState{ .windowData = windowData,
+											   .hwnd = hwnd,
+											   .hInstance = hInstance };
 
 	return stateAllocation.block;
 }
 
 void Platform::shutdown(Platform::State pState) {
-	const auto state{ (StateImpl*)pState };
+	const auto state{ (InternalState*)pState };
 	DestroyWindow(state->hwnd);
 }
 
 void Platform::update(State pState) {
-	const auto& state{ (StateImpl*)pState };
+	const auto& state{ (InternalState*)pState };
 
 	MSG msg{};
 	bool windowRunning{ state->windowData.isRunning };
@@ -139,12 +129,12 @@ void Platform::update(State pState) {
 }
 
 bool Platform::isRunning(Platform::State pState) {
-	const auto state{ (StateImpl*)pState };
+	const auto state{ (InternalState*)pState };
 	return state->windowData.isRunning;
 }
 
 pstd::FixedArray<KeyEvent> Platform::popKeyEvents(Platform::State pState) {
-	const auto state{ (StateImpl*)pState };
+	const auto state{ (InternalState*)pState };
 	pstd::FixedArray<KeyEvent> eventArray{
 		pstd::getContents(state->windowData.eventBuffer)
 	};

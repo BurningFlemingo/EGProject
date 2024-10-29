@@ -74,12 +74,12 @@ int main() {
 	while (isRunning && Platform::isRunning(platformState)) {
 		Platform::update(platformState);
 
-		pstd::FixedArray<KeyEvent> eventBuffer{
+		pstd::FixedArray<KeyEvent> eventArray{
 			Platform::popKeyEvents(platformState)
 		};
 
-		for (int i{}; i < eventBuffer.count; i++) {
-			KeyEvent event{ pstd::indexRead(eventBuffer, i) };
+		for (size_t i{}; i < pstd::getCapacity(eventArray); i++) {
+			KeyEvent event{ eventArray[i] };
 			if (event.action == InputAction::PRESSED) {
 				if (event.code == InputCode::TAB) {
 					isRunning = false;

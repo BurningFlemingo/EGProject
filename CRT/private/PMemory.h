@@ -25,20 +25,5 @@ namespace pstd {
 			const AllocationTypeFlagBits allocTypeFlags
 		);
 
-		pstd::Allocation
-			heapAlloc(const size_t size, void* baseAddress = nullptr);
-
-		template<typename T>
-		pstd::Allocation
-			heapAlloc(const size_t count, void* baseAddress = nullptr) {
-			const size_t bytesToAllocate{ count * sizeof(T) };
-			pstd::Allocation allocation{
-				heapAlloc(bytesToAllocate, baseAddress)
-			};
-			return allocation;
-		}
-
-		void heapFree(pstd::Allocation* allocation);
-
 	}  // namespace internal
 }  // namespace pstd

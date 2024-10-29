@@ -10,9 +10,31 @@ namespace pstd {
 		size_t size;
 	};
 
-	uint32_t getCStringLength(const char* cString);
+	constexpr size_t getCStringLength(const char* cString) {
+		if (cString == nullptr) {
+			return 0;
+		}
 
-	String createString(const char* cString);
+		const uint32_t maxStringSize{
+			1024
+		};	// to avoid an infinite loop for ill-formed cstrings
+
+		uint32_t stringSize{};
+		while (stringSize < 1024 && *cString != '\0') {
+			stringSize++;
+			cString++;
+		}
+
+		return stringSize;
+	}
+
+	constexpr String createString(const char* cString) {
+		size_t stringSize{ getCStringLength(cString) };
+		pstd::String string{ .buffer = cString, .size = stringSize };
+		return string;
+	}
+	bool stringsMatch(const String& a, const String& b);
+
 	String makeNullTerminated(FixedArena* buffer, const String& string);
 
 	template<typename T>

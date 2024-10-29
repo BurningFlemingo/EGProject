@@ -18,26 +18,6 @@ namespace {
 	String letterToString(pstd::FixedArena* buffer, char letter);
 }  // namespace
 
-uint32_t pstd::getCStringLength(const char* cString) {
-	const uint32_t maxStringSize{
-		1024
-	};	// to avoid an infinite loop for ill-formed cstrings
-
-	uint32_t stringSize{};
-	while (stringSize < 1024 && *cString != '\0') {
-		stringSize++;
-		cString++;
-	}
-
-	return stringSize;
-}
-
-pstd::String pstd::createString(const char* cString) {
-	uint32_t stringSize{ getCStringLength(cString) };
-	pstd::String string{ .buffer = cString, .size = stringSize };
-	return string;
-}
-
 String pstd::makeNullTerminated(FixedArena* buffer, const String& string) {
 	ASSERT(string.buffer);
 	String nullTerminatedString{};
@@ -66,6 +46,20 @@ String pstd::makeNullTerminated(FixedArena* buffer, const String& string) {
 	size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer) };
 	size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
 	String res{ .buffer = (const char*)initialBufferAddress, .size = size };
+	return res;
+}
+
+bool pstd::stringsMatch(const String& a, const String& b) {
+	ASSERT(a.buffer);
+	ASSERT(b.buffer);
+
+	bool res{ true };
+
+	if (a.size != b.size) {
+		res = false;
+		return res;
+	}
+	res = memcmp(a.buffer, b.buffer, a.size) == 0;
 	return res;
 }
 
@@ -170,7 +164,7 @@ namespace {
 			decimalPart *= 10.f;
 			uint32_t digit{ (uint32_t)decimalPart % 10 };
 			char digitLetter{ (char)('0' + digit) };
-			pstd::indexWrite(&decimalPartArray, i, digitLetter);
+			decimalPartArray[i] = digitLetter;
 		}
 
 		size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
@@ -237,7 +231,7 @@ namespace {
 			uint32_t reverseIndex{ (count - 1) - i };
 			uint32_t digit{ number % 10 };
 			char digitLetter{ (char)((uint32_t)'0' + digit) };
-			pstd::indexWrite(&letterArray, reverseIndex, digitLetter);
+			letterArray[reverseIndex] = digitLetter;
 			number /= 10;
 		}
 
@@ -256,7 +250,7 @@ namespace {
 		pstd::FixedArray<char> letterArray{
 			.allocation = pstd::arenaAlloc<char>(buffer, 1)
 		};
-		pstd::indexWrite(&letterArray, 0, letter);
+		letterArray[0] = letter;
 		res = { .buffer = (const char*)letterArray.allocation.block,
 				.size = 1 };
 		return res;

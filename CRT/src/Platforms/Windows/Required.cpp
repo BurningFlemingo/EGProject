@@ -1,3 +1,5 @@
+#include "public/PAssert.h"
+
 extern "C" {
 int _fltused{};
 }
@@ -33,19 +35,21 @@ void *memcpy(void *dst, const void *src, size_t size) {
 
 #pragma function(memcmp)
 int memcmp(const void *buf1, const void *buf2, size_t size) {
+	ASSERT(buf1);
+	ASSERT(buf2);
+
 	const unsigned char *block1{ (const unsigned char *)buf1 };
 	const unsigned char *block2{ (const unsigned char *)buf2 };
+	int res{};
 
-	while (size > 0) {
-		if (*block1 != *block2) {
-			int res{ *block1 - *block2 };
-			return res;
+	for (size_t i{}; i < size; i++) {
+		if (block1[i] != block2[i]) {
+			res = block1[i] - block2[i];
+			break;
 		}
-		block1++;
-		block2++;
-		size--;
 	}
-	return 0;
+
+	return res;
 }
 
 int _wcsicmp(const wchar_t *buf1, const wchar_t *buf2) {

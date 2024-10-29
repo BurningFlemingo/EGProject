@@ -4,51 +4,64 @@
 #include "PTypes.h"
 
 namespace pstd {
+	template<typename T, size_t n = 0>
+	struct FixedArray;
+
 	template<typename T>
-	struct FixedArray {
+	struct FixedArray<T, 0> {
+		const T& operator[](size_t index) const {
+			ASSERT(allocation.block);
+			ASSERT(pstd::getCapacity(allocation) > index);
+
+			auto* typedBlock{ (const T*)allocation.block };
+			const T& val{ typedBlock[index] };
+			return val;
+		}
+
+		T& operator[](size_t index) {
+			ASSERT(allocation.block);
+			ASSERT(getCapacity(allocation) > index);
+
+			auto* typedBlock{ (T*)allocation.block };
+			T& val{ typedBlock[index] };
+			return val;
+		}
+
 		Allocation allocation;
-		size_t count;
 	};
-	template<typename T>
-	constexpr size_t getCapacity(const FixedArray<T>& buffer) {
-		size_t capacity{ buffer.allocation.size / sizeof(T) };
+
+	template<typename T, size_t n>
+	struct FixedArray {
+		const T& operator[](size_t index) const {
+			ASSERT(allocation.block);
+			ASSERT(pstd::getCapacity(allocation) > index);
+
+			const T& val{ staticArray[index] };
+			return val;
+		}
+
+		T& operator[](size_t index) {
+			ASSERT(allocation.block);
+			ASSERT(pstd::getCapacity(allocation) > index);
+
+			T& val{ staticArray[index] };
+			return val;
+		}
+		T staticArray[n];
+		Allocation allocation{ .block = staticArray,
+							   .size = { n * sizeof(T) } };
+	};
+
+	template<typename T, size_t n>
+	constexpr size_t getCapacity(const FixedArray<T, n>& array) {
+		size_t capacity{ n };
 		return capacity;
 	}
 
 	template<typename T>
-	bool isFull(const FixedArray<T>& buffer) {
-		bool res{};
-		if (getElementCount(buffer) == getCapacity(buffer)) {
-			res = true;
-		}
-		return res;
-	}
-
-	template<typename T>
-	bool isEmpty(const FixedArray<T>& buffer) {
-		bool res{};
-		if (buffer.headIndex == buffer.tailIndex) {
-			res = true;
-		}
-		return res;
-	}
-
-	template<typename T>
-	void indexWrite(FixedArray<T>* buffer, const size_t index, const T val) {
-		ASSERT(buffer);
-		ASSERT(getCapacity(buffer) > index);
-
-		T* typedBlock{ (T*)buffer->allocation.block };
-		typedBlock[index] = val;
-	}
-
-	template<typename T>
-	T indexRead(const FixedArray<T>& buffer, const size_t index) {
-		ASSERT(buffer);
-		ASSERT(getCapacity(buffer) > index);
-
-		const T* typedBlock{ (const T*)buffer.allocation.block };
-		T val{ typedBlock[index] };
-		return val;
+	size_t getCapacity(const FixedArray<T, 0>& array) {
+		ASSERT(array.allocation.block);
+		size_t capacity{ array.allocation.size * sizeof(T) };
+		return capacity;
 	}
 }  // namespace pstd

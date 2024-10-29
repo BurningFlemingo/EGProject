@@ -34,10 +34,9 @@ namespace pstd {
 	FixedArray<T> getContents(const CircularBuffer<T>& buffer) {
 		size_t address{ (size_t)buffer.allocation.block + buffer.tailIndex };
 		size_t count{ getCount(buffer) };
+		pstd::Allocation bufferAllocation{};
 		pstd::FixedArray<T> contentsArray{
-			.allocation = { .block = (void*)address,
-							.size = count * sizeof(T) },
-			.count = count
+			.allocation = { .block = (void*)address, .size = count * sizeof(T) }
 		};
 		return contentsArray;
 	}

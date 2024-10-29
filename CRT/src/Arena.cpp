@@ -4,17 +4,25 @@
 #include "public/PAssert.h"
 
 pstd::FixedArena pstd::allocateFixedArena(const size_t size) {
-	const pstd::Allocation allocation{ pstd::internal::heapAlloc(size) };
-	FixedArena arena{ .allocation = allocation };
+	const pstd::Allocation allocation{ pstd::internal::allocPages(
+		size, internal::ALLOC_TYPE_COMMIT | internal::ALLOC_TYPE_RESERVE
+	) };
+	FixedArena arena{ .allocation = allocation, .isAllocated = true };
 	return arena;
 }
 void pstd::freeFixedArena(FixedArena* arena) {
-	pstd::internal::heapFree(&arena->allocation);
+	if (arena->allocation.ownsMemory) {
+		pstd::internal::freePages(
+			arena->allocation, internal::ALLOC_TYPE_RELEASE
+		);
+	}
+	arena->isAllocated = false;
 }
 
 pstd::Allocation pstd::arenaAlloc(
 	pstd::FixedArena* arena, const size_t size, const uint32_t alignment
 ) {
+	ASSERT(arena->isAllocated);
 	ASSERT(arena != nullptr);
 	ASSERT(arena->allocation.block != nullptr);
 	ASSERT(size != 0);
