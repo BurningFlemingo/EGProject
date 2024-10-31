@@ -5,6 +5,7 @@
 
 #include "PMatrix.h"
 #include "PMemory.h"
+#include "PString.h"
 #include "PVector.h"
 #include "PMath.h"
 
@@ -50,18 +51,14 @@ int main() {
 
 	myVec = pstd::calcRotated(myVec, rotor);
 
-	Console::log("x = %f \n", myVec.x);
-	Console::log("y = %f \n", myVec.y);
-	Console::log("z = %f \n", myVec.z);
+	LOG_ERROR("my favorite number is %u cus its cool %i", 0, -23);
 
-	LOG_ERROR("my favorite number is %f cus its cool", -0.3f);
-
-	pstd::pushBack(&cBuf, 1);
-	pstd::pushBack(&cBuf, 2);
-	pstd::pushBack(&cBuf, 3);
-	pstd::pushBack(&cBuf, 4);
-	pstd::pushBack(&cBuf, 5);
-	pstd::pushBack(&cBuf, 6);
+	pstd::pushBackOverwrite(&cBuf, 1);
+	pstd::pushBackOverwrite(&cBuf, 2);
+	pstd::pushBackOverwrite(&cBuf, 3);
+	pstd::pushBackOverwrite(&cBuf, 4);
+	pstd::pushBackOverwrite(&cBuf, 5);
+	pstd::pushBackOverwrite(&cBuf, 6);
 
 	volatile float test1{ pstd::atanf(0) };
 	test1 = pstd::atanf(1);
@@ -74,20 +71,23 @@ int main() {
 	while (isRunning && Platform::isRunning(platformState)) {
 		Platform::update(platformState);
 
-		pstd::FixedArray<KeyEvent> eventArray{
-			Platform::popKeyEvents(platformState)
-		};
-
-		for (size_t i{}; i < pstd::getCapacity(eventArray); i++) {
-			KeyEvent event{ eventArray[i] };
-			if (event.action == InputAction::PRESSED) {
-				if (event.code == InputCode::TAB) {
-					isRunning = false;
-				}
+		Platform::Event event{};
+		while (Platform::popEvent(platformState, &event)) {
+			switch (event.type) {
+				case Platform::EventType::key: {
+					if (event.keyEvent.action == InputAction::PRESSED) {
+						if (event.keyEvent.code == InputCode::TAB) {
+							isRunning = false;
+						}
+					}
+				} break;
+				default:
+					break;
 			}
 		}
 	}
-	pstd::freeFixedArena(&applicationArena);
 	Renderer::shutdown(rendererState);
 	Platform::shutdown(platformState);
+
+	pstd::freeFixedArena(&applicationArena);
 }

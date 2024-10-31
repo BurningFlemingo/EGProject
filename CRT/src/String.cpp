@@ -9,18 +9,33 @@
 using namespace pstd;
 
 namespace {
-	String uint32_tToString(pstd::FixedArena* buffer, uint32_t number);
-	String int32_tToString(pstd::FixedArena* buffer, int32_t number);
-	String floatToString(
+	size_t pushUInt32AsString(
+		pstd::FixedArena* buffer, uint32_t number
+	);	// returns size of string pushed
+	size_t pushInt32AsString(
+		pstd::FixedArena* buffer, int32_t number
+	);	// returns size of string pushed
+	size_t pushFloatAsString(
 		pstd::FixedArena* buffer, float number, uint32_t precision = 5
-	);
+	);	// returns size of string pushed
 
-	String letterToString(pstd::FixedArena* buffer, char letter);
+	size_t pushString(
+		pstd::FixedArena* buffer, const String& string
+	);	// returns size of string pushed
+
+	size_t pushStringUntilControlCharacter(
+		pstd::FixedArena* buffer,
+		const String& format,
+		size_t* outFormatCharactersProccessed,
+		char* outControlCharacter
+	);
+	// returns size of string pushed
+
+	size_t pushLetter(pstd::FixedArena* buffer, char letter);
 }  // namespace
 
-String pstd::makeNullTerminated(FixedArena* buffer, const String& string) {
+String pstd::makeNullTerminated(FixedArena* buffer, String string) {
 	ASSERT(string.buffer);
-	String nullTerminatedString{};
 	if (string.size == 0) {
 		return string;
 	}
@@ -41,68 +56,113 @@ String pstd::makeNullTerminated(FixedArena* buffer, const String& string) {
 		pstd::arenaAlloc<char>(buffer, lettersToCopy)
 	};
 	pstd::memCpy(stringAllocation.block, string.buffer, lettersToCopy);
-	letterToString(buffer, '\0');
+	pushLetter(buffer, '\0');
 
 	size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer) };
 	size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
-	String res{ .buffer = (const char*)initialBufferAddress, .size = size };
-	return res;
+
+	string =
+		String{ .buffer = (const char*)initialBufferAddress, .size = size };
+	return string;
 }
 
 bool pstd::stringsMatch(const String& a, const String& b) {
 	ASSERT(a.buffer);
 	ASSERT(b.buffer);
 
-	bool res{ true };
-
 	if (a.size != b.size) {
-		res = false;
-		return res;
+		return false;
 	}
-	res = memcmp(a.buffer, b.buffer, a.size) == 0;
+	return memcmp(a.buffer, b.buffer, a.size) == 0;
+}
+
+String pstd::concat(pstd::FixedArena* buffer, String a, String b) {
+	void* const stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
+
+	size_t stringSize{ pushString(buffer, a) };
+	stringSize += pushString(buffer, b);
+
+	String res{ .buffer = (const char*)stringAddress, .size = stringSize };
+	return res;
+}
+
+String pstd::formatString(pstd::FixedArena* buffer, const String& format) {
+	ASSERT(buffer);
+
+	const void* stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
+	size_t stringSize{ pushString(buffer, format) };
+
+	String res{ .buffer = (const char*)stringAddress, .size = stringSize };
 	return res;
 }
 
 template<typename T>
 String
 	pstd::formatString(pstd::FixedArena* buffer, const String& format, T val) {
-	void* const initialBufferAddress{ pstd::getNextAllocAddress<char>(*buffer
-	) };
+	ASSERT(buffer);
+	const void* stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
 	const size_t initialBufferCountAvaliable{
 		pstd::getAvaliableCount<char>(*buffer)
 	};
 
-	size_t searchSize{ min(initialBufferCountAvaliable, format.size) };
-
-	char previousLetter{};
-	for (size_t i{}; i < searchSize; i++) {
-		char currentLetter{ format.buffer[i] };
-
-		if (previousLetter == '%') {
-			switch (currentLetter) {
-				case 'i': {
-					int32_tToString(buffer, (int32_t)val);
-				} break;
-				case 'u': {
-					uint32_tToString(buffer, (uint32_t)val);
-				} break;
-				case 'f': {
-					floatToString(buffer, (float)val);
-				} break;
-				default:
-					letterToString(buffer, '%');
-					letterToString(buffer, currentLetter);
-					break;
-			}
-		} else if (currentLetter != '%') {
-			letterToString(buffer, currentLetter);
-		}
-
-		previousLetter = currentLetter;
+	char controlCharacter{};
+	size_t formatCharactersProccessed{};
+	size_t stringSize{ pushStringUntilControlCharacter(
+		buffer, format, &formatCharactersProccessed, &controlCharacter
+	) };
+	switch (controlCharacter) {
+		case 'i': {
+			stringSize += pushInt32AsString(buffer, (int32_t)val);
+		} break;
+		case 'u': {
+			stringSize += pushUInt32AsString(buffer, (uint32_t)val);
+		} break;
+		case 'f': {
+			stringSize += pushFloatAsString(buffer, (float)val);
+		} break;
+		default:
+			break;
 	}
-	size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer) };
-	size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
-	String res{ .buffer = (const char*)initialBufferAddress, .size = size };
+	auto stringFormatSizeDifference{ (size_t
+	)pstd::abs((int)format.size - (int)stringSize) };
+
+	if (formatCharactersProccessed < format.size) {
+		String restOfFormat{ .buffer =
+								 format.buffer + formatCharactersProccessed,
+							 .size = format.size - formatCharactersProccessed };
+
+		stringSize += pushString(buffer, restOfFormat);
+	}
+
+	String res{ .buffer = (const char*)stringAddress, .size = stringSize };
+	return res;
+}
+
+template<>
+String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, pstd::String val
+) {
+	ASSERT(buffer);
+	const void* stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
+
+	char controlCharacter{};
+	size_t formatCharactersProccessed{};
+	size_t stringSize{ pushStringUntilControlCharacter(
+		buffer, format, &formatCharactersProccessed, &controlCharacter
+	) };
+	if (controlCharacter == 'm') {
+		stringSize += pushString(buffer, val);
+	}
+
+	if (formatCharactersProccessed < format.size) {
+		String restOfFormat{ .buffer =
+								 format.buffer + formatCharactersProccessed,
+							 .size = format.size - formatCharactersProccessed };
+
+		stringSize += pushString(buffer, restOfFormat);
+	}
+
+	String res{ .buffer = (const char*)stringAddress, .size = stringSize };
 	return res;
 }
 
@@ -119,103 +179,63 @@ String pstd::getFileName(const String& string) {
 	}
 	size_t pathSize{ string.size - fileNameSize };
 	const char* address{ string.buffer + pathSize };
-	String fileName{ .buffer = address, .size = fileNameSize };
-	return fileName;
-}
-
-String pstd::getFileName(const char* cString) {
-	String res{ getFileName(pstd::createString(cString)) };
+	String res{ .buffer = address, .size = fileNameSize };
 	return res;
 }
 
+String pstd::getFileName(const char* cString) {
+	return getFileName(pstd::createString(cString));
+}
+
 namespace {
-	String floatToString(
+	size_t pushFloatAsString(
 		pstd::FixedArena* buffer, float number, uint32_t precision
 	) {
 		ASSERT(precision < 128);  // to avoid a loop that blows out the buffer
 		ASSERT(buffer);
 
-		void* const initialBufferAddress{
-			pstd::getNextAllocAddress<char>(*buffer)
-		};
-		const size_t initialBufferCountAvaliable{
-			pstd::getAvaliableCount<char>(*buffer)
-		};
+		size_t stringSize{};
 
 		if (number < 0) {
-			letterToString(buffer, '-');
+			stringSize += pushLetter(buffer, '-');
 			number *= -1.f;
 		}
 
 		uint32_t wholePart{ (uint32_t)number };
-		String wholePartString{ uint32_tToString(buffer, wholePart) };
+		stringSize += pushUInt32AsString(buffer, wholePart);
 
-		letterToString(buffer, '.');
+		stringSize += pushLetter(buffer, '.');
 
-		uint32_t decimalPartSize{
-			min(precision, (uint32_t)initialBufferCountAvaliable)
-		};
-		FixedArray<char> decimalPartArray{
-			.allocation = pstd::arenaAlloc<char>(buffer, decimalPartSize)
-		};
-
-		float decimalPart{ pstd::absf(number - wholePart) };
-		for (uint32_t i{}; i < decimalPartSize; i++) {
-			decimalPart *= 10.f;
-			uint32_t digit{ (uint32_t)decimalPart % 10 };
-			char digitLetter{ (char)('0' + digit) };
-			decimalPartArray[i] = digitLetter;
-		}
-
-		size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
-		) };
-		size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
-		String res{ .buffer = (const char*)initialBufferAddress, .size = size };
-		return res;
+		size_t factor{ pstd::pow<size_t>(10, precision) };
+		auto decimalPart{ (uint32_t)((pstd::absf(number - wholePart) * factor) +
+									 0.5f) };
+		stringSize += pushUInt32AsString(buffer, decimalPart);
+		return stringSize;
 	}
-	String int32_tToString(pstd::FixedArena* buffer, int32_t number) {
+
+	size_t pushInt32AsString(pstd::FixedArena* buffer, int32_t number) {
 		ASSERT(buffer);
 
-		void* const initialBufferAddress{
-			pstd::getNextAllocAddress<char>(*buffer)
-		};
-		const size_t initialBufferCountAvaliable{
-			pstd::getAvaliableCount<char>(*buffer)
-		};
-
-		String string{};
+		size_t stringSize{};
 		if (number >= 0) {
-			string = uint32_tToString(buffer, (uint32_t)number);
-			return string;
+			return pushUInt32AsString(buffer, (uint32_t)number);
 		}
 
-		letterToString(buffer, '-');
+		stringSize += pushLetter(buffer, '-');
 
 		// this avoids overflow since |INT_MIN| = |INT_MAX| + 1
 		uint32_t positiveNumber{ (uint32_t)(-(number + 1)) + 1 };
-		String positiveString{ uint32_tToString(buffer, positiveNumber) };
-
-		size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
-		) };
-		size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
-		String res{ .buffer = (const char*)initialBufferAddress, .size = size };
-		return res;
+		stringSize += pushUInt32AsString(buffer, positiveNumber);
+		return stringSize;
 	}
 
-	String uint32_tToString(pstd::FixedArena* buffer, uint32_t number) {
+	size_t pushUInt32AsString(pstd::FixedArena* buffer, uint32_t number) {
 		ASSERT(buffer);
 
-		void* const initialBufferAddress{
-			pstd::getNextAllocAddress<char>(*buffer)
-		};
-		const size_t initialBufferCountAvaliable{
-			pstd::getAvaliableCount<char>(*buffer)
-		};
-
 		uint32_t count{ 1 };
-		size_t bufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer) };
-
 		{
+			size_t bufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
+			) };
 			uint32_t numberCopy{ number };
 			while (numberCopy > 9 && count < bufferCountAvaliable) {
 				numberCopy /= 10;
@@ -234,26 +254,67 @@ namespace {
 			letterArray[reverseIndex] = digitLetter;
 			number /= 10;
 		}
-
-		size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
-		) };
-		size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
-		String res{ .buffer = (const char*)initialBufferAddress, .size = size };
-		return res;
+		return letterArray.allocation.size;
 	}
 
-	String letterToString(pstd::FixedArena* buffer, char letter) {
-		String res{};
+	size_t pushLetter(pstd::FixedArena* buffer, char letter) {
 		if (pstd::getAvaliableCount<char>(*buffer) == 0) {
-			return res;
+			return 0;
 		}
 		pstd::FixedArray<char> letterArray{
 			.allocation = pstd::arenaAlloc<char>(buffer, 1)
 		};
 		letterArray[0] = letter;
-		res = { .buffer = (const char*)letterArray.allocation.block,
-				.size = 1 };
-		return res;
+		return 1;
+	}
+
+	size_t pushString(pstd::FixedArena* buffer, const String& string) {
+		pstd::Allocation allocation{
+			pstd::arenaAlloc<char>(buffer, string.size)
+		};
+
+		memcpy(allocation.block, string.buffer, allocation.size);
+		return allocation.size;
+	}
+
+	size_t pushStringUntilControlCharacter(
+		pstd::FixedArena* buffer,
+		const String& format,
+		size_t* outFormatCharactersProccessed,
+		char* outControlCharacter
+	) {
+		ASSERT(buffer);
+		char res{};
+
+		size_t searchSize{
+			min(pstd::getAvaliableCount<char>(*buffer), format.size)
+		};
+
+		char previousLetter{};
+		char controlCharacter{ '\0' };
+		size_t normalStringSize{};
+		size_t controlCharactersProccessedSize{};
+		for (size_t i{}; i < searchSize; i++) {
+			char currentLetter{ format.buffer[i] };
+
+			if (previousLetter == '%') {
+				controlCharacter = currentLetter;
+				normalStringSize--;
+				controlCharactersProccessedSize = 2;
+				break;
+			}
+
+			previousLetter = currentLetter;
+			normalStringSize++;
+		}
+		pstd::String normalString{ .buffer = format.buffer,
+								   .size = normalStringSize };
+		size_t stringSize{ pushString(buffer, normalString) };
+		*outControlCharacter = controlCharacter;
+		*outFormatCharactersProccessed =
+			normalStringSize + controlCharactersProccessedSize;
+
+		return stringSize;
 	}
 }  // namespace
 

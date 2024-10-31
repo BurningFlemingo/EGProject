@@ -11,7 +11,7 @@ int __cdecl memcmp(const void *buf1, const void *buf2, size_t size);
 
 #pragma function(memset)
 void *memset(void *dst, int val, size_t size) {
-	char *block{ (char *)dst };
+	auto block{ (char *)dst };
 	for (int i{}; i < size; i++) {
 		*block = (char)val;
 		block++;
@@ -24,7 +24,7 @@ void *memset(void *dst, int val, size_t size) {
 void *memcpy(void *dst, const void *src, size_t size) {
 	char *dstBlock{ (char *)dst };
 
-	const char *srcBlock = (const char *)src;
+	auto srcBlock = (const char *)src;
 	while (size--) {
 		*dstBlock = *srcBlock;
 		dstBlock++;
@@ -40,16 +40,13 @@ int memcmp(const void *buf1, const void *buf2, size_t size) {
 
 	const unsigned char *block1{ (const unsigned char *)buf1 };
 	const unsigned char *block2{ (const unsigned char *)buf2 };
-	int res{};
-
 	for (size_t i{}; i < size; i++) {
 		if (block1[i] != block2[i]) {
-			res = block1[i] - block2[i];
-			break;
+			return block1[i] - block2[i];
 		}
 	}
 
-	return res;
+	return 0;
 }
 
 int _wcsicmp(const wchar_t *buf1, const wchar_t *buf2) {
@@ -64,8 +61,7 @@ int _wcsicmp(const wchar_t *buf1, const wchar_t *buf2) {
 		}
 
 		if (str1 != str2) {
-			int res{ str1 - str2 };
-			return res;
+			return str1 - str2;
 		}
 
 		buf1++;

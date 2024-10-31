@@ -26,10 +26,15 @@ namespace pstd {
 	);
 
 	template<typename T>
+	size_t getCapacity(const Allocation& allocation) {
+		size_t res{ allocation.size / sizeof(T) };
+		return res;
+	}
+
+	template<typename T>
 	uint32_t calcAddressAlignmentPadding(const void* address) {
 		uint32_t alignment{ alignof(T) };
-		uint32_t res{ calcAddressAlignmentPadding(address, alignment) };
-		return res;
+		return calcAddressAlignmentPadding(address, alignment);
 	}
 
 }  // namespace pstd

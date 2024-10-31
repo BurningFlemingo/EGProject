@@ -14,20 +14,21 @@ namespace pstd {
 
 	template<typename T>
 	constexpr size_t getCapacity(const CircularBuffer<T>& buffer) {
-		size_t capacity{ buffer.allocation.size / sizeof(T) };
-		return capacity;
+		size_t res{ buffer.allocation.size / sizeof(T) };
+		return res;
 	}
 
 	template<typename T>
 	size_t getCount(const CircularBuffer<T>& buffer) {
-		size_t occupancy{};
-		if (buffer.headIndex > buffer.tailIndex) {
-			occupancy = buffer.headIndex - buffer.tailIndex;
+		size_t res{};
+		if (buffer.headIndex >= buffer.tailIndex) {
+			res = buffer.headIndex - buffer.tailIndex;
 		} else {
 			size_t capacity{ getCapacity(buffer) };
-			occupancy = capacity - (buffer.tailIndex - buffer.headIndex);
+			res = capacity - (buffer.tailIndex - buffer.headIndex);
 		}
-		return occupancy;
+
+		return res;
 	}
 
 	template<typename T>
@@ -35,59 +36,51 @@ namespace pstd {
 		size_t address{ (size_t)buffer.allocation.block + buffer.tailIndex };
 		size_t count{ getCount(buffer) };
 		pstd::Allocation bufferAllocation{};
-		pstd::FixedArray<T> contentsArray{
+		return pstd::FixedArray<T>{
 			.allocation = { .block = (void*)address, .size = count * sizeof(T) }
 		};
-		return contentsArray;
 	}
 
 	template<typename T>
 	bool isFull(const CircularBuffer<T>& buffer) {
-		bool res{};
-		if (getElementCount(buffer) == getCapacity(buffer)) {
-			res = true;
-		}
-		return res;
+		return getCount(buffer) >= getCapacity(buffer);
 	}
 
 	template<typename T>
 	bool isEmpty(const CircularBuffer<T>& buffer) {
-		bool res{};
-		if (buffer.headIndex == buffer.tailIndex) {
-			res = true;
+		return buffer.headIndex == buffer.tailIndex;
+	}
+
+	template<typename T>
+	bool popBack(CircularBuffer<T>* buffer, T* popOut) {
+		ASSERT(buffer);
+		ASSERT(popOut);
+
+		if (pstd::isEmpty(*buffer)) {
+			return false;
 		}
-		return res;
+
+		T* const typedBlock{ (T*)buffer->allocation.block };
+
+		buffer->headIndex--;  // headIndex points to the next avaliable index
+		*popOut = typedBlock[buffer->headIndex];
+
+		return true;
 	}
 
 	template<typename T>
-	void
-		indexWrite(CircularBuffer<T>* buffer, const size_t index, const T val) {
+	void pushBackOverwrite(CircularBuffer<T>* buffer, const T val) {
 		ASSERT(buffer);
-		ASSERT(getCapacity(buffer) > index);
-
-		T* typedBlock{ (T*)buffer->allocation.block };
-		typedBlock[index] = val;
-	}
-
-	template<typename T>
-	T indexRead(const CircularBuffer<T>& buffer, const size_t index) {
-		ASSERT(buffer);
-		ASSERT(getCapacity(buffer) > index);
-
-		const T* typedBlock{ (const T*)buffer.allocation.block };
-		T val{ typedBlock[index] };
-		return val;
-	}
-
-	template<typename T>
-	void pushBack(CircularBuffer<T>* buffer, const T val) {
-		ASSERT(buffer);
-		ASSERT(!isFull(*buffer));
 
 		T* const typedBlock{ (T*)buffer->allocation.block };
 		typedBlock[buffer->headIndex] = val;
 
 		buffer->headIndex = (buffer->headIndex + 1) % (getCapacity(*buffer));
+
+		if (isFull(*buffer)) {
+			buffer->tailIndex =
+				(buffer->tailIndex + 1) % (getCapacity(*buffer));
+		}
 	};
 
 }  // namespace pstd

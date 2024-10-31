@@ -15,17 +15,17 @@ namespace pstd {
 			return 0;
 		}
 
-		const uint32_t maxStringSize{
+		constexpr uint32_t maxStringSize{
 			1024
 		};	// to avoid an infinite loop for ill-formed cstrings
 
-		uint32_t stringSize{};
-		while (stringSize < 1024 && *cString != '\0') {
-			stringSize++;
+		uint32_t stringLength{};
+		while (stringLength < 1024 && *cString != '\0') {
+			stringLength++;
 			cString++;
 		}
 
-		return stringSize;
+		return stringLength;
 	}
 
 	constexpr String createString(const char* cString) {
@@ -35,19 +35,50 @@ namespace pstd {
 	}
 	bool stringsMatch(const String& a, const String& b);
 
-	String makeNullTerminated(FixedArena* buffer, const String& string);
+	String makeNullTerminated(FixedArena* buffer, String string);
+
+	String concat(pstd::FixedArena* buffer, String a, String b);
+
+	String formatString(pstd::FixedArena* buffer, const String& format);
+
+	inline String formatString(pstd::FixedArena* buffer, const char* format) {
+		return formatString(buffer, createString(format));
+	}
 
 	template<typename T>
 	String formatString(pstd::FixedArena* buffer, const String& format, T val);
 
-	String getFileName(const String& string);
-
-	String getFileName(const char* cString);
+	template<typename T>
+	String formatString(
+		pstd::FixedArena* buffer, const String& format, const char* val
+	) {
+		return formatString(buffer, createString(val));
+	}
 
 	template<typename T>
 	String formatString(pstd::FixedArena* buffer, const char* format, T val) {
-		String stringFormat{ createString(format) };
-		String res{ formatString(buffer, stringFormat, val) };
+		return formatString(buffer, createString(format), val);
+	}
+
+	template<typename T, typename... Args>
+	String formatString(
+		pstd::FixedArena* buffer, const String& format, T val, Args... args
+	) {
+		String newFormat{ formatString(buffer, format, val) };
+
+		String res{ formatString(buffer, newFormat, args...) };
+
 		return res;
 	}
+
+	template<typename T, typename... Args>
+	String formatString(
+		pstd::FixedArena* buffer, const char* format, T val, Args... args
+	) {
+		return formatString(buffer, createString(format), args...);
+	}
+
+	String getFileName(const String& string);
+
+	String getFileName(const char* cString);
 }  // namespace pstd

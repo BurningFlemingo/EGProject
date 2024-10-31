@@ -15,25 +15,11 @@ namespace {
 	};
 }  // namespace
 
-template<typename T>
-void Console::log(
-	const pstd::String& format, const T val, const Console::LogLevel logLevel
-) {
-	ASSERT(logLevel <= (uint32_t)LogLevel::error);
-
-	pstd::reset(&g_LogArena);
-
-	pstd::String logLevelString{
-		pstd::createString(g_LogLevelStrings[(uint32_t)logLevel])
-	};
-	pstd::String msg{ pstd::formatString(&g_LogArena, format, val) };
-	pstd::consoleWrite(logLevelString);
-	pstd::consoleWrite(msg);
-
-	pstd::reset(&g_LogArena);
+pstd::FixedArena Console::getLogArena() {
+	return g_LogArena;
 }
 
-void Console::log(const pstd::String& msg, const Console::LogLevel logLevel) {
+void Console::log(const Console::LogLevel logLevel, const pstd::String& msg) {
 	ASSERT(logLevel <= (uint32_t)LogLevel::error);
 
 	pstd::reset(&g_LogArena);
@@ -46,25 +32,3 @@ void Console::log(const pstd::String& msg, const Console::LogLevel logLevel) {
 
 	pstd::reset(&g_LogArena);
 }
-
-void Console::log(const char* msg, const Console::LogLevel logLevel) {
-	pstd::String msgString{ pstd::createString(msg) };
-	log(msgString, logLevel);
-}
-template void Console::log(
-	const pstd::String& format,
-	const float val,
-	const Console::LogLevel logLevel
-);
-
-template void Console::log(
-	const pstd::String& format,
-	const uint32_t val,
-	const Console::LogLevel logLevel
-);
-
-template void Console::log(
-	const pstd::String& format,
-	const int32_t val,
-	const Console::LogLevel logLevel
-);

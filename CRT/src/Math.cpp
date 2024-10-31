@@ -11,52 +11,73 @@ namespace Soft {
 }  // namespace Soft
 
 float pstd::sqrtf(float num) {
-	return Soft::sqrtfNewton(num);
+	float res{ Soft::sqrtfNewton(num) };
+	return res;
 }
 
 float pstd::sinf(float radians) {
-	return Soft::sinfTaylor(radians);
+	float res{ Soft::sinfTaylor(radians) };
+	return res;
+}
+
+float pstd::tanf(const float radians) {
+	float res{};
+
+	float cos{ cosf(radians) };
+	if (cos == 0) {
+		return res;
+	}
+	res = sinf(radians) / cosf(radians);
+	return res;
 }
 
 float pstd::atanf(const float ratio) {
-	return Soft::atanfPade(ratio);
+	float res{ Soft::atanfPade(ratio) };
+	return res;
 }
 
-float pstd::atanf2(const float sin, const float cos) {
-	float res{ atanf(sin / cos) };
-
-	if (cos < 0) {
-		if (sin < 0) {
-			res -= PI;
-		} else {
-			res += PI;
+float pstd::atanf2(const float y, const float x) {
+	if (x == 0) {
+		if (y < 0) {
+			return -HALF_PI;
+		} else if (y > 0) {
+			return HALF_PI;
 		}
+		return 0;
 	}
+
+	float res{};
+	float atan{ atanf(y / x) };
+	if (x < 0) {
+		if (y < 0) {
+			res = atan - PI;
+		} else {
+			res = atan + PI;
+		}
+		return res;
+	}
+
+	res = atan;
 	return res;
 }
 
 float pstd::asinf(const float ratio) {
-	float res{};
-
 	// domain restriction
 	constexpr float epsilon{ 0.00001f };
 	ASSERT(ratio < 1.f + epsilon);
 	ASSERT(ratio > -1.f - epsilon);
 
 	if (absf(ratio - 1.f) < epsilon) {
-		res = HALF_PI;
-		return res;
+		return HALF_PI;
 	}
 	if (absf(ratio + 1.f) < epsilon) {
-		res = -HALF_PI;
-		return res;
+		return -HALF_PI;
 	}
 
 	if (absf(ratio) < epsilon) {
-		res = 0;
-		return res;
+		return 0;
 	}
-	res = atanf(ratio / sqrtf(1.f - (ratio * ratio)));
+	float res{ atanf(ratio / sqrtf(1.f - (ratio * ratio))) };
 	return res;
 }
 
@@ -84,8 +105,6 @@ namespace Soft {
 	}
 
 	float sinfTaylor(float radians) {
-		float res{};
-
 		// makes x in between -TAU and TAU
 		float x{ fmodf((float)radians / PI, 2) };
 		x *= PI;
@@ -100,20 +119,16 @@ namespace Soft {
 
 		constexpr float epsilon{ 0.00001f };
 		if (absf(x) <= epsilon) {
-			res = 0.f;
-			return res;
+			return 0.f;
 		}
 		if (absf(x - PI) <= epsilon || absf(x + PI) <= epsilon) {
-			res = 0.0f;
-			return res;
+			return 0.f;
 		}
 		if (absf(x - HALF_PI) <= epsilon) {
-			res = 1.f;
-			return res;
+			return 1.f;
 		}
 		if (absf(x + HALF_PI) <= epsilon) {
-			res = -1.f;
-			return res;
+			return -1.f;
 		}
 
 		// makes x in between -pi/2 and pi/2
@@ -134,20 +149,15 @@ namespace Soft {
 		float thirdTerm{ x5 / 120.f };
 		float fourthTerm{ x7 / 5040.f };
 
-		res = firstTerm - secondTerm + thirdTerm - fourthTerm;
-
-		return res;
+		return firstTerm - secondTerm + thirdTerm - fourthTerm;
 	}
 
 	float atanfPade(const float ratio) {
-		float res{};
-
 		float x{ (float)ratio };
 
 		constexpr float epsilon{ 0.00001f };
 		if (absf(x) <= epsilon) {
-			res = 0;
-			return res;
+			return 0;
 		}
 
 		// for |x| > 1, the approximation becomes extremely innacurate, so
@@ -165,9 +175,7 @@ namespace Soft {
 		float numerator{ 15.f * x + 4.f * x2 * x };
 		float denominator{ 15.f + 9.f * x2 };
 
-		res = (numerator / denominator) + rangeAdjustment;
-
-		return res;
+		return (numerator / denominator) + rangeAdjustment;
 	}
 
 }  // namespace Soft

@@ -64,14 +64,14 @@ pstd::FileHandle pstd::openFile(
 	const FileShare& shareFlags,
 	const FileCreate& createFlags
 ) {
-	pstd::FileHandle res{ pstd::openFile(
+	pstd::FileHandle handle{ pstd::openFile(
 		arena,
 		pstd::makeNullTerminated(arena, filepath).buffer,
 		accessFlags,
 		shareFlags,
 		createFlags
 	) };
-	return res;
+	return handle;
 }
 
 void pstd::closeFile(const pstd::FileHandle& handle) {
@@ -91,7 +91,6 @@ size_t pstd::getFileSize(const FileHandle& handle) {
 	}
 
 	fileSize = win32FileSize.QuadPart;
-
 	return fileSize;
 }
 

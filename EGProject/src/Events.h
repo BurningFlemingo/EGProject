@@ -33,8 +33,3 @@ enum class InputCode : uint32_t {
 
 	COUNT
 };
-
-struct KeyEvent {
-	InputAction action;
-	InputCode code;
-};

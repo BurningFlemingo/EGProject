@@ -21,11 +21,9 @@ namespace {
 }  // namespace
 
 size_t Platform::getSizeofState() {
-	size_t stateTypeSize{ sizeof(InternalState) };
-	size_t bufferSize{ sizeof(KeyEvent) * WindowData::eventBufferCapacity };
-	// TODO: this is a temp fix, find padding required for state type through a
-	// function
-	size_t padding{ 4 };
+	size_t stateTypeSize{ sizeof(Internal::State) };
+	size_t bufferSize{ sizeof(Event) * WindowData::eventBufferCapacity };
+	size_t padding{ 16 };  // for alignment
 	size_t totalSize{ stateTypeSize + bufferSize + padding };
 	return totalSize;
 }
@@ -36,10 +34,11 @@ Platform::State Platform::startup(
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{ pstd::arenaAlloc<InternalState>(stateArena
-	) };
+	pstd::Allocation stateAllocation{
+		pstd::arenaAlloc<Internal::State>(stateArena)
+	};
 	pstd::Allocation eventBufferAllocation{
-		pstd::arenaAlloc<KeyEvent>(stateArena, WindowData::eventBufferCapacity)
+		pstd::arenaAlloc<Event>(stateArena, WindowData::eventBufferCapacity)
 	};
 
 	HINSTANCE hInstance{ GetModuleHandle(0) };
@@ -92,7 +91,7 @@ Platform::State Platform::startup(
 		0,
 		0,
 		hInstance,
-		&((InternalState*)stateAllocation.block)->windowData
+		&((Internal::State*)stateAllocation.block)->windowData
 	) };
 
 	if (hwnd == 0) {
@@ -105,20 +104,18 @@ Platform::State Platform::startup(
 						   .eventBuffer = { .allocation =
 												eventBufferAllocation } };
 
-	new (stateAllocation.block) InternalState{ .windowData = windowData,
-											   .hwnd = hwnd,
-											   .hInstance = hInstance };
-
-	return stateAllocation.block;
+	return new (stateAllocation.block) Internal::State{
+		.windowData = windowData, .hwnd = hwnd, .hInstance = hInstance
+	};
 }
 
 void Platform::shutdown(Platform::State pState) {
-	const auto state{ (InternalState*)pState };
+	const auto state{ (Internal::State*)pState };
 	DestroyWindow(state->hwnd);
 }
 
 void Platform::update(State pState) {
-	const auto& state{ (InternalState*)pState };
+	const auto& state{ (Internal::State*)pState };
 
 	MSG msg{};
 	bool windowRunning{ state->windowData.isRunning };
@@ -129,19 +126,13 @@ void Platform::update(State pState) {
 }
 
 bool Platform::isRunning(Platform::State pState) {
-	const auto state{ (InternalState*)pState };
+	const auto state{ (Internal::State*)pState };
 	return state->windowData.isRunning;
 }
 
-pstd::FixedArray<KeyEvent> Platform::popKeyEvents(Platform::State pState) {
-	const auto state{ (InternalState*)pState };
-	pstd::FixedArray<KeyEvent> eventArray{
-		pstd::getContents(state->windowData.eventBuffer)
-	};
-	state->windowData.eventBuffer.tailIndex =
-		state->windowData.eventBuffer.headIndex;
-
-	return eventArray;
+bool Platform::popEvent(Platform::State pState, Event* outEvent) {
+	const auto state{ (Internal::State*)pState };
+	return pstd::popBack(&state->windowData.eventBuffer, outEvent);
 }
 
 namespace {
@@ -233,14 +224,18 @@ namespace {
 			case WM_KEYUP: {
 				InputCode iCode{ virtualToInputCode(wParam) };
 				InputAction iAction{ InputAction::RELEASED };
-				KeyEvent event{ .action = iAction, .code = iCode };
-				pstd::pushBack(&windowData->eventBuffer, event);
+				Platform::Event event{ .type = Platform::EventType::key,
+									   .keyEvent = { .action = iAction,
+													 .code = iCode } };
+				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
 			} break;
 			case WM_KEYDOWN: {
 				InputCode iCode{ virtualToInputCode(wParam) };
 				InputAction iAction{ InputAction::PRESSED };
-				KeyEvent event{ .action = iAction, .code = iCode };
-				pstd::pushBack(&windowData->eventBuffer, event);
+				Platform::Event event{ .type = Platform::EventType::key,
+									   .keyEvent = { .action = iAction,
+													 .code = iCode } };
+				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
 			} break;
 			default: {
 				res = DefWindowProc(hwnd, uMsg, wParam, lParam);

@@ -1,8 +1,8 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-namespace {
-	struct InternalState {
+namespace Renderer::Internal {
+	struct State {
 		VkInstance instance;
 	};
-}  // namespace
+}  // namespace Renderer::Internal

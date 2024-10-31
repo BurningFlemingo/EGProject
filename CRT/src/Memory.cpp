@@ -7,6 +7,5 @@ uint32_t pstd::calcAddressAlignmentPadding(
 	uint32_t bytesUnaligned{ (uint32_t)((size_t)address % alignment) };
 	// the last % alignment is to set the bytes required to align to zero if
 	// the address is already aligned
-	uint32_t bytesRequiredToAlign{ (alignment - bytesUnaligned) % alignment };
-	return bytesRequiredToAlign;
+	return (alignment - bytesUnaligned) % alignment;
 }

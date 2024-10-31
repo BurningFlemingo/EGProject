@@ -53,11 +53,11 @@ pstd::Allocation pstd::internal::allocPages(
 	void* block{ VirtualAlloc(
 		baseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
 	) };
-	Allocation allocation{ .block = block,
-						   .size = alignedSize,
-						   .ownsMemory = true };
 
-	return allocation;
+	return Allocation{ .block = block,
+					   .size = alignedSize,
+					   .ownsMemory = true };
+	;
 }
 
 bool pstd::internal::freePages(
@@ -85,9 +85,7 @@ bool pstd::internal::freePages(
 		return 0;
 	}
 
-	int res{ VirtualFree(allocation.block, freeSize, win32AllocFlags) };
-
-	return res != 0;
+	return VirtualFree(allocation.block, freeSize, win32AllocFlags) != 0;
 }
 
 void pstd::memSet(void* dst, int val, size_t size) {
@@ -104,12 +102,11 @@ pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 	SYSTEM_INFO sysInfo{};
 	GetSystemInfo(&sysInfo);
 
-	AllocationLimits limits{
+	return AllocationLimits{
 		.minAllocSize = sysInfo.dwAllocationGranularity,
 		.pageSize = sysInfo.dwPageSize,
 	};
-
-	return limits;
+	;
 }
 
 void pstd::internal::initializeMemorySystem() {

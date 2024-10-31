@@ -1,18 +1,20 @@
 #pragma once
 #include "PCircularBuffer.h"
 #include "Events.h"
+#include "Platforms/Window.h"
+
 #include <Windows.h>
 
-namespace {
-	struct WindowData {
-		bool isRunning;
-		static constexpr size_t eventBufferCapacity{ 1024 };
-		pstd::CircularBuffer<KeyEvent> eventBuffer;
-	};
+struct WindowData {
+	bool isRunning;
+	static constexpr size_t eventBufferCapacity{ 1024 };
+	pstd::CircularBuffer<Platform::Event> eventBuffer;
+};
 
-	struct InternalState {
+namespace Platform::Internal {
+	struct State {
 		WindowData windowData;
 		HWND hwnd;
 		HINSTANCE hInstance;
 	};
-}  // namespace
+}  // namespace Platform::Internal

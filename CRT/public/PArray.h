@@ -14,20 +14,16 @@ namespace pstd {
 	struct FixedArray<T, 0> {
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity(allocation) > index);
+			ASSERT(pstd::getCapacity<T>(allocation) > index);
 
-			auto* typedBlock{ (const T*)allocation.block };
-			const T& val{ typedBlock[index] };
-			return val;
+			return ((const T*)allocation.block)[index];
 		}
 
 		T& operator[](size_t index) {
 			ASSERT(allocation.block);
-			ASSERT(getCapacity(allocation) > index);
+			ASSERT(pstd::getCapacity<T>(allocation) > index);
 
-			auto* typedBlock{ (T*)allocation.block };
-			T& val{ typedBlock[index] };
-			return val;
+			return ((T*)allocation.block)[index];
 		}
 
 		Allocation allocation;
@@ -37,18 +33,16 @@ namespace pstd {
 	struct FixedArray {
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity(allocation) > index);
+			ASSERT(n > index);
 
-			const T& val{ staticArray[index] };
-			return val;
+			return staticArray[index];
 		}
 
 		T& operator[](size_t index) {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity(allocation) > index);
+			ASSERT(n > index);
 
-			T& val{ staticArray[index] };
-			return val;
+			return staticArray[index];
 		}
 		T staticArray[n];
 		Allocation allocation{ .block = staticArray,
@@ -59,22 +53,18 @@ namespace pstd {
 	struct BoundedArray<T, 0> {
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity(allocation) >= count);
+			ASSERT(pstd::getCapacity<T>(allocation) >= count);
 			ASSERT(count > index);
 
-			auto* typedBlock{ (const T*)allocation.block };
-			const T& val{ typedBlock[index] };
-			return val;
+			return ((const T*)allocation.block)[index];
 		}
 
 		T& operator[](size_t index) {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity(allocation) >= count);
+			ASSERT(pstd::getCapacity<T>(allocation) >= count);
 			ASSERT(count > index);
 
-			auto* typedBlock{ (T*)allocation.block };
-			T& val{ typedBlock[index] };
-			return val;
+			return ((T*)allocation.block)[index];
 		}
 
 		Allocation allocation;
@@ -85,20 +75,18 @@ namespace pstd {
 	struct BoundedArray {
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity(allocation) >= count);
+			ASSERT(n >= count);
 			ASSERT(count > index);
 
-			const T& val{ staticArray[index] };
-			return val;
+			return staticArray[index];
 		}
 
 		T& operator[](size_t index) {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity(allocation) >= count);
+			ASSERT(n >= count);
 			ASSERT(count > index);
 
-			T& val{ staticArray[index] };
-			return val;
+			return staticArray[index];
 		}
 		T staticArray[n];
 		Allocation allocation{ .block = staticArray,
@@ -108,28 +96,28 @@ namespace pstd {
 
 	template<typename T, size_t n>
 	constexpr size_t getCapacity(const FixedArray<T, n>& array) {
-		size_t capacity{ n };
-		return capacity;
+		size_t res{ n };
+		return res;
 	}
 
 	template<typename T, size_t n>
 	constexpr size_t getCapacity(const BoundedArray<T, n>& array) {
-		size_t capacity{ n };
-		return capacity;
+		size_t res{ n };
+		return res;
 	}
 
 	template<typename T>
 	size_t getCapacity(const FixedArray<T, 0>& array) {
 		ASSERT(array.allocation.block);
-		size_t capacity{ array.allocation.size * sizeof(T) };
-		return capacity;
+		size_t res{ array.allocation.size * sizeof(T) };
+		return res;
 	}
 
 	template<typename T>
 	size_t getCapacity(const BoundedArray<T, 0>& array) {
 		ASSERT(array.allocation.block);
-		size_t capacity{ array.allocation.size * sizeof(T) };
-		return capacity;
+		size_t res{ array.allocation.size * sizeof(T) };
+		return res;
 	}
 
 	template<typename T, size_t n>
@@ -145,58 +133,51 @@ namespace pstd {
 		}
 
 		size_t lastIndex{ array->count - 1 };
-		T lastElement{ array[lastIndex] };
+		T lastElement{ (*array)[lastIndex] };
 		(*array)[index] = lastElement;
 		array->count--;
 	}
 
 	template<typename T, size_t n>
 	bool find(
-		FixedArray<T, n>* array, const T& val, size_t* outIndex = nullptr
+		const FixedArray<T, n>& array, const T& val, size_t* outIndex = nullptr
 	) {
-		ASSERT(array);
 		ASSERT(out);
-		ASSERT(array->allocation.block);
+		ASSERT(array.allocation.block);
 
-		bool found{};
-		size_t foundIndex{};
-		for (size_t i{}; i < array->count; i++) {
-			if ((*array)[i] == val) {
-				found = true;
-				foundIndex = i;
-				break;
+		size_t capacity{ pstd::getCapacity(array) };
+		for (size_t i{}; i < capacity; i++) {
+			if (array[i] == val) {
+				if (outIndex) {
+					*outIndex = i;
+				}
+				return true;
 			}
 		}
 
-		if (outIndex) {
-			*outIndex = foundIndex;
-		}
-		return found;
+		return false;
 	}
 
-	template<typename T, size_t n>
+	template<typename T, size_t n, typename Callable>
 	bool find(
-		BoundedArray<T, n>* array, const T& val, size_t* outIndex = nullptr
+		const BoundedArray<T, n>& array,
+		Callable matchFunction,
+		size_t* outIndex = nullptr
 	) {
-		ASSERT(array);
-		ASSERT(out);
-		ASSERT(array->allocation.block);
-		ASSERT(array->count <= pstd::getCapacity(array));
+		ASSERT(array.allocation.block);
+		ASSERT(array.count <= pstd::getCapacity(array));
 
-		bool found{};
-		size_t foundIndex{};
-		for (size_t i{}; i < array->count; i++) {
-			if ((*array)[i] == val) {
-				found = true;
-				foundIndex = i;
-				break;
+		for (size_t i{}; i < array.count; i++) {
+			if (matchFunction(array[i])) {
+				if (outIndex) {
+					*outIndex = i;
+				}
+
+				return true;
 			}
 		}
 
-		if (outIndex) {
-			*outIndex = foundIndex;
-		}
-		return found;
+		return false;
 	}
 
 }  // namespace pstd

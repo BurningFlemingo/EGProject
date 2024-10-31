@@ -7,8 +7,7 @@ pstd::FixedArena pstd::allocateFixedArena(const size_t size) {
 	const pstd::Allocation allocation{ pstd::internal::allocPages(
 		size, internal::ALLOC_TYPE_COMMIT | internal::ALLOC_TYPE_RESERVE
 	) };
-	FixedArena arena{ .allocation = allocation, .isAllocated = true };
-	return arena;
+	return FixedArena{ .allocation = allocation, .isAllocated = true };
 }
 void pstd::freeFixedArena(FixedArena* arena) {
 	if (arena->allocation.ownsMemory) {
@@ -41,7 +40,5 @@ pstd::Allocation pstd::arenaAlloc(
 	};
 	arena->offset += size + alignmentPadding;
 
-	pstd::Allocation allocation{ .block = (void*)alignedHeadAddress,
-								 .size = size };
-	return allocation;
+	return pstd::Allocation{ .block = (void*)alignedHeadAddress, .size = size };
 }

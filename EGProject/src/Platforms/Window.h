@@ -9,6 +9,18 @@
 namespace Platform {
 	using State = void*;
 
+	enum class EventType { key, COUNT };
+
+	struct Event {
+		EventType type;
+		union {
+			struct {
+				InputAction action;
+				InputCode code;
+			} keyEvent;
+		};
+	};
+
 	size_t getSizeofState();
 
 	State startup(
@@ -18,7 +30,10 @@ namespace Platform {
 		const int windowHeight
 	);
 
-	pstd::FixedArray<KeyEvent> popKeyEvents(State state);
+	bool popEvent(
+		State state, Event* eventOut
+	);	// returns true if an event was popped
+
 	bool isRunning(State state);
 
 	void update(State state);

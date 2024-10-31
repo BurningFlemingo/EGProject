@@ -9,13 +9,11 @@ namespace pstd {
 	struct Mat<2> {
 		Vec2& operator[](const size_t index) {
 			ASSERT(index < 2);
-			Vec2& res{ e[index] };
-			return res;
+			return e[index];
 		}
 		const Vec2& operator[](const size_t index) const {
 			ASSERT(index < 2);
-			const Vec2& res{ e[index] };
-			return res;
+			return e[index];
 		}
 		union {
 			Vec2 e[2];
@@ -30,13 +28,11 @@ namespace pstd {
 	struct Mat<3> {
 		Vec3& operator[](const size_t index) {
 			ASSERT(index < 3);
-			Vec3& res{ e[index] };
-			return res;
+			return e[index];
 		}
 		const Vec3& operator[](const size_t index) const {
 			ASSERT(index < 3);
-			const Vec3& res{ e[index] };
-			return res;
+			return e[index];
 		}
 		union {
 			Vec3 e[3];
@@ -52,13 +48,11 @@ namespace pstd {
 	struct Mat<4> {
 		Vec4& operator[](const size_t index) {
 			ASSERT(index < 4);
-			Vec4& res{ e[index] };
-			return res;
+			return e[index];
 		}
 		const Vec4& operator[](const size_t index) const {
 			ASSERT(index < 4);
-			const Vec4& res{ e[index] };
-			return res;
+			return e[index];
 		}
 		union {
 			struct {

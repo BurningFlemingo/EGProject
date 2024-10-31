@@ -32,13 +32,20 @@ Renderer::State Renderer::startup(
 		.count = 2
 	};
 
-	for (int i{}; i < pstd::getCapacity(extensionProps); i++) {
+	for (int i{}; i < extensionCount; i++) {
+		if (requiredExtensions.count == 0) {
+			break;
+		}
 		pstd::String avaliableName{
 			pstd::createString(extensionProps[i].extensionName)
 		};
-		pstd::String requiredName{ requiredExtensions[i] };
-		if (pstd::stringsMatch(avaliableName, requiredName)) {
-			LOG_INFO(requiredName);
+		size_t foundIndex{};
+		auto matchFunction{ [&](const pstd::String& requiredExtension) {
+			return pstd::stringsMatch(requiredExtension, avaliableName);
+		} };
+
+		if (pstd::find(requiredExtensions, matchFunction, &foundIndex)) {
+			pstd::compactRemove(&requiredExtensions, foundIndex);
 		}
 	}
 
@@ -56,18 +63,17 @@ Renderer::State Renderer::startup(
 		.pApplicationInfo = &appInfo,
 	};
 	VkResult res{ vkCreateInstance(&vkInstanceCI, nullptr, &instance) };
-	if (res != VK_SUCCESS) {
-		return {};
-	}
+	ASSERT(res != VK_SUCCESS);
 
-	pstd::Allocation stateAllocation{ pstd::arenaAlloc<InternalState>(stateArena
-	) };
-	new (stateAllocation.block) InternalState{ .instance = instance };
-	return stateAllocation.block;
+	pstd::Allocation stateAllocation{
+		pstd::arenaAlloc<Internal::State>(stateArena)
+	};
+
+	return new (stateAllocation.block) Internal::State{ .instance = instance };
 }
 
 void Renderer::shutdown(State pState) {
-	auto state{ (InternalState*)pState };
+	auto state{ (Internal::State*)pState };
 
 	vkDestroyInstance(state->instance, nullptr);
 }
