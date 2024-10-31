@@ -59,30 +59,30 @@ namespace Console {
 using Console::LogLevel;
 
 #ifdef LOG_LEVEL_INFO
-	#define LOG_INFO(format, ...)                                         \
-		{                                                                 \
-			Console::log(                                                 \
-				Console::LogLevel::info,                                  \
-				"[%m:%i] ",                                               \
-				pstd::getFileName(__FILE__),                              \
-				__LINE__                                                  \
-			);                                                            \
-			Console::log(Console::LogLevel::info, format, ##__VA_ARGS__); \
+	#define LOG_INFO(format, ...)                \
+		{                                        \
+			Console::log(                        \
+				Console::LogLevel::info,         \
+				"[%m:%i] ",                      \
+				pstd::getFileName(__FILE__),     \
+				__LINE__                         \
+			);                                   \
+			Console::log(format, ##__VA_ARGS__); \
 		}
 #else
 	#define LOG_INFO(format, ...)
 #endif
 
 #ifdef LOG_LEVEL_WARN
-	#define LOG_WARN(format, ...)                                         \
-		{                                                                 \
-			Console::log(                                                 \
-				Console::LogLevel::warn,                                  \
-				"[%m:%i] ",                                               \
-				pstd::getFileName(__FILE__),                              \
-				__LINE__                                                  \
-			);                                                            \
-			Console::log(Console::LogLevel::warn, format, ##__VA_ARGS__); \
+	#define LOG_WARN(format, ...)                \
+		{                                        \
+			Console::log(                        \
+				Console::LogLevel::warn,         \
+				"[%m:%i] ",                      \
+				pstd::getFileName(__FILE__),     \
+				__LINE__                         \
+			);                                   \
+			Console::log(format, ##__VA_ARGS__); \
 		}
 #else
 	#define LOG_WARN(format, ...)

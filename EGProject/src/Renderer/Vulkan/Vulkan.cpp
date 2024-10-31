@@ -28,7 +28,7 @@ Renderer::State Renderer::startup(
 
 	pstd::BoundedArray<pstd::String, 2> requiredExtensions{
 		.staticArray = { Platform::getPlatformSurfaceExtension(),
-						 VK_KHR_SURFACE_EXTENSION_NAME },
+						 pstd::createString(VK_KHR_SURFACE_EXTENSION_NAME) },
 		.count = 2
 	};
 
@@ -47,6 +47,9 @@ Renderer::State Renderer::startup(
 		if (pstd::find(requiredExtensions, matchFunction, &foundIndex)) {
 			pstd::compactRemove(&requiredExtensions, foundIndex);
 		}
+	}
+	for (int i{}; i < requiredExtensions.count; i++) {
+		LOG_WARN("could not find %m\n", requiredExtensions[i]);
 	}
 
 	VkInstance instance{};
