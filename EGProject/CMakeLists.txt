@@ -15,6 +15,11 @@ set(SRC_FILES
 	${SRC_DIR}/Platforms/Windows/Window.cpp
 	${SRC_DIR}/Platforms/Windows/VulkanSurface.cpp
 	${SRC_DIR}/Renderer/Vulkan/Vulkan.cpp
+	${SRC_DIR}/Renderer/Vulkan/Debug/ValidationLayers.cpp
+	${SRC_DIR}/Renderer/Vulkan/Debug/Extensions.cpp
+	${SRC_DIR}/Renderer/Vulkan/Debug/DebugMessenger.cpp
+	${SRC_DIR}/Renderer/Vulkan/Extensions.cpp
+	${SRC_DIR}/Renderer/Vulkan/Instance.cpp
 	)
 
 add_executable(${PROJ_NAME} ${SRC_FILES})

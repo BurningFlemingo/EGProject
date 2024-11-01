@@ -41,24 +41,8 @@ namespace pstd {
 
 	String formatString(pstd::FixedArena* buffer, const String& format);
 
-	inline String formatString(pstd::FixedArena* buffer, const char* format) {
-		return formatString(buffer, createString(format));
-	}
-
 	template<typename T>
 	String formatString(pstd::FixedArena* buffer, const String& format, T val);
-
-	template<typename T>
-	String formatString(
-		pstd::FixedArena* buffer, const String& format, const char* val
-	) {
-		return formatString(buffer, createString(val));
-	}
-
-	template<typename T>
-	String formatString(pstd::FixedArena* buffer, const char* format, T val) {
-		return formatString(buffer, createString(format), val);
-	}
 
 	template<typename T, typename... Args>
 	String formatString(
@@ -71,14 +55,27 @@ namespace pstd {
 		return res;
 	}
 
+	String getFileName(const String& string);
+
+	String getFileName(const char* cString);
+
+	inline bool stringsMatch(const char* a, const char* b) {
+		return stringsMatch(createString(a), createString(b));
+	}
+
+	inline String formatString(pstd::FixedArena* buffer, const char* format) {
+		return formatString(buffer, createString(format));
+	}
+
+	template<typename T>
+	String formatString(pstd::FixedArena* buffer, const char* format, T val) {
+		return formatString(buffer, createString(format), val);
+	}
+
 	template<typename T, typename... Args>
 	String formatString(
 		pstd::FixedArena* buffer, const char* format, T val, Args... args
 	) {
 		return formatString(buffer, createString(format), args...);
 	}
-
-	String getFileName(const String& string);
-
-	String getFileName(const char* cString);
 }  // namespace pstd

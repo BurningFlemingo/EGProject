@@ -78,7 +78,8 @@ Rot3 pstd::calcRotor(Vec3 a, Vec3 b) {
 	pstd::normalize(&a);
 	pstd::normalize(&b);
 
-	// half way between a and b because rotors go double the angle
+	// half way between a and b because rotors rotate by double the angle
+	// between a and b
 	Vec3 halfway{ pstd::calcNormalized(a + b) };
 
 	Rot3 res{ .scalar = pstd::dot(halfway, a),
@@ -138,7 +139,7 @@ void pstd::rotate(Vec3* vPtr, const Rot3& r) {
 				  .z = sZ * r.scalar + sXYZ * r.xy - sY * r.yz + sX * r.zx };
 }
 
-Rot3 pstd::composeRoter(Rot3& a, Rot3& b) {
+Rot3 pstd::composeRotor(Rot3& a, Rot3& b) {
 	Rot3 res{
 		.scalar = a.scalar * b.scalar - a.xy * b.xy - a.yz * b.yz - a.zx * b.zx,
 		.xy = a.scalar * b.xy + a.xy * b.scalar - a.yz * b.zx + a.zx * b.yz,

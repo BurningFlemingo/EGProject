@@ -166,6 +166,13 @@ String pstd::formatString(
 	return res;
 }
 
+template<>
+String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, const char* val
+) {
+	return formatString(buffer, format, createString(val));
+}
+
 String pstd::getFileName(const String& string) {
 	size_t fileNameSize{};
 	for (uint32_t i{}; i < string.size; i++) {

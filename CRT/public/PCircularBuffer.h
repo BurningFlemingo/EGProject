@@ -3,20 +3,17 @@
 #include "PAlgorithm.h"
 #include "PAssert.h"
 #include "PArray.h"
+#include "PContainer.h"
 
 namespace pstd {
 	template<typename T>
 	struct CircularBuffer {
+		using ElementType = T;
+
 		Allocation allocation;
 		size_t headIndex;
 		size_t tailIndex;
 	};
-
-	template<typename T>
-	constexpr size_t getCapacity(const CircularBuffer<T>& buffer) {
-		size_t res{ buffer.allocation.size / sizeof(T) };
-		return res;
-	}
 
 	template<typename T>
 	size_t getCount(const CircularBuffer<T>& buffer) {

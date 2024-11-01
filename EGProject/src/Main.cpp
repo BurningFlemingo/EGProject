@@ -25,7 +25,7 @@ int main() {
 		pstd::allocateFixedArena(totalApplicationSize)
 	};
 
-	size_t scratchSize{ 1024 };
+	size_t scratchSize{ 1024 * 1024 * 1024 };
 	pstd::FixedArena scratchArena{ pstd::allocateFixedArena(scratchSize) };
 
 	Platform::State platformState{

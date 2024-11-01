@@ -46,9 +46,8 @@ namespace pstd {
 	Allocation arenaAlloc(FixedArena* arena, const size_t count = 1) {
 		ASSERT(arena);
 
-		uint32_t alignment{ sizeof(T) };
-		size_t allocSize{ count * alignment };
-		return Allocation{ arenaAlloc(arena, allocSize, alignment) };
+		size_t allocSize{ count * sizeof(T) };
+		return Allocation{ arenaAlloc(arena, allocSize, alignof(T)) };
 	}
 
 	template<typename T>
@@ -60,7 +59,7 @@ namespace pstd {
 		return res;
 	}
 
-	constexpr inline void reset(FixedArena* arena) {
+	inline void reset(FixedArena* arena) {
 		ASSERT(arena);
 
 		arena->offset = 0;

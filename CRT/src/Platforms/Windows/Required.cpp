@@ -22,9 +22,12 @@ void *memset(void *dst, int val, size_t size) {
 
 #pragma function(memcpy)
 void *memcpy(void *dst, const void *src, size_t size) {
-	char *dstBlock{ (char *)dst };
+	ASSERT(dst);
+	ASSERT(src);
 
+	auto dstBlock{ (char *)dst };
 	auto srcBlock = (const char *)src;
+
 	while (size--) {
 		*dstBlock = *srcBlock;
 		dstBlock++;
@@ -38,8 +41,8 @@ int memcmp(const void *buf1, const void *buf2, size_t size) {
 	ASSERT(buf1);
 	ASSERT(buf2);
 
-	const unsigned char *block1{ (const unsigned char *)buf1 };
-	const unsigned char *block2{ (const unsigned char *)buf2 };
+	auto *block1{ (const unsigned char *)buf1 };
+	auto *block2{ (const unsigned char *)buf2 };
 	for (size_t i{}; i < size; i++) {
 		if (block1[i] != block2[i]) {
 			return block1[i] - block2[i];

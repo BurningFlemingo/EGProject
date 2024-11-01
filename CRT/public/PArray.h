@@ -2,6 +2,8 @@
 #include "PAssert.h"
 #include "PMemory.h"
 #include "PTypes.h"
+#include "PArena.h"
+#include "PContainer.h"
 
 namespace pstd {
 	template<typename T, size_t n = 0>
@@ -12,6 +14,8 @@ namespace pstd {
 
 	template<typename T>
 	struct FixedArray<T, 0> {
+		using ElementType = T;
+
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
 			ASSERT(pstd::getCapacity<T>(allocation) > index);
@@ -31,6 +35,8 @@ namespace pstd {
 
 	template<typename T, size_t n>
 	struct FixedArray {
+		using ElementType = T;
+
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
 			ASSERT(n > index);
@@ -51,6 +57,8 @@ namespace pstd {
 
 	template<typename T>
 	struct BoundedArray<T, 0> {
+		using ElementType = T;
+
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
 			ASSERT(pstd::getCapacity<T>(allocation) >= count);
@@ -73,6 +81,8 @@ namespace pstd {
 
 	template<typename T, size_t n>
 	struct BoundedArray {
+		using ElementType = T;
+
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
 			ASSERT(n >= count);
@@ -106,20 +116,6 @@ namespace pstd {
 		return res;
 	}
 
-	template<typename T>
-	size_t getCapacity(const FixedArray<T, 0>& array) {
-		ASSERT(array.allocation.block);
-		size_t res{ array.allocation.size * sizeof(T) };
-		return res;
-	}
-
-	template<typename T>
-	size_t getCapacity(const BoundedArray<T, 0>& array) {
-		ASSERT(array.allocation.block);
-		size_t res{ array.allocation.size * sizeof(T) };
-		return res;
-	}
-
 	template<typename T, size_t n>
 	void compactRemove(BoundedArray<T, n>* array, size_t index) {
 		ASSERT(array);
@@ -138,6 +134,14 @@ namespace pstd {
 		array->count--;
 	}
 
+	template<typename T, size_t n>
+	void pushBack(BoundedArray<T, n>* array, const T& val) {
+		ASSERT(array->allocation.block);
+		ASSERT(array->count < pstd::getCapacity(*array));
+
+		(*array)[array->count] = val;
+		array->count++;
+	}
 	template<typename T, size_t n>
 	bool find(
 		const FixedArray<T, n>& array, const T& val, size_t* outIndex = nullptr

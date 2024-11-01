@@ -16,11 +16,19 @@ namespace {
 
 }  // namespace
 
-size_t pstd::alignToPageBoundary(size_t size) {
+size_t pstd::alignUpToPageBoundary(size_t size) {
 	const MemorySystemState& state{ g_State };
 
 	size_t alignedSize{ ((size + state.allocLimits.pageSize - 1) /
 						 state.allocLimits.pageSize) *
+						state.allocLimits.pageSize };
+	return alignedSize;
+}
+
+size_t pstd::alignDownToPageBoundary(size_t size) {
+	const MemorySystemState& state{ g_State };
+
+	size_t alignedSize{ (size / state.allocLimits.pageSize) *
 						state.allocLimits.pageSize };
 	return alignedSize;
 }
@@ -45,7 +53,7 @@ pstd::Allocation pstd::internal::allocPages(
 		return {};
 	}
 
-	size_t alignedSize{ alignToPageBoundary(size) };
+	size_t alignedSize{ alignUpToPageBoundary(size) };
 	if (alignedSize < state.allocLimits.minAllocSize &&
 		win32AllocFlags & MEM_RESERVE) {
 		alignedSize = state.allocLimits.minAllocSize;
@@ -67,7 +75,7 @@ bool pstd::internal::freePages(
 
 	ASSERT(~allocTypeFlags & (ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE))
 
-	ASSERT(((size_t)block % state.allocLimits.pageSize) == 0);
+	ASSERT(((size_t)allocation.block % state.allocLimits.pageSize) == 0);
 	ASSERT(allocation.ownsMemory)
 
 	uint32_t win32AllocFlags{};
@@ -75,7 +83,7 @@ bool pstd::internal::freePages(
 	size_t freeSize{ allocation.size };
 	if (allocTypeFlags & ALLOC_TYPE_DECOMMIT) {
 		win32AllocFlags |= MEM_DECOMMIT;
-		freeSize = alignToPageBoundary(freeSize);
+		freeSize = alignUpToPageBoundary(freeSize);
 	}
 	if (allocTypeFlags & ALLOC_TYPE_RELEASE) {
 		win32AllocFlags |= MEM_RELEASE;
@@ -88,16 +96,6 @@ bool pstd::internal::freePages(
 	return VirtualFree(allocation.block, freeSize, win32AllocFlags) != 0;
 }
 
-void pstd::memSet(void* dst, int val, size_t size) {
-	memset(dst, val, size);
-}
-void pstd::memZero(void* dst, size_t size) {
-	memset(dst, 0, size);
-}
-void pstd::memCpy(void* dst, const void* src, size_t size) {
-	memcpy(dst, src, size);
-}
-
 pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 	SYSTEM_INFO sysInfo{};
 	GetSystemInfo(&sysInfo);
@@ -106,7 +104,6 @@ pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 		.minAllocSize = sysInfo.dwAllocationGranularity,
 		.pageSize = sysInfo.dwPageSize,
 	};
-	;
 }
 
 void pstd::internal::initializeMemorySystem() {

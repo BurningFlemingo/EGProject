@@ -169,6 +169,6 @@ namespace pstd {
 		return res;
 	}
 
-	Rot3 composeRoter(Rot3& a, Rot3& b);
+	Rot3 composeRotor(Rot3& a, Rot3& b);
 
 }  // namespace pstd

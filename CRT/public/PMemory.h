@@ -2,6 +2,10 @@
 #include "PTypes.h"
 
 namespace pstd {
+	struct FixedArena;
+}
+
+namespace pstd {
 
 	struct Allocation {
 		void* block;
@@ -17,9 +21,11 @@ namespace pstd {
 	void memSet(void* dst, int val, size_t size);
 	void memZero(void* dst, size_t size);
 	void memCpy(void* dst, const void* src, size_t size);
+	void memMov(void* dst, const void* src, size_t size);
 
 	AllocationLimits getSystemAllocationLimits();
-	size_t alignToPageBoundary(size_t size);
+	size_t alignUpToPageBoundary(size_t size);
+	size_t alignDownToPageBoundary(size_t size);
 
 	uint32_t calcAddressAlignmentPadding(
 		const void* address, const uint32_t alignment
@@ -29,6 +35,22 @@ namespace pstd {
 	size_t getCapacity(const Allocation& allocation) {
 		size_t res{ allocation.size / sizeof(T) };
 		return res;
+	}
+
+	void shallowCopy(Allocation* dst, const Allocation& src);
+	void shallowMove(Allocation* dst, const Allocation& src);
+
+	Allocation concat(
+		FixedArena* arena,
+		const Allocation& a,
+		const Allocation& b,
+		uint32_t alignment
+	);
+
+	template<typename T>
+	Allocation
+		concat(FixedArena* arena, const Allocation& a, const Allocation& b) {
+		return concat(arena, a, b, alignof(T));
 	}
 
 	template<typename T>

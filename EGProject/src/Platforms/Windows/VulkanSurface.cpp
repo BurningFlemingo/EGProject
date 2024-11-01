@@ -9,6 +9,6 @@ VkSurfaceKHR Platform::createSurface(const State& state) {
 	return {};
 }
 
-pstd::String Platform::getPlatformSurfaceExtension() {
-	return pstd::createString(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+const char* Platform::getPlatformSurfaceExtension() {
+	return VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
 }

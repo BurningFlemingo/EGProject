@@ -6,5 +6,5 @@
 
 namespace Platform {
 	VkSurfaceKHR createSurface(const State& state);
-	pstd::String getPlatformSurfaceExtension();
+	const char* getPlatformSurfaceExtension();
 }  // namespace Platform

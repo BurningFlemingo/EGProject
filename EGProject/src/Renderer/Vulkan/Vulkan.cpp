@@ -1,3 +1,4 @@
+#include "PArena.h"
 #include "Platforms/VulkanSurface.h"
 
 #include "Renderer/Renderer.h"
@@ -9,74 +10,26 @@
 #include "Logging.h"
 #include "PString.h"
 
+#include "DebugMessenger.h"
+#include "Instance.h"
+
 Renderer::State Renderer::startup(
 	pstd::FixedArena* stateArena, pstd::FixedArena scratchArena
 ) {
-	uint32_t extensionCount{};
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-	pstd::FixedArray<VkExtensionProperties> extensionProps{
-		.allocation = pstd::arenaAlloc<VkExtensionProperties>(
-			&scratchArena, extensionCount
-		),
-	};
-	vkEnumerateInstanceExtensionProperties(
-		nullptr,
-		&extensionCount,
-		(VkExtensionProperties*)extensionProps.allocation.block
-	);
-
-	pstd::BoundedArray<pstd::String, 2> requiredExtensions{
-		.staticArray = { Platform::getPlatformSurfaceExtension(),
-						 pstd::createString(VK_KHR_SURFACE_EXTENSION_NAME) },
-		.count = 2
-	};
-
-	for (int i{}; i < extensionCount; i++) {
-		if (requiredExtensions.count == 0) {
-			break;
-		}
-		pstd::String avaliableName{
-			pstd::createString(extensionProps[i].extensionName)
-		};
-		size_t foundIndex{};
-		auto matchFunction{ [&](const pstd::String& requiredExtension) {
-			return pstd::stringsMatch(requiredExtension, avaliableName);
-		} };
-
-		if (pstd::find(requiredExtensions, matchFunction, &foundIndex)) {
-			pstd::compactRemove(&requiredExtensions, foundIndex);
-		}
-	}
-	for (int i{}; i < requiredExtensions.count; i++) {
-		LOG_WARN("could not find %m\n", requiredExtensions[i]);
-	}
-
-	VkInstance instance{};
-	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-							   .pApplicationName = "APPNAME",
-							   .applicationVersion =
-								   VK_MAKE_API_VERSION(0, 1, 0, 0),
-							   .pEngineName = "NA",
-							   .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
-							   .apiVersion = VK_API_VERSION_1_0 };
-
-	VkInstanceCreateInfo vkInstanceCI{
-		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-		.pApplicationInfo = &appInfo,
-	};
-	VkResult res{ vkCreateInstance(&vkInstanceCI, nullptr, &instance) };
-	ASSERT(res != VK_SUCCESS);
+	VkInstance instance{ createInstance(scratchArena) };
+	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	pstd::Allocation stateAllocation{
 		pstd::arenaAlloc<Internal::State>(stateArena)
 	};
 
-	return new (stateAllocation.block) Internal::State{ .instance = instance };
+	return new (stateAllocation.block
+	) Internal::State{ .instance = instance, .debugMessenger = debugMessenger };
 }
 
 void Renderer::shutdown(State pState) {
 	auto state{ (Internal::State*)pState };
 
+	destroyDebugMessenger(state->instance, state->debugMessenger);
 	vkDestroyInstance(state->instance, nullptr);
 }
