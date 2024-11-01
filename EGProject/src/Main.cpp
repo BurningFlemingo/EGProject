@@ -89,5 +89,7 @@ int main() {
 	Renderer::shutdown(rendererState);
 	Platform::shutdown(platformState);
 
-	pstd::freeFixedArena(&applicationArena);
+	// no need, the operating system does this for us
+	// pstd::freeFixedArena(&applicationArena);
+	// pstd::freeFixedArena(&scratchArena);
 }
