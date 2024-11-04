@@ -33,6 +33,7 @@ namespace pstd {
 
 		const T& operator[](size_t index) const {
 			ASSERT(allocation.block);
+			ASSERT(allocation.);
 			ASSERT(n > index);
 
 			return data[index];
@@ -95,42 +96,15 @@ namespace pstd {
 		size_t count;
 	};
 
-	template<Container T, uint32_t n>
-	size_t getCapacity(const StackArray<T, n>& container) {
+	template<typename T, uint32_t n>
+	constexpr size_t getCapacity(const StackArray<T, n>& array) {
 		size_t res{ n };
 		return res;
 	}
-	template<Container T, uint32_t n>
-	size_t getCapacity(const BoundedStackArray<T, n>& container) {
+	template<typename T, uint32_t n>
+	constexpr size_t getCapacity(const BoundedStackArray<T, n>& array) {
 		size_t res{ n };
 		return res;
-	}
-
-	template<typename T, uint32_t n>
-	T* getData(const StackArray<T, n>& container) {
-		return container.data;
-	}
-
-	template<typename T, uint32_t n>
-	T* getData(const BoundedStackArray<T, n>& container) {
-		return container.data;
-	}
-
-	template<typename T, uint32_t n>
-	constexpr const Allocation
-		getStackAllocation(const StackArray<T, n> container) {
-		Allocation allocation{ .block = (void*)container.data,
-							   .size = n * sizeof(T),
-							   .isStackAllocated = true };
-		return allocation;
-	}
-	template<typename T, uint32_t n>
-	constexpr Allocation
-		getStackAllocation(const BoundedStackArray<T, n> container) {
-		Allocation allocation{ .block = (void*)container.data,
-							   .size = n * sizeof(T),
-							   .isStackAllocated = true };
-		return allocation;
 	}
 
 	template<typename T>

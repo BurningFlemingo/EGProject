@@ -9,7 +9,6 @@
 #include "PString.h"
 #include "Logging.h"
 #include "PMemory.h"
-#include <new>
 
 pstd::FixedArray<const char*> findValidationLayers(
 	pstd::FixedArena* layersArena, pstd::FixedArena scratchArena
