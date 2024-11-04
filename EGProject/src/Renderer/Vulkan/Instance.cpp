@@ -1,17 +1,22 @@
 #include "Instance.h"
+#include "PArena.h"
 #include "PArray.h"
 
+#include "PContainer.h"
+#include "PMemory.h"
 #include "ValidationLayers.h"
 #include "Extensions.h"
+#include "Logging.h"
 
 #include "DebugMessenger.h"
 
 VkInstance createInstance(pstd::FixedArena scratchArena) {
-	pstd::FixedArray<const char*> foundExtensions{ findExtensions(&scratchArena
-	) };
+	pstd::FixedArray<const char*> foundExtensions{
+		findExtensions(&scratchArena, scratchArena)
+	};
 
 	pstd::FixedArray<const char*> foundValidationLayers{
-		findValidationLayers(&scratchArena)
+		findValidationLayers(&scratchArena, scratchArena)
 	};
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -22,25 +27,32 @@ VkInstance createInstance(pstd::FixedArena scratchArena) {
 							   .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
 							   .apiVersion = VK_API_VERSION_1_0 };
 
-	VkDebugUtilsMessengerCreateInfoEXT debugMessengerCI{
+	const VkDebugUtilsMessengerCreateInfoEXT* debugMessengerCI{
 		getDebugMessengerCreateInfo()
 	};
 
+	pstd::Allocation rawAlloc{
+		pstd::arenaAlloc<const char*>(&scratchArena, 1)
+	};
+	pstd::shallowMove(&rawAlloc, foundValidationLayers.allocation);
+
 	VkInstanceCreateInfo vkInstanceCI{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.pNext = debugMessengerCI,
 		.pApplicationInfo = &appInfo,
-		.enabledLayerCount = (uint32_t)pstd::getCapacity(foundValidationLayers),
+		.enabledLayerCount =
+			static_cast<uint32_t>(pstd::getCapacity(foundValidationLayers)),
 		.ppEnabledLayerNames = pstd::getData(foundValidationLayers),
-		.enabledExtensionCount = (uint32_t)pstd::getCapacity(foundExtensions),
+		.enabledExtensionCount =
+			static_cast<uint32_t>(pstd::getCapacity(foundExtensions)),
 		.ppEnabledExtensionNames = pstd::getData(foundExtensions),
 	};
-	if (debugMessengerCI.sType) {
-		vkInstanceCI.pNext = &debugMessengerCI;
-	}
 
 	VkInstance instance{};
 	VkResult res{ vkCreateInstance(&vkInstanceCI, nullptr, &instance) };
-	ASSERT(res == VK_SUCCESS);
+	if (res != VK_SUCCESS) {
+		LOG_ERROR("could not create vulkan instance: %i", (int)res);
+	}
 
 	return instance;
 }

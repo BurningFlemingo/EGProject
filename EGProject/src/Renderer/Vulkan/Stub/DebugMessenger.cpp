@@ -1,7 +1,7 @@
 #include "Renderer/Vulkan/DebugMessenger.h"
 
-VkDebugUtilsMessengerCreateInfoEXT getDebugMessengerCreateInfo() {
-	return {};
+const VkDebugUtilsMessengerCreateInfoEXT* getDebugMessengerCreateInfo() {
+	return nullptr;
 }
 
 VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) {

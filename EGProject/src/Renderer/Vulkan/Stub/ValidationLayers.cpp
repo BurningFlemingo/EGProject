@@ -1,4 +1,5 @@
 #include "Renderer/Vulkan/ValidationLayers.h"
 
-pstd::FixedArray<const char*> findValidationLayers(pstd::FixedArena* layersArena
+pstd::FixedArray<const char*> findValidationLayers(
+	pstd::FixedArena* layersArena, pstd::FixedArena scratchArena
 );

@@ -57,8 +57,8 @@ void pstd::memMov(void* dst, const void* src, size_t size) {
 		return;
 	}
 
-	dstBlock += size;
-	srcBlock += size;
+	dstBlock += size - 1;
+	srcBlock += size - 1;
 	while (size) {
 		*dstBlock = *srcBlock;
 		dstBlock--;
@@ -168,7 +168,6 @@ pstd::Allocation pstd::internal::heapAlloc(size_t size) {
 	pstd::internal::allocPages(
 		commitSize, internal::ALLOC_TYPE_COMMIT, commitAddr
 	);	// TODO: handle tracking, this will overcommit
-		// BUG: this can commit outside of reserved range
 
 	void* newFreeBlockAddr{ (void*)((size_t)freeBlock->usable.block + size) };
 	new (newFreeBlockAddr)

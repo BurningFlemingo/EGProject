@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-VkDebugUtilsMessengerCreateInfoEXT getDebugMessengerCreateInfo();
+const VkDebugUtilsMessengerCreateInfoEXT* getDebugMessengerCreateInfo();
 
 VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance);
 

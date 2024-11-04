@@ -2,10 +2,13 @@
 #include <vulkan/vulkan.h>
 #include "PArena.h"
 #include "PArray.h"
+#include "PContainer.h"
 #include "Platforms/VulkanSurface.h"
 #include "Logging.h"
+#include <new>
 
-pstd::FixedArray<const char*> findExtensions(pstd::FixedArena* extensionsArena
+pstd::FixedArray<const char*> findExtensions(
+	pstd::FixedArena* extensionsArena, pstd::FixedArena scratchArena
 ) {
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -19,18 +22,21 @@ pstd::FixedArray<const char*> findExtensions(pstd::FixedArena* extensionsArena
 		nullptr, &extensionCount, pstd::getData(extensionProps)
 	);
 
-	pstd::BoundedArray<const char*, 2> requiredExtensions{
-		.staticArray = { Platform::getPlatformSurfaceExtension(),
-						 VK_KHR_SURFACE_EXTENSION_NAME },
+	pstd::BoundedArray<const char*> requiredExtensions{
+		.allocation = pstd::arenaAlloc<const char*>(&scratchArena, 2),
 		.count = 2
 	};
+	new (pstd::getData(requiredExtensions))(const char* [2]
+	){ Platform::getPlatformSurfaceExtension(), VK_KHR_SURFACE_EXTENSION_NAME };
 
 	pstd::BoundedArray<const char*> optionalExtensions{ getDebugExtensions() };
 
-	pstd::BoundedArray<const char*, 2> foundRequiredExtensions{};
+	pstd::BoundedArray<const char*> foundRequiredExtensions{
+		.allocation = pstd::arenaAlloc<const char*>(&scratchArena, 2)
+	};
 	pstd::BoundedArray<const char*> foundOptionalExtensions{
 		.allocation = pstd::arenaAlloc<const char*>(
-			extensionsArena, optionalExtensions.count
+			&scratchArena, optionalExtensions.count
 		),
 	};
 

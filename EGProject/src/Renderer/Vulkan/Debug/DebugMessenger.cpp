@@ -5,6 +5,7 @@
 #include "Logging.h"
 
 namespace {
+
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerUserCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -41,6 +42,18 @@ namespace {
 		return false;
 	}
 
+	constexpr VkDebugUtilsMessengerCreateInfoEXT c_DebugUtilsMessengerCI{
+		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+		.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+		.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+		.pfnUserCallback = debugMessengerUserCallback,
+	};
+
 	VkResult vkCreateDebugUtilsMessengerEXTThunk(
 		VkInstance instance,
 		const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -75,7 +88,7 @@ namespace {
 VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) {
 	VkDebugUtilsMessengerEXT debugMessenger{};
 	VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCI{
-		getDebugMessengerCreateInfo()
+		*getDebugMessengerCreateInfo()
 	};
 	VkResult res{ vkCreateDebugUtilsMessengerEXTThunk(
 		instance, &debugUtilsMessengerCI, nullptr, &debugMessenger
@@ -93,17 +106,6 @@ void destroyDebugMessenger(
 	vkDestroyDebugUtilsMessengerEXTThunk(instance, debugMessenger, nullptr);
 }
 
-VkDebugUtilsMessengerCreateInfoEXT getDebugMessengerCreateInfo() {
-	constexpr VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCI{
-		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-		.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-		.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-		.pfnUserCallback = debugMessengerUserCallback,
-	};
-	return debugUtilsMessengerCI;
+const VkDebugUtilsMessengerCreateInfoEXT* getDebugMessengerCreateInfo() {
+	return &c_DebugUtilsMessengerCI;
 }

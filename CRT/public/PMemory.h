@@ -11,6 +11,7 @@ namespace pstd {
 		void* block;
 		size_t size;  // always in bytes
 		bool ownsMemory;  // if true, memory was allocated from the system
+		const bool isStackAllocated;
 	};
 
 	struct AllocationLimits {
@@ -32,6 +33,12 @@ namespace pstd {
 	);
 
 	template<typename T>
+	uint32_t calcAddressAlignmentPadding(const void* address) {
+		uint32_t alignment{ alignof(T) };
+		return calcAddressAlignmentPadding(address, alignment);
+	}
+
+	template<typename T>
 	size_t getCapacity(const Allocation& allocation) {
 		size_t res{ allocation.size / sizeof(T) };
 		return res;
@@ -51,12 +58,6 @@ namespace pstd {
 	Allocation
 		concat(FixedArena* arena, const Allocation& a, const Allocation& b) {
 		return concat(arena, a, b, alignof(T));
-	}
-
-	template<typename T>
-	uint32_t calcAddressAlignmentPadding(const void* address) {
-		uint32_t alignment{ alignof(T) };
-		return calcAddressAlignmentPadding(address, alignment);
 	}
 
 }  // namespace pstd

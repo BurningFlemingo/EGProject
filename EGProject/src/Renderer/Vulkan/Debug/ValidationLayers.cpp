@@ -5,11 +5,14 @@
 
 #include "PArray.h"
 #include "PArena.h"
+#include "PContainer.h"
 #include "PString.h"
 #include "Logging.h"
 #include "PMemory.h"
+#include <new>
 
-pstd::FixedArray<const char*> findValidationLayers(pstd::FixedArena* layersArena
+pstd::FixedArray<const char*> findValidationLayers(
+	pstd::FixedArena* layersArena, pstd::FixedArena scratchArena
 ) {
 	uint32_t layerCount{};
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -22,11 +25,11 @@ pstd::FixedArray<const char*> findValidationLayers(pstd::FixedArena* layersArena
 		&layerCount, (VkLayerProperties*)layerProps.allocation.block
 	);
 
-	pstd::BoundedArray<const char*, 1> requiredLayers{
-		.staticArray = { "VK_LAYER_KHRONOS_validation" }, .count = 1
+	pstd::BoundedStackArray<const char*, 1> requiredLayers{
+		.data = { "VK_LAYER_KHRONOS_validation" }, .count = 1
 	};
 
-	pstd::BoundedArray<const char*, 1> foundLayers{};
+	pstd::BoundedStackArray<const char*, 1> foundLayers{};
 
 	for (int i{}; i < layerCount; i++) {
 		if (requiredLayers.count == 0) {
@@ -54,7 +57,9 @@ pstd::FixedArray<const char*> findValidationLayers(pstd::FixedArena* layersArena
 	}
 
 	pstd::FixedArray<const char*> res{
-		.allocation = foundLayers.allocation,
+		.allocation =
+			pstd::arenaAlloc<const char*>(layersArena, foundLayers.count),
 	};
+	pstd::shallowMove(&res.allocation, pstd::getStackAllocation(foundLayers));
 	return res;
 }
