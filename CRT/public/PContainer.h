@@ -18,6 +18,11 @@ namespace pstd {
 	};
 
 	template<Container T>
+	size_t getCount(const T& container) {
+		return container.count;
+	}
+
+	template<Container T>
 	typename T::ElementType* getData(const T& container) {
 		return (typename T::ElementType*)container.allocation.block;
 	}
@@ -45,8 +50,6 @@ namespace pstd {
 
 	template<Container T>
 	bool find(const T& container, const T& val, size_t* outIndex = nullptr) {
-		ASSERT(outIndex);
-
 		size_t capacity{ pstd::getCapacity(container) };
 		for (size_t i{}; i < capacity; i++) {
 			if (container[i] == val) {
@@ -62,11 +65,10 @@ namespace pstd {
 
 	template<typename T, typename Callable>
 	bool find(
-		const T& array, Callable matchFunction, size_t* outIndex = nullptr
+		const T& container, Callable matchFunction, size_t* outIndex = nullptr
 	) {
-		ASSERT(outIndex)
-		for (size_t i{}; i < array.count; i++) {
-			if (matchFunction(array[i])) {
+		for (size_t i{}; i < pstd::getCount(container); i++) {
+			if (matchFunction(container[i])) {
 				if (outIndex) {
 					*outIndex = i;
 				}
