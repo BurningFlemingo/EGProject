@@ -8,4 +8,4 @@ set (CMAKE_CXX_STANDARD 20)
 set(CMAKE_SUPPRESS_REGENERATION true)
 
 add_subdirectory(EGProject)
-add_subdirectory(CRT)
+add_subdirectory(PCRT)
