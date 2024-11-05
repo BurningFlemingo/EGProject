@@ -28,11 +28,11 @@ int main() {
 	size_t scratchSize{ 1024 * 1024 * 1024 };
 	pstd::FixedArena scratchArena{ pstd::allocateFixedArena(scratchSize) };
 
-	Platform::State platformState{
+	Platform::State* platformState{
 		Platform::startup(&applicationArena, "window", 1920 / 2, 1080 / 2)
 	};
 
-	Renderer::State rendererState{
+	Renderer::State* rendererState{
 		Renderer::startup(&applicationArena, scratchArena)
 	};
 

@@ -21,22 +21,20 @@ namespace {
 }  // namespace
 
 size_t Platform::getSizeofState() {
-	size_t stateTypeSize{ sizeof(Internal::State) };
+	size_t stateTypeSize{ sizeof(State) };
 	size_t bufferSize{ sizeof(Event) * WindowData::eventBufferCapacity };
 	size_t padding{ 16 };  // for alignment
 	size_t totalSize{ stateTypeSize + bufferSize + padding };
 	return totalSize;
 }
 
-Platform::State Platform::startup(
+Platform::State* Platform::startup(
 	pstd::FixedArena* stateArena,
 	const char* windowName,
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{
-		pstd::arenaAlloc<Internal::State>(stateArena)
-	};
+	pstd::Allocation stateAllocation{ pstd::arenaAlloc<State>(stateArena) };
 	pstd::Allocation eventBufferAllocation{
 		pstd::arenaAlloc<Event>(stateArena, WindowData::eventBufferCapacity)
 	};
@@ -91,11 +89,11 @@ Platform::State Platform::startup(
 		0,
 		0,
 		hInstance,
-		&((Internal::State*)stateAllocation.block)->windowData
+		&((State*)stateAllocation.block)->windowData
 	) };
 
 	if (hwnd == 0) {
-		return 0;
+		return {};
 	}
 
 	ShowWindow(hwnd, SW_SHOW);
@@ -104,19 +102,15 @@ Platform::State Platform::startup(
 						   .eventBuffer = { .allocation =
 												eventBufferAllocation } };
 
-	return new (stateAllocation.block) Internal::State{
-		.windowData = windowData, .hwnd = hwnd, .hInstance = hInstance
-	};
+	return new (stateAllocation.block)
+		State{ .windowData = windowData, .hwnd = hwnd, .hInstance = hInstance };
 }
 
-void Platform::shutdown(Platform::State pState) {
-	const auto state{ (Internal::State*)pState };
+void Platform::shutdown(Platform::State* state) {
 	DestroyWindow(state->hwnd);
 }
 
-void Platform::update(State pState) {
-	const auto& state{ (Internal::State*)pState };
-
+void Platform::update(State* state) {
 	MSG msg{};
 	bool windowRunning{ state->windowData.isRunning };
 	while (PeekMessageA(&msg, 0, 0, 0, true) != 0 && windowRunning) {
@@ -125,13 +119,11 @@ void Platform::update(State pState) {
 	}
 }
 
-bool Platform::isRunning(Platform::State pState) {
-	const auto state{ (Internal::State*)pState };
+bool Platform::isRunning(Platform::State* state) {
 	return state->windowData.isRunning;
 }
 
-bool Platform::popEvent(Platform::State pState, Event* outEvent) {
-	const auto state{ (Internal::State*)pState };
+bool Platform::popEvent(Platform::State* state, Event* outEvent) {
 	return pstd::popBack(&state->windowData.eventBuffer, outEvent);
 }
 

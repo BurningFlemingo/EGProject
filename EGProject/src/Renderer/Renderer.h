@@ -3,10 +3,10 @@
 #include "PArena.h"
 
 namespace Renderer {
-	using State = void*;
+	struct State;
 
 	size_t getSizeofState();
 
-	State startup(pstd::FixedArena* stateArena, pstd::FixedArena scratchArena);
-	void shutdown(State state);
+	State* startup(pstd::FixedArena* stateArena, pstd::FixedArena scratchArena);
+	void shutdown(State* state);
 }  // namespace Renderer

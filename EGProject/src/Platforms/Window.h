@@ -7,7 +7,7 @@
 #include "Events.h"
 
 namespace Platform {
-	using State = void*;
+	struct State;
 
 	enum class EventType { key, COUNT };
 
@@ -23,7 +23,7 @@ namespace Platform {
 
 	size_t getSizeofState();
 
-	State startup(
+	State* startup(
 		pstd::FixedArena* stateArena,
 		const char* windowName,
 		const int windowWidth,
@@ -31,12 +31,12 @@ namespace Platform {
 	);
 
 	bool popEvent(
-		State state, Event* eventOut
+		State* state, Event* eventOut
 	);	// returns true if an event was popped
 
-	bool isRunning(State state);
+	bool isRunning(State* state);
 
-	void update(State state);
+	void update(State* state);
 
-	void shutdown(State state);
+	void shutdown(State* state);
 }  // namespace Platform

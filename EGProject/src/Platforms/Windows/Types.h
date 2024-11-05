@@ -11,10 +11,10 @@ struct WindowData {
 	pstd::CircularBuffer<Platform::Event> eventBuffer;
 };
 
-namespace Platform::Internal {
+namespace Platform {
 	struct State {
 		WindowData windowData;
 		HWND hwnd;
 		HINSTANCE hInstance;
 	};
-}  // namespace Platform::Internal
+}  // namespace Platform

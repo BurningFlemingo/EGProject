@@ -13,23 +13,19 @@
 #include "DebugMessenger.h"
 #include "Instance.h"
 
-Renderer::State Renderer::startup(
+Renderer::State* Renderer::startup(
 	pstd::FixedArena* stateArena, pstd::FixedArena scratchArena
 ) {
 	VkInstance instance{ createInstance(scratchArena) };
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
-	pstd::Allocation stateAllocation{
-		pstd::arenaAlloc<Internal::State>(stateArena)
-	};
+	pstd::Allocation stateAllocation{ pstd::arenaAlloc<State>(stateArena) };
 
-	return new (stateAllocation.block
-	) Internal::State{ .instance = instance, .debugMessenger = debugMessenger };
+	return new (stateAllocation.block)
+		State{ .instance = instance, .debugMessenger = debugMessenger };
 }
 
-void Renderer::shutdown(State pState) {
-	auto state{ (Internal::State*)pState };
-
+void Renderer::shutdown(State* state) {
 	destroyDebugMessenger(state->instance, state->debugMessenger);
 	vkDestroyInstance(state->instance, nullptr);
 }

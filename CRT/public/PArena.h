@@ -2,6 +2,7 @@
 #include "PTypes.h"
 #include "PMemory.h"
 #include "PAssert.h"
+#include "CRTAPI.h"
 
 namespace pstd {
 	struct FixedArena {

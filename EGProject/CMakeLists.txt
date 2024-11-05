@@ -25,7 +25,7 @@ set(SRC_FILES
 add_executable(${PROJ_NAME} ${SRC_FILES})
 target_link_libraries(${PROJ_NAME} PRIVATE Vulkan::Headers Vulkan::Vulkan user32 Kernel32 CRT)
 target_include_directories(${PROJ_NAME} PRIVATE ${SRC_DIR})
-target_compile_definitions(${PROJ_NAME} PRIVATE LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
+target_compile_definitions(${PROJ_NAME} PRIVATE ENGINE_PROJECT LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
 
 add_custom_command(
 	TARGET ${PROJ_NAME} POST_BUILD
