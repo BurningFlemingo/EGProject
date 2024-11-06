@@ -1,5 +1,4 @@
 #include "include/PArena.h"
-#include "internal/PArena.h"
 #include "include/PMemory.h"
 #include "internal/PMemory.h"
 #include "include/PAssert.h"
@@ -8,9 +7,8 @@
 using namespace pstd;
 using namespace pstd::internal;
 
-pstd::FixedArena pstd::internal::allocateFixedArena(
-	AllocationRegistry* registry, const size_t size
-) {
+pstd::FixedArena
+	pstd::allocateFixedArena(AllocationRegistry* registry, const size_t size) {
 	Allocation arenaAllocation{ heapAlloc(registry, size) };
 
 	return FixedArena{ .allocation = arenaAllocation, .isAllocated = true };

@@ -1,6 +1,10 @@
 #pragma once
 #include "PTypes.h"
 
+namespace {
+	struct MemoryPool;
+}
+
 namespace pstd {
 	struct FixedArena;
 }
@@ -18,6 +22,13 @@ namespace pstd {
 		uint32_t minAllocSize;
 		uint32_t pageSize;
 	};
+
+	struct AllocationRegistry {
+		MemoryPool* firstPool;
+	};
+
+	AllocationRegistry
+		createAllocationRegistry(size_t initialSize = 1024 * 1024);
 
 	void memSet(void* dst, int val, size_t size);
 	void memZero(void* dst, size_t size);

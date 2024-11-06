@@ -16,7 +16,6 @@
 #include "PMath.h"
 #include "STD/internal/PMemory.h"
 #include "STD/internal/PConsole.h"
-#include "STD/internal/PArena.h"
 
 #include <new>
 
@@ -58,16 +57,16 @@ size_t peng::internal::getSizeofState() {
 }
 
 peng::internal::State* peng::internal::startup(
-	pstd::internal::AllocationRegistry* registry, pstd::FixedArena* stateArena
+	pstd::AllocationRegistry* registry, pstd::FixedArena* stateArena
 ) {
 	// TODO: for possible alignment errors, find a better solution
 
 	pstd::FixedArena applicationArena{
-		pstd::internal::allocateFixedArena(registry, getSizeofSubsystems())
+		pstd::allocateFixedArena(registry, getSizeofSubsystems())
 	};
 
 	pstd::FixedArena scratchArena{
-		pstd::internal::allocateFixedArena(registry, getSizeofScratchArena())
+		pstd::allocateFixedArena(registry, getSizeofScratchArena())
 	};
 
 	Platform::State* platformState{

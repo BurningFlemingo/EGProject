@@ -18,15 +18,15 @@ namespace {
 		FreelistBlock* next;
 	};
 
-	struct Freelist {
-		Allocation pool;
-		FreelistBlock* firstBlock;
-		Freelist* next;
+	struct MemoryPool {
+		Allocation allocation;
+		FreelistBlock* firstFreeBlock;
+		MemoryPool* next;
 	};
 
-	Freelist* createFreelist(size_t size);
+	MemoryPool* createMemoryPool(size_t size);
 	void findFreeBlock(
-		Freelist* freelist,
+		MemoryPool* pool,
 		size_t size,
 		FreelistBlock** outPrevFreeBlock,
 		FreelistBlock** outFreeBlock
@@ -123,8 +123,8 @@ pstd::Allocation pstd::concat(
 	return allocation;
 }
 
-AllocationRegistry pstd::internal::startupHeap(size_t initialSize) {
-	AllocationRegistry registry{ .first = createFreelist(initialSize) };
+AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {
+	AllocationRegistry registry{ .firstPool = createMemoryPool(initialSize) };
 	return registry;
 }
 
@@ -134,30 +134,30 @@ Allocation
 
 	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
-	if (!registry->first) {
-		registry->first = createFreelist(size);
+	if (!registry->firstPool) {
+		registry->firstPool = createMemoryPool(size);
 	}
 	FreelistBlock* prevFreeBlock{};
 	FreelistBlock* freeBlock{};
 
-	Freelist* freelist{ registry->first };
-	findFreeBlock(freelist, size, &prevFreeBlock, &freeBlock);
+	MemoryPool* pool{ registry->firstPool };
+	findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
 
-	Freelist* prevFreelist{};
-	while (!freeBlock && freelist->next) {
-		prevFreelist = freelist;
-		freelist = freelist->next;
-		findFreeBlock(freelist, size, &prevFreeBlock, &freeBlock);
+	MemoryPool* prevPool{};
+	while (!freeBlock && pool->next) {
+		prevPool = pool;
+		pool = pool->next;
+		findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
 	}
 	if (!freeBlock) {
-		Freelist* newFreelist{ createFreelist(size) };
-		if (prevFreelist) {
-			prevFreelist->next = newFreelist;
+		MemoryPool* newPool{ createMemoryPool(size) };
+		if (prevPool) {
+			prevPool->next = prevPool;
 		} else {
-			freelist->next = newFreelist;
+			pool->next = newPool;
 		}
-		freelist = newFreelist;
-		findFreeBlock(freelist, size, &prevFreeBlock, &freeBlock);
+		pool = newPool;
+		findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
 	}
 
 	void* commitAddr{ (void*)alignDownToPageBoundary((size_t
@@ -168,11 +168,11 @@ Allocation
 	) };
 
 	size_t commitHeadPtr{ (size_t)commitAddr + commitSize };
-	size_t freelistHeadPtr{ (size_t)freelist->pool.block +
-							freelist->pool.size };
+	size_t freelistHeadPtr{ (size_t)pool->allocation.block +
+							pool->allocation.size };
 	if (commitHeadPtr > freelistHeadPtr) {
-		freelist->next = createFreelist(size);
-		freelist = freelist->next;
+		pool->next = createMemoryPool(size);
+		pool = pool->next;
 		return heapAlloc(registry, size);  // TODO: make this better
 	}
 
@@ -189,7 +189,7 @@ Allocation
 	if (prevFreeBlock) {
 		prevFreeBlock->next = (FreelistBlock*)newFreeBlockAddr;
 	} else {
-		registry->first->firstBlock = (FreelistBlock*)newFreeBlockAddr;
+		registry->firstPool->firstFreeBlock = (FreelistBlock*)newFreeBlockAddr;
 	}
 
 	return Allocation{ .block = freeBlock->usable.block,
@@ -202,7 +202,7 @@ void pstd::internal::heapFree(
 ) {}
 
 namespace {
-	Freelist* createFreelist(size_t size) {
+	MemoryPool* createMemoryPool(size_t size) {
 		AllocationLimits allocLimits{ pstd::getSystemAllocationLimits() };
 		size_t allocSize{ ((size + allocLimits.pageSize) / allocLimits.pageSize
 						  ) *
@@ -212,31 +212,31 @@ namespace {
 		const Allocation poolAllocation{
 			allocPages(allocSize, ALLOC_TYPE_RESERVE)
 		};
-		allocPages(sizeof(Freelist), ALLOC_TYPE_COMMIT, poolAllocation.block);
+		allocPages(sizeof(MemoryPool), ALLOC_TYPE_COMMIT, poolAllocation.block);
 
-		Freelist* freelist{ new (poolAllocation.block) Freelist{
-			.pool = poolAllocation,
+		MemoryPool* pool{ new (poolAllocation.block) MemoryPool{
+			.allocation = poolAllocation,
 		} };
 		size_t freelistHeaderHead{ (size_t)poolAllocation.block +
-								   sizeof(Freelist) };
+								   sizeof(MemoryPool) };
 
-		freelist->firstBlock =
+		pool->firstFreeBlock =
 			new ((void*)freelistHeaderHead) FreelistBlock{ .usable{
 				.block = (void*)(freelistHeaderHead + sizeof(FreelistBlock)),
 				.size = poolAllocation.size - sizeof(FreelistBlock) -
-					sizeof(Freelist) } };
+					sizeof(MemoryPool) } };
 
-		return freelist;
+		return pool;
 	}
 
 	void findFreeBlock(
-		Freelist* freelist,
+		MemoryPool* pool,
 		size_t size,
 		FreelistBlock** outPrevFreeBlock,
 		FreelistBlock** outFreeBlock
 	) {
 		FreelistBlock* prevFreeBlock{ nullptr };
-		FreelistBlock* freeBlock{ freelist->firstBlock };
+		FreelistBlock* freeBlock{ pool->firstFreeBlock };
 		while (freeBlock) {
 			if (freeBlock->usable.size >= size) {
 				break;

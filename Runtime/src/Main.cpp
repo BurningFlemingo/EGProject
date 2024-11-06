@@ -1,13 +1,12 @@
 #include "Engine/internal/Engine.h"
 #include "PArena.h"
-#include "STD/internal/PArena.h"
+#include "PMemory.h"
 #include "STD/internal/PMemory.h"
 
 int main() {
-	pstd::internal::AllocationRegistry allocationRegistry{
-		pstd::internal::startupHeap()
-	};
-	pstd::FixedArena arena{ pstd::internal::allocateFixedArena(
+	pstd::AllocationRegistry allocationRegistry{ pstd::createAllocationRegistry(
+	) };
+	pstd::FixedArena arena{ pstd::allocateFixedArena(
 		&allocationRegistry, peng::internal::getSizeofState()
 	) };
 

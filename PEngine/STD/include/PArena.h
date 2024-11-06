@@ -12,6 +12,15 @@ namespace pstd {
 		bool isAllocated;
 	};
 
+	FixedArena
+		allocateFixedArena(AllocationRegistry* registry, const size_t size);
+	template<typename T>
+	FixedArena
+		allocateFixedArena(AllocationRegistry* registry, const size_t count) {
+		size_t byteAllocSize{ count * sizeof(T) };
+		return FixedArena{ allocateFixedArena(registry, byteAllocSize) };
+	}
+
 	template<typename T>
 	constexpr size_t getCount(const FixedArena* arena) {
 		return arena->offset / sizeof(T);

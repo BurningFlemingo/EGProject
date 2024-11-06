@@ -1,6 +1,6 @@
 #pragma once
 #include "STD/include/PArena.h"
-#include "STD/internal/PMemory.h"
+#include "STD/include/PMemory.h"
 
 namespace peng {
 	namespace internal {
@@ -9,8 +9,7 @@ namespace peng {
 		size_t getSizeofState();
 
 		State* startup(
-			pstd::internal::AllocationRegistry* registry,
-			pstd::FixedArena* stateArena
+			pstd::AllocationRegistry* registry, pstd::FixedArena* stateArena
 		);
 		bool update(State* state);
 		void shutdown(State* state);

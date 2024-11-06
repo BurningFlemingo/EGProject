@@ -2,10 +2,6 @@
 #include "STD/include/PMemory.h"
 #include "STD/include/PTypes.h"
 
-namespace {
-	struct Freelist;
-}
-
 namespace pstd {
 	namespace internal {
 		enum AllocationType : uint32_t {
@@ -15,11 +11,6 @@ namespace pstd {
 			ALLOC_TYPE_RELEASE = 8,
 		};
 		using AllocationTypeFlagBits = uint32_t;
-		struct AllocationRegistry {
-			Freelist* first;
-		};
-
-		AllocationRegistry startupHeap(size_t initialSize = 1024 * 1024);
 
 		Allocation allocPages(
 			const size_t size,
