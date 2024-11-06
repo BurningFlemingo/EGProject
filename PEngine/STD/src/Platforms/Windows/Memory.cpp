@@ -107,6 +107,6 @@ bool pstd::internal::freePages(
 	return VirtualFree(allocation.block, freeSize, win32AllocFlags) != 0;
 }
 
-void pstd::internal::initializeMemorySystem() {
+void pstd::internal::startupMemory() {
 	g_State.allocLimits = getSystemAllocationLimits();
 }

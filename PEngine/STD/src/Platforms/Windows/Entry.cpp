@@ -1,4 +1,6 @@
 #include "include/PTypes.h"
+#include "internal/PMemory.h"
+#include "internal/PConsole.h"
 
 #include <Windows.h>
 
@@ -22,6 +24,9 @@ extern "C" BOOL WINAPI stubDllMain(
 #pragma comment(linker, "/alternatename:DllMain=stubDllMain")
 
 extern "C" int mainCRTStartup() {
+	pstd::internal::startupMemory();
+	pstd::internal::startupConsole();
+
 	int exitCode{ main() };
 
 	ExitProcess(exitCode);

@@ -2,6 +2,6 @@
 
 namespace pstd {
 	namespace internal {
-		void initializeConsole();
+		void startupConsole();
 	}
 }  // namespace pstd

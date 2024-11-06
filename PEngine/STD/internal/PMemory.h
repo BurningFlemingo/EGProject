@@ -12,7 +12,7 @@ namespace pstd {
 		};
 		using AllocationTypeFlagBits = uint32_t;
 
-		void initializeMemorySystem();
+		void startupMemory();
 
 		Allocation allocPages(
 			const size_t size,
