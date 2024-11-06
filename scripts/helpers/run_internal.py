@@ -5,7 +5,7 @@ import subprocess
 import platform
 
 buildType = "internal"
-projectName = "eg_project"
+projectName = "PenguiEngine"
 
 buildPlatform = platform.system().lower();
 buildArgument = f"{buildPlatform}-{buildType}"
