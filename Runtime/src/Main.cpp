@@ -1,9 +1,10 @@
 #include "Engine/internal/Engine.h"
 #include "PArena.h"
+#include "STD/internal/PArena.h"
 
 int main() {
 	pstd::FixedArena arena{
-		pstd::allocateFixedArena(peng::internal::getSizeofState())
+		pstd::internal::allocateFixedArena(peng::internal::getSizeofState())
 	};
 
 	peng::internal::State* engineState{ peng::internal::startup(&arena) };

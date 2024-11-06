@@ -31,12 +31,6 @@ namespace pstd {
 		return res;
 	}
 
-	FixedArena allocateFixedArena(const size_t size);
-	template<typename T>
-	FixedArena allocateFixedArena(const size_t count) {
-		size_t byteAllocSize{ count * sizeof(T) };
-		return FixedArena{ allocateFixedArena(byteAllocSize) };
-	}
 	void freeFixedArena(FixedArena* arena);
 
 	Allocation arenaAlloc(

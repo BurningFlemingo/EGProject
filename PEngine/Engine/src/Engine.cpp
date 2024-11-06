@@ -16,6 +16,7 @@
 #include "PMath.h"
 #include "STD/internal/PMemory.h"
 #include "STD/internal/PConsole.h"
+#include "STD/internal/PArena.h"
 
 #include <new>
 
@@ -60,11 +61,11 @@ peng::internal::State* peng::internal::startup(pstd::FixedArena* stateArena) {
 	// TODO: for possible alignment errors, find a better solution
 
 	pstd::FixedArena applicationArena{
-		pstd::allocateFixedArena(getSizeofSubsystems())
+		pstd::internal::allocateFixedArena(getSizeofSubsystems())
 	};
 
 	pstd::FixedArena scratchArena{
-		pstd::allocateFixedArena(getSizeofScratchArena())
+		pstd::internal::allocateFixedArena(getSizeofScratchArena())
 	};
 
 	Platform::State* platformState{
