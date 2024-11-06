@@ -9,14 +9,14 @@
 using namespace pstd;
 
 namespace {
-	size_t pushUInt32AsString(
-		pstd::FixedArena* buffer, uint32_t number
+	size_t pushUInt64AsString(
+		pstd::FixedArena* buffer, uint64_t number
 	);	// returns size of string pushed
-	size_t pushInt32AsString(
-		pstd::FixedArena* buffer, int32_t number
+	size_t pushInt64AsString(
+		pstd::FixedArena* buffer, int64_t number
 	);	// returns size of string pushed
-	size_t pushFloatAsString(
-		pstd::FixedArena* buffer, float number, uint32_t precision = 5
+	size_t pushDoubleAsString(
+		pstd::FixedArena* buffer, double number, uint32_t precision = 5
 	);	// returns size of string pushed
 
 	size_t pushString(
@@ -33,6 +33,19 @@ namespace {
 
 	size_t pushLetter(pstd::FixedArena* buffer, char letter);
 }  // namespace
+
+String pstd::createString(FixedArena* arena, const String& string) {
+	Allocation newStringAllocation{
+		pstd::arenaAlloc<char>(arena, string.size)
+	};
+	Allocation oldStringAllocation{ .block = (void*)string.buffer,
+									.size = string.size };
+
+	shallowCopy(&newStringAllocation, oldStringAllocation);
+	String res{ .buffer = (const char*)newStringAllocation.block,
+				.size = newStringAllocation.size };
+	return res;
+}
 
 String pstd::makeNullTerminated(FixedArena* buffer, String string) {
 	ASSERT(string.buffer);
@@ -112,13 +125,13 @@ String
 	) };
 	switch (controlCharacter) {
 		case 'i': {
-			stringSize += pushInt32AsString(buffer, (int32_t)val);
+			stringSize += pushInt64AsString(buffer, (int64_t)val);
 		} break;
 		case 'u': {
-			stringSize += pushUInt32AsString(buffer, (uint32_t)val);
+			stringSize += pushUInt64AsString(buffer, (uint64_t)val);
 		} break;
 		case 'f': {
-			stringSize += pushFloatAsString(buffer, (float)val);
+			stringSize += pushDoubleAsString(buffer, (double)val);
 		} break;
 		default:
 			break;
@@ -194,9 +207,65 @@ String pstd::getFileName(const char* cString) {
 	return getFileName(pstd::createString(cString));
 }
 
+bool pstd::substringMatchForward(
+	const String& a, const String& b, size_t* outIndex
+) {
+	ASSERT(b.size != 0);
+	ASSERT(b.buffer);
+	ASSERT(a.size != 0);
+	ASSERT(a.buffer);
+
+	size_t charactersMatched{};
+	for (size_t i{}; i < a.size; i++) {
+		if (a.buffer[i] == b.buffer[charactersMatched]) {
+			charactersMatched++;
+		} else {
+			charactersMatched = 0;
+		}
+
+		if (charactersMatched == b.size) {
+			if (outIndex) {
+				*outIndex = i;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+bool pstd::substringMatchBackward(
+	const String& a, const String& b, size_t* outIndex
+) {
+	ASSERT(b.size != 0);
+	ASSERT(b.buffer);
+	ASSERT(a.size != 0);
+	ASSERT(a.buffer);
+
+	size_t charactersMatched{};
+	for (size_t i{}; i < a.size; i++) {
+		size_t reverseIndexA{ a.size - i - 1 };
+
+		size_t reverseIndexB{ b.size - charactersMatched - 1 };
+
+		if (a.buffer[reverseIndexA] == b.buffer[reverseIndexB]) {
+			charactersMatched++;
+		} else {
+			charactersMatched = 0;
+		}
+
+		if (charactersMatched == b.size) {
+			if (outIndex) {
+				*outIndex = reverseIndexA;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
 namespace {
-	size_t pushFloatAsString(
-		pstd::FixedArena* buffer, float number, uint32_t precision
+	size_t pushDoubleAsString(
+		pstd::FixedArena* buffer, double number, uint32_t precision
 	) {
 		ASSERT(precision < 128);  // to avoid a loop that blows out the buffer
 		ASSERT(buffer);
@@ -209,41 +278,41 @@ namespace {
 		}
 
 		uint32_t wholePart{ (uint32_t)number };
-		stringSize += pushUInt32AsString(buffer, wholePart);
+		stringSize += pushUInt64AsString(buffer, wholePart);
 
 		stringSize += pushLetter(buffer, '.');
 
 		size_t factor{ pstd::pow<size_t>(10, precision) };
-		auto decimalPart{ (uint32_t)((pstd::absf(number - wholePart) * factor) +
+		auto decimalPart{ (uint32_t)((pstd::abs(number - wholePart) * factor) +
 									 0.5f) };
-		stringSize += pushUInt32AsString(buffer, decimalPart);
+		stringSize += pushUInt64AsString(buffer, decimalPart);
 		return stringSize;
 	}
 
-	size_t pushInt32AsString(pstd::FixedArena* buffer, int32_t number) {
+	size_t pushInt64AsString(pstd::FixedArena* buffer, int64_t number) {
 		ASSERT(buffer);
 
 		size_t stringSize{};
 		if (number >= 0) {
-			return pushUInt32AsString(buffer, (uint32_t)number);
+			return pushUInt64AsString(buffer, (uint32_t)number);
 		}
 
 		stringSize += pushLetter(buffer, '-');
 
 		// this avoids overflow since |INT_MIN| = |INT_MAX| + 1
 		uint32_t positiveNumber{ (uint32_t)(-(number + 1)) + 1 };
-		stringSize += pushUInt32AsString(buffer, positiveNumber);
+		stringSize += pushUInt64AsString(buffer, positiveNumber);
 		return stringSize;
 	}
 
-	size_t pushUInt32AsString(pstd::FixedArena* buffer, uint32_t number) {
+	size_t pushUInt64AsString(pstd::FixedArena* buffer, uint64_t number) {
 		ASSERT(buffer);
 
 		uint32_t count{ 1 };
 		{
 			size_t bufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
 			) };
-			uint32_t numberCopy{ number };
+			uint64_t numberCopy{ number };
 			while (numberCopy > 9 && count < bufferCountAvaliable) {
 				numberCopy /= 10;
 				count++;
@@ -256,7 +325,7 @@ namespace {
 
 		for (uint32_t i{}; i < count; i++) {
 			uint32_t reverseIndex{ (count - 1) - i };
-			uint32_t digit{ number % 10 };
+			uint64_t digit{ number % 10 };
 			char digitLetter{ (char)((uint32_t)'0' + digit) };
 			letterArray[reverseIndex] = digitLetter;
 			number /= 10;
@@ -324,6 +393,16 @@ namespace {
 		return stringSize;
 	}
 }  // namespace
+
+template String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, uint64_t val
+);
+template String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, int64_t val
+);
+template String pstd::formatString(
+	pstd::FixedArena* buffer, const String& format, double val
+);
 
 template String pstd::formatString(
 	pstd::FixedArena* buffer, const String& format, uint32_t val

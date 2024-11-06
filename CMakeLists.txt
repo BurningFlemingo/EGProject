@@ -9,3 +9,4 @@ set(CMAKE_SUPPRESS_REGENERATION true)
 
 add_subdirectory(PEngine)
 add_subdirectory(Runtime)
+add_subdirectory(examples)

@@ -34,11 +34,43 @@ namespace pstd {
 		pstd::String string{ .buffer = cString, .size = stringSize };
 		return string;
 	}
+
+	String createString(FixedArena* arena, const String& string);
+	inline String createString(FixedArena* arena, const char* string) {
+		return createString(arena, createString(string));
+	}
+
 	bool stringsMatch(const String& a, const String& b);
 
 	String makeNullTerminated(FixedArena* buffer, String string);
 
+	inline const char* createCString(FixedArena* arena, const String& string) {
+		return makeNullTerminated(arena, string).buffer;
+	}
+
 	String concat(pstd::FixedArena* buffer, String a, String b);
+
+	bool substringMatchForward(
+		const String& a, const String& b, size_t* outIndex = nullptr
+	);
+	inline bool substringMatchForward(
+		const char* a, const char* b, size_t* outIndex = nullptr
+	) {
+		return substringMatchForward(
+			createString(a), createString(b), outIndex
+		);
+	}
+
+	bool substringMatchBackward(
+		const String& a, const String& b, size_t* outIndex = nullptr
+	);
+	inline bool substringMatchBackward(
+		const char* a, const char* b, size_t* outIndex = nullptr
+	) {
+		return substringMatchBackward(
+			createString(a), createString(b), outIndex
+		);
+	}
 
 	String formatString(pstd::FixedArena* buffer, const String& format);
 

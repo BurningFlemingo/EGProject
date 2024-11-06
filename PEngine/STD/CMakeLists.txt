@@ -27,5 +27,5 @@ target_link_libraries(${PROJ_NAME} PRIVATE user32 Kernel32 )
 target_include_directories(${PROJ_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${SRC_DIR} ${PENGINE_DIR})
 target_include_directories(${PROJ_NAME} PUBLIC ${INCLUDE_DIR})
 
-target_compile_definitions(${PROJ_NAME} PRIVATE PSTD_PROJECT)
+target_compile_definitions(${PROJ_NAME} PRIVATE PSTD_PROJECT LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
 target_compile_options(${PROJ_NAME} PUBLIC /FI ${SRC_DIR}/Platforms/Windows/Required.h)

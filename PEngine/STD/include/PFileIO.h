@@ -4,6 +4,7 @@
 
 namespace pstd {
 	using FileHandle = void*;
+	using DllHandle = void*;
 
 	enum class FileAccess : uint32_t { none, read, write, readwrite, COUNT };
 	enum class FileShare : uint32_t { none, read, write, readwrite, COUNT };
@@ -17,24 +18,39 @@ namespace pstd {
 	};
 
 	FileHandle openFile(
-		FixedArena* arena,
 		const char* filepath,
 		const FileAccess& accessFlags,
 		const FileShare& shareFlags,
 		const FileCreate& createFlags
 	);
 
-	FileHandle openFile(
-		FixedArena* arena,
+	inline FileHandle openFile(
+		FixedArena arena,
 		const String& filepath,
 		const FileAccess& accessFlags,
 		const FileShare& shareFlags,
 		const FileCreate& createFlags
-	);
+	) {
+		return pstd::openFile(
+			pstd::makeNullTerminated(&arena, filepath).buffer,
+			accessFlags,
+			shareFlags,
+			createFlags
+		);
+	}
 
-	void closeFile(const FileHandle& handle);
+	bool copyFile(const char* srcName, const char* dstName, bool replace);
 
-	size_t getFileSize(const FileHandle& handle);
+	String getEXEPath(FixedArena* arena);  // includes the exe name
 
-	Allocation readFile(FixedArena* arena, const FileHandle& handle);
+	DllHandle loadDll(const char* filepath);
+	void unloadDll(DllHandle handle);
+	void* findDllFunction(DllHandle handle, const char* functionName);
+
+	void closeFile(FileHandle handle);
+
+	size_t getFileSize(FileHandle handle);
+	size_t getLastFileWriteTime(const char*);
+
+	Allocation readFile(FixedArena* arena, FileHandle handle);
 }  // namespace pstd

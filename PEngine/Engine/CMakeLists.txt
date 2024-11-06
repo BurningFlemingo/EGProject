@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-set (PROJ_NAME PenguiEngine)
+set (PROJ_NAME PEngine)
 project(${PROJ_NAME})
 
 find_package(VulkanHeaders CONFIG)
@@ -27,7 +27,7 @@ add_library(${PROJ_NAME} ${SRC_FILES})
 target_link_libraries(${PROJ_NAME} PRIVATE Vulkan::Headers Vulkan::Vulkan user32 Kernel32 PSTD)
 target_include_directories(${PROJ_NAME} PRIVATE ${PENGINE_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${SRC_DIR})
 target_include_directories(${PROJ_NAME} PUBLIC ${PENGINE_DIR})
-target_compile_definitions(${PROJ_NAME} PRIVATE ENGINE_PROJECT LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
+target_compile_definitions(${PROJ_NAME} PRIVATE PENGINE_PROJECT LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
 
 add_custom_command(
 	TARGET ${PROJ_NAME} POST_BUILD
