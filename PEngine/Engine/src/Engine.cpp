@@ -57,15 +57,17 @@ size_t peng::internal::getSizeofState() {
 	return totalSize;
 }
 
-peng::internal::State* peng::internal::startup(pstd::FixedArena* stateArena) {
+peng::internal::State* peng::internal::startup(
+	pstd::internal::AllocationRegistry* registry, pstd::FixedArena* stateArena
+) {
 	// TODO: for possible alignment errors, find a better solution
 
 	pstd::FixedArena applicationArena{
-		pstd::internal::allocateFixedArena(getSizeofSubsystems())
+		pstd::internal::allocateFixedArena(registry, getSizeofSubsystems())
 	};
 
 	pstd::FixedArena scratchArena{
-		pstd::internal::allocateFixedArena(getSizeofScratchArena())
+		pstd::internal::allocateFixedArena(registry, getSizeofScratchArena())
 	};
 
 	Platform::State* platformState{

@@ -8,29 +8,19 @@
 using namespace pstd;
 using namespace pstd::internal;
 
-namespace {
-	struct MemorySystemState {
-		AllocationLimits allocLimits;
-	};
-
-	MemorySystemState g_State;
-
-}  // namespace
-
 size_t pstd::alignUpToPageBoundary(size_t size) {
-	const MemorySystemState& state{ g_State };
+	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
-	size_t alignedSize{ ((size + state.allocLimits.pageSize - 1) /
-						 state.allocLimits.pageSize) *
-						state.allocLimits.pageSize };
+	size_t alignedSize{ ((size + allocLimits.pageSize - 1) /
+						 allocLimits.pageSize) *
+						allocLimits.pageSize };
 	return alignedSize;
 }
 
 size_t pstd::alignDownToPageBoundary(size_t size) {
-	const MemorySystemState& state{ g_State };
+	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
-	size_t alignedSize{ (size / state.allocLimits.pageSize) *
-						state.allocLimits.pageSize };
+	size_t alignedSize{ (size / allocLimits.pageSize) * allocLimits.pageSize };
 	return alignedSize;
 }
 
@@ -49,7 +39,7 @@ pstd::Allocation pstd::internal::allocPages(
 ) {
 	ASSERT(~allocTypeFlags & (ALLOC_TYPE_DECOMMIT | ALLOC_TYPE_RELEASE))
 
-	const MemorySystemState& state{ g_State };
+	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
 	uint32_t win32AllocFlags{};
 	uint32_t win32SecurityFlags{ PAGE_NOACCESS };
@@ -65,9 +55,9 @@ pstd::Allocation pstd::internal::allocPages(
 	}
 
 	size_t alignedSize{ alignUpToPageBoundary(size) };
-	if (alignedSize < state.allocLimits.minAllocSize &&
+	if (alignedSize < allocLimits.minAllocSize &&
 		win32AllocFlags & MEM_RESERVE) {
-		alignedSize = state.allocLimits.minAllocSize;
+		alignedSize = allocLimits.minAllocSize;
 	}
 	void* block{ VirtualAlloc(
 		baseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
@@ -82,8 +72,6 @@ pstd::Allocation pstd::internal::allocPages(
 bool pstd::internal::freePages(
 	const Allocation& allocation, AllocationTypeFlagBits allocTypeFlags
 ) {
-	const MemorySystemState& state{ g_State };
-
 	ASSERT(~allocTypeFlags & (ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE))
 
 	ASSERT(((size_t)allocation.block % state.allocLimits.pageSize) == 0);
@@ -105,8 +93,4 @@ bool pstd::internal::freePages(
 	}
 
 	return VirtualFree(allocation.block, freeSize, win32AllocFlags) != 0;
-}
-
-void pstd::internal::startupMemory() {
-	g_State.allocLimits = getSystemAllocationLimits();
 }

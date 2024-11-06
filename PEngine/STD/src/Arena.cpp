@@ -8,8 +8,10 @@
 using namespace pstd;
 using namespace pstd::internal;
 
-pstd::FixedArena pstd::internal::allocateFixedArena(const size_t size) {
-	Allocation arenaAllocation{ heapAlloc(size) };
+pstd::FixedArena pstd::internal::allocateFixedArena(
+	AllocationRegistry* registry, const size_t size
+) {
+	Allocation arenaAllocation{ heapAlloc(registry, size) };
 
 	return FixedArena{ .allocation = arenaAllocation, .isAllocated = true };
 }

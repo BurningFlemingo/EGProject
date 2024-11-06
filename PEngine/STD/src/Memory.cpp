@@ -22,7 +22,7 @@ namespace {
 		Allocation pool;
 		FreelistBlock* firstBlock;
 		Freelist* next;
-	}* g_Freelist;
+	};
 
 	Freelist* createFreelist(size_t size);
 	void findFreeBlock(
@@ -123,16 +123,24 @@ pstd::Allocation pstd::concat(
 	return allocation;
 }
 
-Allocation pstd::internal::heapAlloc(size_t size) {
+AllocationRegistry pstd::internal::startupHeap(size_t initialSize) {
+	AllocationRegistry registry{ .first = createFreelist(initialSize) };
+	return registry;
+}
+
+Allocation
+	pstd::internal::heapAlloc(AllocationRegistry* registry, size_t size) {
+	ASSERT(registry);
+
 	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
-	if (!g_Freelist) {
-		g_Freelist = createFreelist(size);
+	if (!registry->first) {
+		registry->first = createFreelist(size);
 	}
 	FreelistBlock* prevFreeBlock{};
 	FreelistBlock* freeBlock{};
 
-	Freelist* freelist{ g_Freelist };
+	Freelist* freelist{ registry->first };
 	findFreeBlock(freelist, size, &prevFreeBlock, &freeBlock);
 
 	Freelist* prevFreelist{};
@@ -165,7 +173,7 @@ Allocation pstd::internal::heapAlloc(size_t size) {
 	if (commitHeadPtr > freelistHeadPtr) {
 		freelist->next = createFreelist(size);
 		freelist = freelist->next;
-		return heapAlloc(size);	 // TODO: make this better
+		return heapAlloc(registry, size);  // TODO: make this better
 	}
 
 	allocPages(
@@ -181,7 +189,7 @@ Allocation pstd::internal::heapAlloc(size_t size) {
 	if (prevFreeBlock) {
 		prevFreeBlock->next = (FreelistBlock*)newFreeBlockAddr;
 	} else {
-		g_Freelist->firstBlock = (FreelistBlock*)newFreeBlockAddr;
+		registry->first->firstBlock = (FreelistBlock*)newFreeBlockAddr;
 	}
 
 	return Allocation{ .block = freeBlock->usable.block,
@@ -189,7 +197,9 @@ Allocation pstd::internal::heapAlloc(size_t size) {
 					   .ownsMemory = true };
 }
 
-void pstd::internal::heapFree(Allocation* allocation) {}
+void pstd::internal::heapFree(
+	AllocationRegistry* registry, Allocation* allocation
+) {}
 
 namespace {
 	Freelist* createFreelist(size_t size) {
