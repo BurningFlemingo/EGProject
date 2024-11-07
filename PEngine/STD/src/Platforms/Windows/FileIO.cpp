@@ -111,7 +111,7 @@ size_t pstd::getLastFileWriteTime(const char* filename) {
 	GetFileAttributesExA(filename, GetFileExInfoStandard, &attribData);
 	size_t time{ attribData.ftLastWriteTime.dwHighDateTime };
 	time = time << 32;
-	time &= attribData.ftLastWriteTime.dwLowDateTime;
+	time |= attribData.ftLastWriteTime.dwLowDateTime;
 	return time;
 }
 

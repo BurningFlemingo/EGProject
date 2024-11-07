@@ -13,4 +13,4 @@ set(SRC_FILES
 add_library(${PROJ_NAME} SHARED ${SRC_FILES})
 
 target_link_libraries(${PROJ_NAME} PRIVATE PEngine)
-target_compile_definitions(${PROJ_NAME} PRIVATE GAME_PROJECT)
+target_compile_definitions(${PROJ_NAME} PRIVATE GAME_PROJECT LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)

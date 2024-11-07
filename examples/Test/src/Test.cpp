@@ -1,4 +1,5 @@
 #include "Engine/include/Game.h"
+#include "Engine/include/Logging.h"
 #include "STD/include/PArena.h"
 #include "STD/include/PMemory.h"
 #include <new>
@@ -22,6 +23,7 @@ GAME_API Game::State* Game::startup() {
 	return statePtr;
 }
 GAME_API bool Game::update(State* state) {
+	LOG_INFO("WORKED\n");
 	return true;
 }
 GAME_API void Game::shutdown(State* state) {}

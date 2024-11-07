@@ -109,6 +109,6 @@ namespace pstd {
 	String formatString(
 		pstd::FixedArena* buffer, const char* format, T val, Args... args
 	) {
-		return formatString(buffer, createString(format), args...);
+		return formatString(buffer, createString(format), val, args...);
 	}
 }  // namespace pstd

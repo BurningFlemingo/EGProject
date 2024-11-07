@@ -14,7 +14,7 @@ namespace Game {
 		Shutdown shutdown;
 	};
 
-	extern "C" GAME_API State* startup();
-	extern "C" GAME_API bool update(State* state);
-	extern "C" GAME_API void shutdown(State* state);
+	GAME_API State* startup();
+	GAME_API bool update(State* state);
+	GAME_API void shutdown(State* state);
 }  // namespace Game
