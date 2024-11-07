@@ -15,7 +15,10 @@ void pstd::internal::startupConsole() {
 }
 
 bool pstd::consoleWrite(const pstd::String string) {
-	if (g_Stdout != 0 && g_Stdout != INVALID_HANDLE_VALUE) {
+	if (!g_Stdout) {
+		g_Stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+	}
+	if (g_Stdout != INVALID_HANDLE_VALUE) {
 		DWORD written{};
 		return WriteConsoleA(
 				   g_Stdout, string.buffer, string.size, &written, nullptr

@@ -3,6 +3,7 @@
 
 namespace Renderer {
 	struct State {
+		VkSurfaceKHR surface;
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debugMessenger;
 	};

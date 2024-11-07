@@ -77,37 +77,6 @@ peng::internal::State* peng::internal::startup(
 		Renderer::startup(&applicationArena, scratchArena)
 	};
 
-	pstd::CircularBuffer<int> cBuf{
-		.allocation{ pstd::arenaAlloc<int>(&applicationArena, 5) },
-	};
-
-	pstd::Vec2 myVec1{ .x = 1, .y = 2 };
-	pstd::Vec2 myVec2{ .x = 2, .y = 3 };
-	pstd::Vec2 vec{ myVec1 + myVec2 };
-	pstd::Mat4 myMat{ pstd::getIdentityMatrix<4>() };
-
-	pstd::Rot3 rotor{ pstd::calcRotor(pstd::UP, pstd::RIGHT, pstd::HALF_PI) };
-
-	pstd::Vec3 myVec{ .y = 1.f, .z = 1.f };
-
-	myVec = pstd::calcRotated(myVec, rotor);
-
-	LOG_ERROR("my favorite number is %u cus its cool %i", 0, -23);
-
-	pstd::pushBackOverwrite(&cBuf, 1);
-	pstd::pushBackOverwrite(&cBuf, 2);
-	pstd::pushBackOverwrite(&cBuf, 3);
-	pstd::pushBackOverwrite(&cBuf, 4);
-	pstd::pushBackOverwrite(&cBuf, 5);
-	pstd::pushBackOverwrite(&cBuf, 6);
-
-	volatile float test1{ pstd::atanf(0) };
-	test1 = pstd::atanf(1);
-	test1 = pstd::atanf(-1);
-	test1 = pstd::atanf(10000);
-	test1 = pstd::atanf(-10000);
-	test1 = pstd::atanf(0.00001);
-
 	pstd::Allocation arenaAllocation{ pstd::arenaAlloc<State>(stateArena) };
 
 	State* arenaPtr{ new (arenaAllocation.block)

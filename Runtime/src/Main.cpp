@@ -43,17 +43,18 @@ int main() {
 	GameDll gameDll{ loadGameDll(scratchArena) };
 	Game::State* gameState{ gameDll.api.startup() };
 
-	const char* dllPath{ pstd::createCString(
-		&scratchArena,
+	pstd::String dllPath{
 		appendToExePath(&scratchArena, pstd::createString("Game.dll"))
-	) };
+	};
 
 	bool isRunning{ true };
 	while (isRunning) {
-		if (pstd::getLastFileWriteTime(dllPath) != gameDll.lastWriteTime) {
-			unloadGameDll(gameDll);
-			gameDll = loadGameDll(scratchArena);
-		}
+		// if (pstd::getLastFileWriteTime(
+		// 		pstd::createCString(&scratchArena, dllPath)
+		// 	) != gameDll.lastWriteTime) {
+		// 	unloadGameDll(gameDll);
+		// 	gameDll = loadGameDll(scratchArena);
+		// }
 
 		isRunning &= peng::internal::update(engineState);
 		isRunning &= gameDll.api.update(gameState);
@@ -83,23 +84,25 @@ namespace {
 	}
 
 	GameDll loadGameDll(pstd::FixedArena arena) {
-		static uint32_t loadIndex{};
-		loadIndex = (loadIndex + 1) % 2;
-
-		pstd::String loadedDllName{
-			pstd::formatString(&arena, "Game_%u.dll", loadIndex)
+		constexpr pstd::String writtenGameDllName{ pstd::createString("Game.dll"
+		) };
+		constexpr pstd::String runningGameDllName{
+			pstd::createString("Game_Loaded.dll")
 		};
 
-		const char* loadedDllPath{
-			pstd::createCString(&arena, appendToExePath(&arena, loadedDllName))
-		};
-		const char* originalDllPath{ pstd::createCString(
-			&arena, appendToExePath(&arena, pstd::createString("Game.dll"))
+		const char* writtenGameDllPath{ pstd::createCString(
+			&arena, appendToExePath(&arena, writtenGameDllName)
 		) };
 
-		pstd::copyFile(originalDllPath, loadedDllPath, true);
+		const char* runningGameDllPath{ pstd::createCString(
+			&arena, appendToExePath(&arena, runningGameDllName)
+		) };
 
-		pstd::DllHandle gameHandle{ pstd::loadDll(loadedDllPath) };
+		pstd::copyFile(
+			writtenGameDllPath, runningGameDllPath, true
+		);	// running game dll should be unloaded at this point
+
+		pstd::DllHandle gameHandle{ pstd::loadDll(runningGameDllPath) };
 
 		Game::API gameAPI{
 			.startup = (Game::API::Startup
@@ -116,7 +119,7 @@ namespace {
 					 .api = gameAPI,
 					 .isValid = isValid,
 					 .lastWriteTime =
-						 pstd::getLastFileWriteTime(originalDllPath) };
+						 pstd::getLastFileWriteTime(writtenGameDllPath) };
 		return res;
 	}
 	void unloadGameDll(GameDll dll) {
