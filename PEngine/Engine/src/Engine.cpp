@@ -74,7 +74,7 @@ peng::internal::State* peng::internal::startup(
 	};
 
 	Renderer::State* rendererState{
-		Renderer::startup(&applicationArena, scratchArena)
+		Renderer::startup(&applicationArena, scratchArena, *platformState)
 	};
 
 	pstd::Allocation arenaAllocation{ pstd::arenaAlloc<State>(stateArena) };
