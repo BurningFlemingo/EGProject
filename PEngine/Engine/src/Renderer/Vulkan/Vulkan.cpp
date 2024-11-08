@@ -1,6 +1,7 @@
 #include "DebugMessenger.h"
 #include "Instance.h"
 
+#include "PContainer.h"
 #include "include/Logging.h"
 
 #include "Platforms/VulkanSurface.h"
@@ -15,36 +16,6 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
-
-namespace {
-	enum class QueueFamilyType : uint32_t {
-		graphics = 0,
-		compute = 1,
-		transfer = 2,
-		presentation = 3,
-		count
-	};
-
-	enum class QueueFamilySupported : uint32_t {
-		invalid = ~0u,
-		graphics = 0b1,
-		compute = 0b10,
-		transfer = 0b100,
-		presentation = 0b1000,
-		count
-	};
-
-	using QueueFamilyIndicesSupportedBits = uint32_t;
-	union QueueFamilyIndices {
-		uint32_t indices[4];
-		struct {
-			uint32_t graphicsFamilyIndex;
-			uint32_t computeFamilyIndex;
-			uint32_t transferFamilyIndex;
-			uint32_t presentationFamilyIndex;
-		};
-	};
-}  // namespace
 
 Renderer::State* Renderer::startup(
 	pstd::FixedArena* stateArena,
@@ -64,7 +35,6 @@ Renderer::State* Renderer::startup(
 			&scratchArena, physicalDeviceCount
 		)
 	};
-
 	vkEnumeratePhysicalDevices(
 		instance, &physicalDeviceCount, pstd::getData(physicalDevices)
 	);
@@ -116,61 +86,86 @@ Renderer::State* Renderer::startup(
 		pstd::getData(queueFamilyProps)
 	);
 
-	uint32_t familySupportFlags{};
-	bool presentationSupport{};
+	uint32_t graphicsQueueFamilyIndex;
+	bool graphicsQueueFamilyAvaliable;
 
-	uint32_t presentationFamilyIndex{};
-	uint32_t graphicsFamilyIndex{};
-	uint32_t transferFamilyIndex{};
-	uint32_t computeFamilyIndex{};
+	uint32_t presentationQueueFamilyIndex;
+	bool presentationQueueFamilyAvaliable;
 
 	for (uint32_t i{}; i < queueFamilyPropCount; i++) {
 		VkQueueFamilyProperties familyProps{ queueFamilyProps[i] };
-		if (familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			familySupportFlags |= VK_QUEUE_GRAPHICS_BIT;
-			graphicsFamilyIndex = i;
-		}
-		if (familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT) {
-			familySupportFlags |= VK_QUEUE_TRANSFER_BIT;
-			transferFamilyIndex = i;
-		}
-		if (familyProps.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-			familySupportFlags |= VK_QUEUE_COMPUTE_BIT;
-			computeFamilyIndex = i;
+		if (familyProps.queueFlags & VK_QUEUE_GRAPHICS_BIT &&
+			!graphicsQueueFamilyAvaliable) {
+			graphicsQueueFamilyAvaliable = true;
+			graphicsQueueFamilyIndex = i;
 		}
 
 		VkBool32 supported;
 		vkGetPhysicalDeviceSurfaceSupportKHR(
 			suitablePhysicalDevice, i, surface, &supported
 		);
-		if (supported) {
-			presentationSupport = true;
-			presentationFamilyIndex = i;
+
+		if (supported && !presentationQueueFamilyAvaliable) {
+			presentationQueueFamilyAvaliable = true;
+			presentationQueueFamilyIndex = i;
+			break;
 		}
 	}
 
-	// const float priorities[1]{ 1.f };
-	// VkDeviceQueueCreateInfo deviceQueueCI{
-	// 	.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-	// 	.queueFamilyIndex = 0,
-	// 	.queueCount = 1,
-	// 	.pQueuePriorities = priorities,
-	// };
+	ASSERT(graphicsQueueFamilyIndex);
 
-	// VkDeviceCreateInfo deviceCI{
-	// 	.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-	// };
-	// vkCreateDevice();
+	const float priorities[1]{ 1.f };
+
+	pstd::BoundedStackArray<VkDeviceQueueCreateInfo, 2>
+		deviceQueueCreateInfos{};
+
+	if (graphicsQueueFamilyIndex == presentationQueueFamilyIndex) {
+		VkDeviceQueueCreateInfo deviceQueueCI{
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = graphicsQueueFamilyIndex,
+			.queueCount = 2,
+			.pQueuePriorities = priorities,
+		};
+
+		pstd::pushBack(&deviceQueueCreateInfos, deviceQueueCI);
+	} else {
+		VkDeviceQueueCreateInfo deviceQueueCI1{
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = graphicsQueueFamilyIndex,
+			.queueCount = 1,
+			.pQueuePriorities = priorities,
+		};
+		VkDeviceQueueCreateInfo deviceQueueCI2{
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = presentationQueueFamilyIndex,
+			.queueCount = 1,
+			.pQueuePriorities = priorities,
+		};
+		pstd::pushBack(&deviceQueueCreateInfos, deviceQueueCI1);
+		pstd::pushBack(&deviceQueueCreateInfos, deviceQueueCI2);
+	}
+
+	VkDeviceCreateInfo deviceCI{
+		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.queueCreateInfoCount = (uint32_t)deviceQueueCreateInfos.count,
+		.pQueueCreateInfos = pstd::getData(deviceQueueCreateInfos),
+	};
+
+	VkDevice device{};
+	vkCreateDevice(suitablePhysicalDevice, &deviceCI, nullptr, &device);
 
 	pstd::Allocation stateAllocation{ pstd::arenaAlloc<State>(stateArena) };
 
 	return new (stateAllocation.block)
-		State{ .surface = surface,
+		State{ .device = device,
+			   .physicalDevice = suitablePhysicalDevice,
+			   .surface = surface,
 			   .instance = instance,
 			   .debugMessenger = debugMessenger };
 }
 
 void Renderer::shutdown(State* state) {
+	vkDestroyDevice(state->device, nullptr);
 	vkDestroySurfaceKHR(state->instance, state->surface, nullptr);
 	destroyDebugMessenger(state->instance, state->debugMessenger);
 	vkDestroyInstance(state->instance, nullptr);

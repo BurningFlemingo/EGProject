@@ -30,7 +30,7 @@ namespace pstd {
 	template<typename T>
 		requires StackContainer<T>
 	constexpr typename T::ElementType* getData(const T& container) {
-		return container.data;
+		return (typename T::ElementType*)container.data;
 	}
 
 	template<Container T>
