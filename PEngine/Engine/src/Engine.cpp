@@ -38,6 +38,7 @@ namespace {
 		size_t allocPadding{ 100 };
 		size_t platformSize{ Platform::getSizeofState() };
 		size_t vulkanSize{ 1024 };
+		size_t vulkanArraysSize{ 1024 };
 		size_t totalSize{ allocPadding + platformSize + vulkanSize };
 		return totalSize;
 	}

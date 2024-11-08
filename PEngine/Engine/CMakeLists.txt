@@ -21,6 +21,7 @@ set(SRC_FILES
 	${SRC_DIR}/Renderer/Vulkan/Debug/DebugMessenger.cpp
 	${SRC_DIR}/Renderer/Vulkan/Extensions.cpp
 	${SRC_DIR}/Renderer/Vulkan/Instance.cpp
+	${SRC_DIR}/Renderer/Vulkan/Device.cpp
 	)
 
 add_library(${PROJ_NAME} ${SRC_FILES})
