@@ -3,4 +3,4 @@
 
 #include <vulkan/vulkan.h>
 
-VkInstance createInstance(pstd::FixedArena scratchArena);
+VkInstance createInstance(pstd::FixedArenaFrame&& arenaFrame);

@@ -35,9 +35,7 @@ namespace {
 }  // namespace
 
 String pstd::createString(FixedArena* arena, const String& string) {
-	Allocation newStringAllocation{
-		pstd::arenaAlloc<char>(arena, string.size)
-	};
+	Allocation newStringAllocation{ pstd::alloc<char>(arena, string.size) };
 	Allocation oldStringAllocation{ .block = (void*)string.buffer,
 									.size = string.size };
 
@@ -61,17 +59,15 @@ String pstd::makeNullTerminated(FixedArena* buffer, String string) {
 	void* const initialBufferAddress{ pstd::getNextAllocAddress<char>(*buffer
 	) };
 	const size_t initialBufferCountAvaliable{
-		pstd::getAvaliableCount<char>(*buffer)
+		pstd::getAvailableCount<char>(*buffer)
 	};
 
 	size_t lettersToCopy{ min(initialBufferCountAvaliable, string.size) };
-	Allocation stringAllocation{
-		pstd::arenaAlloc<char>(buffer, lettersToCopy)
-	};
+	Allocation stringAllocation{ pstd::alloc<char>(buffer, lettersToCopy) };
 	pstd::memCpy(stringAllocation.block, string.buffer, lettersToCopy);
 	pushLetter(buffer, '\0');
 
-	size_t finalBufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer) };
+	size_t finalBufferCountAvaliable{ pstd::getAvailableCount<char>(*buffer) };
 	size_t size{ initialBufferCountAvaliable - finalBufferCountAvaliable };
 
 	string =
@@ -115,7 +111,7 @@ String
 	ASSERT(buffer);
 	const void* stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
 	const size_t initialBufferCountAvaliable{
-		pstd::getAvaliableCount<char>(*buffer)
+		pstd::getAvailableCount<char>(*buffer)
 	};
 
 	char controlCharacter{};
@@ -310,7 +306,7 @@ namespace {
 
 		uint32_t count{ 1 };
 		{
-			size_t bufferCountAvaliable{ pstd::getAvaliableCount<char>(*buffer
+			size_t bufferCountAvaliable{ pstd::getAvailableCount<char>(*buffer
 			) };
 			uint64_t numberCopy{ number };
 			while (numberCopy > 9 && count < bufferCountAvaliable) {
@@ -320,7 +316,7 @@ namespace {
 		}
 
 		pstd::FixedArray<char> letterArray{
-			.allocation = pstd::arenaAlloc<char>(buffer, count),
+			.allocation = pstd::alloc<char>(buffer, count),
 		};
 
 		for (uint32_t i{}; i < count; i++) {
@@ -334,20 +330,17 @@ namespace {
 	}
 
 	size_t pushLetter(pstd::FixedArena* buffer, char letter) {
-		if (pstd::getAvaliableCount<char>(*buffer) == 0) {
+		if (pstd::getAvailableCount<char>(*buffer) == 0) {
 			return 0;
 		}
-		pstd::FixedArray<char> letterArray{
-			.allocation = pstd::arenaAlloc<char>(buffer, 1)
-		};
+		pstd::FixedArray<char> letterArray{ .allocation =
+												pstd::alloc<char>(buffer, 1) };
 		letterArray[0] = letter;
 		return 1;
 	}
 
 	size_t pushString(pstd::FixedArena* buffer, const String& string) {
-		pstd::Allocation allocation{
-			pstd::arenaAlloc<char>(buffer, string.size)
-		};
+		pstd::Allocation allocation{ pstd::alloc<char>(buffer, string.size) };
 
 		memcpy(allocation.block, string.buffer, allocation.size);
 		return allocation.size;
@@ -363,7 +356,7 @@ namespace {
 		char res{};
 
 		size_t searchSize{
-			min(pstd::getAvaliableCount<char>(*buffer), format.size)
+			min(pstd::getAvailableCount<char>(*buffer), format.size)
 		};
 
 		char previousLetter{};

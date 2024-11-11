@@ -11,18 +11,14 @@
 #include "PContainer.h"
 #include "PMemory.h"
 
-VkInstance createInstance(pstd::FixedArena arena) {
-	pstd::FixedArena scratchArena{ .allocation = pstd::arenaAlloc<char>(
-									   &arena,
-									   pstd::getAvaliableCount<char>(arena) / 2
-								   ) };
-	pstd::FixedArray<const char*> foundExtensions{
-		findExtensions(&arena, scratchArena)
-	};
+VkInstance createInstance(pstd::FixedArenaFrame&& arenaFrame) {
+	pstd::FixedArray<const char*> foundExtensions{ findExtensions(
+		pstd::makeFlipped({ arenaFrame.pArena, arenaFrame.frame })
+	) };
 
-	pstd::FixedArray<const char*> foundValidationLayers{
-		findValidationLayers(&arena, scratchArena)
-	};
+	pstd::FixedArray<const char*> foundValidationLayers{ findValidationLayers(
+		pstd::makeFlipped({ arenaFrame.pArena, arenaFrame.frame })
+	) };
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",
@@ -36,7 +32,7 @@ VkInstance createInstance(pstd::FixedArena arena) {
 		getDebugMessengerCreateInfo()
 	};
 
-	pstd::Allocation rawAlloc{ pstd::arenaAlloc<const char*>(&arena, 1) };
+	pstd::Allocation rawAlloc{ pstd::alloc<const char*>(&arenaFrame, 1) };
 	pstd::shallowMove(&rawAlloc, foundValidationLayers.allocation);
 
 	VkInstanceCreateInfo vkInstanceCI{

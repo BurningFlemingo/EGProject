@@ -1,4 +1,5 @@
 #include "Device.h"
+#include "PArena.h"
 
 namespace {
 	VkPhysicalDevice
@@ -6,13 +7,12 @@ namespace {
 }
 
 Device createDevice(
-	pstd::FixedArena* deviceArena,
-	pstd::FixedArena scratchArena,
-	VkInstance instance,
-	VkSurfaceKHR surface
+	pstd::FixedArena* deviceArena, VkInstance instance, VkSurfaceKHR surface
 ) {
+	pstd::FixedScratchArenaView scratchView{ pstd::createScratchView(deviceArena
+	) };
 	VkPhysicalDevice physicalDevice{
-		createPhysicalDevice(&scratchArena, instance)
+		createPhysicalDevice(&scratchView, instance)
 	};
 	uint32_t queueFamilyPropCount{};
 	vkGetPhysicalDeviceQueueFamilyProperties(
@@ -20,7 +20,7 @@ Device createDevice(
 	);
 
 	pstd::FixedArray<VkQueueFamilyProperties> queueFamilyProps{
-		.allocation = pstd::arenaAlloc<VkQueueFamilyProperties>(
+		.allocation = pstd::alloc<VkQueueFamilyProperties>(
 			&scratchArena, queueFamilyPropCount
 		)
 	};
@@ -31,7 +31,7 @@ Device createDevice(
 	constexpr uint32_t invalidIndex{ -1u };
 	pstd::FixedArray<uint32_t, QueueFamily> indices{
 		.allocation =
-			pstd::arenaAlloc<uint32_t>(deviceArena, (size_t)QueueFamily::count),
+			pstd::alloc<uint32_t>(deviceArena, (size_t)QueueFamily::count),
 	};
 	pstd::fill(&indices, invalidIndex);
 

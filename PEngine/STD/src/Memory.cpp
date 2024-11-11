@@ -110,7 +110,7 @@ pstd::Allocation pstd::concat(
 
 	ASSERT(allocSize >= a.size);  // overflow check
 
-	Allocation allocation{ pstd::arenaAlloc(arena, allocSize, alignment) };
+	Allocation allocation{ pstd::alloc(arena, allocSize, alignment) };
 
 	pstd::shallowMove(&allocation, a);
 

@@ -125,7 +125,7 @@ pstd::Allocation
 
 	ASSERT(fileSize < pstd::getAvaliableCount<char>(*arena));
 
-	pstd::Allocation fileAlloc{ pstd::arenaAlloc<char>(arena, fileSize) };
+	pstd::Allocation fileAlloc{ pstd::alloc<char>(arena, fileSize) };
 	if (ReadFile(hFile, fileAlloc.block, fileSize, &bytesRead, &ol) == false) {
 		ASSERT(false);
 	}

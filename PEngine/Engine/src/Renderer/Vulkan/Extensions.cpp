@@ -10,15 +10,14 @@
 #include <vulkan/vulkan.h>
 #include <new>
 
-pstd::FixedArray<const char*> findExtensions(
-	pstd::FixedArena* extensionsArena, pstd::FixedArena scratchArena
+pstd::FixedArray<const char*> findExtensions(pstd::FixedArenaFrame&& arenaFrame
 ) {
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 
 	pstd::FixedArray<VkExtensionProperties> extensionProps{
-		.allocation = pstd::arenaAlloc<VkExtensionProperties>(
-			extensionsArena, extensionCount
+		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
+			&arenaFrame, extensionCount
 		),
 	};
 	vkEnumerateInstanceExtensionProperties(
@@ -26,7 +25,7 @@ pstd::FixedArray<const char*> findExtensions(
 	);
 
 	pstd::BoundedArray<const char*> requiredExtensions{
-		.allocation = pstd::arenaAlloc<const char*>(&scratchArena, 2),
+		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2),
 		.count = 2
 	};
 	new (pstd::getData(requiredExtensions))(const char* [2]
@@ -35,11 +34,11 @@ pstd::FixedArray<const char*> findExtensions(
 	pstd::BoundedArray<const char*> optionalExtensions{ getDebugExtensions() };
 
 	pstd::BoundedArray<const char*> foundRequiredExtensions{
-		.allocation = pstd::arenaAlloc<const char*>(&scratchArena, 2)
+		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2)
 	};
 	pstd::BoundedArray<const char*> foundOptionalExtensions{
-		.allocation = pstd::arenaAlloc<const char*>(
-			&scratchArena, optionalExtensions.count
+		.allocation = pstd::scratchAlloc<const char*>(
+			&arenaFrame, optionalExtensions.count
 		),
 	};
 
@@ -82,7 +81,8 @@ pstd::FixedArray<const char*> findExtensions(
 	}
 
 	pstd::FixedArray<const char*> res{ .allocation = pstd::concat<const char*>(
-										   extensionsArena,
+										   { arenaFrame.pArena,
+											 arenaFrame.frame },
 										   foundRequiredExtensions.allocation,
 										   foundOptionalExtensions.allocation
 									   ) };

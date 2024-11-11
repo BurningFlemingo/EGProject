@@ -35,9 +35,9 @@ Platform::State* Platform::startup(
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{ pstd::arenaAlloc<State>(stateArena) };
+	pstd::Allocation stateAllocation{ pstd::alloc<State>(stateArena) };
 	pstd::Allocation eventBufferAllocation{
-		pstd::arenaAlloc<Event>(stateArena, WindowData::eventBufferCapacity)
+		pstd::alloc<Event>(stateArena, WindowData::eventBufferCapacity)
 	};
 
 	HINSTANCE hInstance{ GetModuleHandle(0) };

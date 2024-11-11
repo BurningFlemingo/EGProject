@@ -22,18 +22,20 @@ namespace {
 }  // namespace
 
 Renderer::State* Renderer::startup(
-	pstd::FixedArena* stateArena,
-	pstd::FixedArena scratchArena,
-	const Platform::State& platformState
+	pstd::FixedArenaFrame&& arenaFrame, const Platform::State& platformState
 ) {
-	VkInstance instance{ createInstance(scratchArena) };
+	VkInstance instance{
+		createInstance(pstd::flip({ arenaFrame.pArena, arenaFrame.frame }))
+	};
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
-	Device device{ createDevice(stateArena, scratchArena, instance, surface) };
+	Device device{ createDevice(
+		pstd::flip({ arenaFrame.pArena, arenaFrame.frame }), instance, surface
+	) };
 
-	pstd::Allocation stateAllocation{ pstd::arenaAlloc<State>(stateArena) };
+	pstd::Allocation stateAllocation{ pstd::alloc<State>(&arenaFrame) };
 
 	return new (stateAllocation.block)
 		State{ .device = device,
