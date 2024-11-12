@@ -25,7 +25,7 @@ namespace pstd {
 	);
 
 	inline FileHandle openFile(
-		FixedArena arena,
+		FixedArenaFrame arena,
 		const String& filepath,
 		const FileAccess& accessFlags,
 		const FileShare& shareFlags,

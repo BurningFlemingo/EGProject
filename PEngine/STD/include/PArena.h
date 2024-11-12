@@ -14,36 +14,47 @@ namespace pstd {
 		bool isAllocated;
 	};
 
-	struct StackFrame {
-		size_t stackOffset;
+	struct FixedArenaFrameState {
+		size_t scratchOffset;
 		bool isFlipped{ false };
 	};
 
-	// contains a flippable persistant and a temporary region in which only one
-	// persists after the frame's scope has ended.
+	// contains a flippable persistant and a scratch region in which only one
+	// persists after the frame's scope has ended (assuming pArena has a longer
+	// lifetime than the fixed arena frame)
 	struct FixedArenaFrame {
 		FixedArena* pArena;
-
-		StackFrame frame{ .stackOffset = pArena->topOffset };
+		FixedArenaFrameState state{ .scratchOffset = pArena->topOffset };
 	};
+
 	// arena is stored directly to not change the original. Functions using this
 	// only need scratch space (no return space)
 	struct FixedScratchArenaFrame {
 		FixedArena arena;
-		StackFrame frame{ .stackOffset = arena.topOffset };
+		FixedArenaFrameState state{ .scratchOffset = arena.topOffset };
 	};
 
-	inline FixedArenaFrame makeFlipped(FixedArenaFrame&& arenaFrame) {
-		auto& [arena, frame] = arenaFrame;
-
-		frame.isFlipped = !frame.isFlipped;
-		return FixedArenaFrame{ .pArena = arena, .frame = frame };
+	inline size_t getPersistantOffset(const FixedArenaFrame& frame) {
+		if (frame.state.isFlipped) {
+			return frame.pArena->topOffset;
+		}
+		return frame.pArena->bottomOffset;
 	}
-	inline FixedScratchArenaFrame
-		makeFlipped(FixedScratchArenaFrame&& arenaFrame) {
-		auto& [arena, frame] = arenaFrame;
-		frame.isFlipped = !frame.isFlipped;
-		return FixedScratchArenaFrame{ .arena = arena, .frame = frame };
+	inline size_t getPersistantOffset(const FixedScratchArenaFrame& frame) {
+		if (frame.state.isFlipped) {
+			return frame.arena.topOffset;
+		}
+		return frame.arena.bottomOffset;
+	}
+
+	inline FixedArenaFrame makeFlipped(FixedArenaFrame&& frame) {
+		frame.state.isFlipped = !frame.state.isFlipped;
+		return FixedArenaFrame{ .pArena = frame.pArena, .state = frame.state };
+	}
+	inline FixedScratchArenaFrame makeFlipped(FixedScratchArenaFrame&& frame) {
+		frame.state.isFlipped = !frame.state.isFlipped;
+		return FixedScratchArenaFrame{ .arena = frame.arena,
+									   .state = frame.state };
 	}
 
 	FixedArena
@@ -57,38 +68,42 @@ namespace pstd {
 	}
 
 	template<typename T>
-	constexpr size_t getCount(const FixedArenaFrame& arenaFrame) {
-		const auto& [arena, frame] = arenaFrame;
-		if (frame.isFlipped) {
-			return frame.stackOffset / sizeof(T);
+	constexpr size_t getCount(const FixedArenaFrame& frame) {
+		if (frame.state.isFlipped) {
+			size_t allocSize{ frame.pArena->allocation.size };
+			return (allocSize - frame.state.stackOffset) / sizeof(T);
 		}
-		return arena->bottomOffset / sizeof(T);
+		return frame.pArena->bottomOffset / sizeof(T);
 	}
 	template<typename T>
-	size_t getAvailableCount(const FixedArenaFrame& arenaFrame) {
-		const auto& [arena, frame] = arenaFrame;
-		size_t bottomOffset{};
-		size_t topOffset{};
-		size_t baseAddress{ (size_t)arena->allocation.block };
-		if (frame.isFlipped) {
-			bottomOffset = frame.stackOffset;
-			topOffset = arena->bottomOffset;
-		} else {
-			bottomOffset = arena->topOffset;
-			topOffset = frame.stackOffset;
-		}
-
-		size_t bottomPadding{
-			pstd::calcAddressAlignmentPadding<T>(baseAddress + bottomOffset)
-		};
-
+	size_t getAvailableCount(const FixedArenaFrame& frame) {
+		size_t baseAddress{ (size_t)frame.pArena->allocation.block };
 		uint32_t alignment{ alignof(T) };
-		size_t topPadding{ (baseAddress + topOffset) % alignment };
 
-		size_t alignedBottomOffset{ bottomOffset + bottomPadding };
-		size_t alignedTopOffset{
-			topOffset - topPadding
-		};	// increases in reverse direction
+		size_t alignedTopOffset{};
+		size_t alignedBottomOffset{};
+
+		if (frame.state.isFlipped) {
+			size_t topOffset{ frame.pArena->allocation.size };
+			size_t bottomOffset{ frame.pArena->topOffset };
+
+			size_t bottomPadding{ bottomOffset +
+								  ((bottomOffset + alignment) % alignment) };
+
+			size_t topPadding{ (baseAddress + topOffset) % alignment };
+
+			alignedBottomOffset = bottomOffset + bottomPadding;
+			alignedTopOffset = topOffset - topPadding;
+
+		} else {
+			alignedBottomOffset =
+				0;	// if this wasnt true, alloc would have asserted
+
+			size_t topOffset{ frame.state.scratchOffset };
+			size_t topPadding{ (baseAddress + topOffset) % alignment };
+
+			alignedTopOffset = topOffset + topPadding;
+		}
 
 		ASSERT(
 			alignedTopOffset >= alignedBottomOffset
@@ -106,91 +121,86 @@ namespace pstd {
 		FixedArenaFrame* arenaFrame, const size_t size, const uint32_t alignment
 	);
 	inline Allocation alloc(
-		FixedScratchArenaFrame* scratchArenaFrame,
+		FixedScratchArenaFrame* frame,
 		const size_t size,
 		const uint32_t alignment
 	) {
-		ASSERT(scratchArenaFrame);
-		FixedArenaFrame intermediateFrame{ .pArena = &scratchArenaFrame->arena,
-										   .frame = scratchArenaFrame->frame };
+		ASSERT(frame);
+		FixedArenaFrame intermediateFrame{ .pArena = &frame->arena,
+										   .state = frame->state };
 		Allocation allocation{ alloc(&intermediateFrame, size, alignment) };
-		scratchArenaFrame->frame = intermediateFrame.frame;
+		frame->state = intermediateFrame.state;
 		return allocation;
 	}
 
 	Allocation scratchAlloc(
-		FixedArenaFrame* arenaFrame, const size_t size, const uint32_t alignment
+		FixedArenaFrame* frame, const size_t size, const uint32_t alignment
 	);
 
 	inline Allocation scratchAlloc(
-		FixedScratchArenaFrame* scratchArenaFrame,
+		FixedScratchArenaFrame* frame,
 		const size_t size,
 		const uint32_t alignment
 	) {
-		ASSERT(scratchArenaFrame);
-		FixedArenaFrame intermediateFrame{ .pArena = &scratchArenaFrame->arena,
-										   .frame = scratchArenaFrame->frame };
+		ASSERT(frame);
+		FixedArenaFrame intermediateFrame{ .pArena = &frame->arena,
+										   .state = frame->state };
 		Allocation allocation{
 			scratchAlloc(&intermediateFrame, size, alignment)
 		};
-		scratchArenaFrame->frame = intermediateFrame.frame;
+		frame->state = intermediateFrame.state;
 		return allocation;
 	}
 
 	template<typename T>
-	Allocation alloc(FixedArenaFrame* arenaFrame, const size_t count = 1) {
-		ASSERT(arenaFrame);
+	Allocation alloc(FixedArenaFrame* frame, const size_t count = 1) {
+		ASSERT(frame);
 
 		size_t allocSize{ count * sizeof(T) };
-		return Allocation{ alloc(arenaFrame, allocSize, alignof(T)) };
+		return Allocation{ alloc(frame, allocSize, alignof(T)) };
 	}
 
 	template<typename T>
-	Allocation alloc(
-		FixedScratchArenaFrame* scratchArenaFrame, const size_t count = 1
-	) {
-		ASSERT(scratchArenaFrame);
+	Allocation alloc(FixedScratchArenaFrame* frame, const size_t count = 1) {
+		ASSERT(frame);
 
 		size_t allocSize{ count * sizeof(T) };
-		return Allocation{ alloc(scratchArenaFrame, allocSize, alignof(T)) };
+		return Allocation{ alloc(frame, allocSize, alignof(T)) };
 	}
 
+	template<typename T>
+	Allocation scratchAlloc(FixedArenaFrame* frame, const size_t count = 1) {
+		ASSERT(frame);
+
+		size_t allocSize{ count * sizeof(T) };
+		return Allocation{ scratchAlloc(frame, allocSize, alignof(T)) };
+	}
 	template<typename T>
 	Allocation
-		scratchAlloc(FixedArenaFrame* arenaFrame, const size_t count = 1) {
-		ASSERT(arenaFrame);
+		scratchAlloc(FixedScratchArenaFrame* frame, const size_t count = 1) {
+		ASSERT(frame);
 
 		size_t allocSize{ count * sizeof(T) };
-		return Allocation{ scratchAlloc(arenaFrame, allocSize, alignof(T)) };
-	}
-	template<typename T>
-	Allocation scratchAlloc(
-		FixedScratchArenaFrame* scratchArenaFrame, const size_t count = 1
-	) {
-		ASSERT(scratchArenaFrame);
-
-		size_t allocSize{ count * sizeof(T) };
-		return Allocation{
-			scratchAlloc(scratchArenaFrame, allocSize, alignof(T))
-		};
+		return Allocation{ scratchAlloc(frame, allocSize, alignof(T)) };
 	}
 
-	void* getNextAllocAddress(
-		const FixedArenaFrame& arenaFrame, uint32_t alignment
-	);
+	// padding is added to offset
+	void*
+		getAlignedOffset(const FixedArenaFrame& arenaFrame, uint32_t alignment);
 
-	void* getNextScratchAllocAddress(
+	// padding is subtracted to offset
+	void* getAlignedScratchOffset(
 		const FixedArenaFrame& arenaFrame, uint32_t alignment
 	);
 
 	template<typename T>
-	void* getNextAllocAddress(const FixedArenaFrame& arenaFrame) {
-		return getNextAllocAddress(arenaFrame, alignof(T));
+	void* getAlignedOffset(const FixedArenaFrame& arenaFrame) {
+		return getAlignedOffset(arenaFrame, alignof(T));
 	}
 
 	template<typename T>
-	void* getNextScratchAllocAddress(const FixedArenaFrame& arenaFrame) {
-		return getNextScratchAllocAddress(arenaFrame, alignof(T));
+	void* getAlignedScratchOffset(const FixedArenaFrame& arenaFrame) {
+		return getAlignedScratchOffset(arenaFrame, alignof(T));
 	}
 
 	inline void reset(FixedArena* arena) {

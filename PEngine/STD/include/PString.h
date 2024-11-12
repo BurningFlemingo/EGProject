@@ -35,20 +35,27 @@ namespace pstd {
 		return string;
 	}
 
-	String createString(FixedArena* arena, const String& string);
-	inline String createString(FixedArena* arena, const char* string) {
-		return createString(arena, createString(string));
+	String createString(FixedArenaFrame&& arenaFrame, const String& string);
+	inline String
+		createString(FixedArenaFrame&& arenaFrame, const char* string) {
+		return createString(
+			{ arenaFrame.pArena, arenaFrame.state }, createString(string)
+		);
 	}
 
 	bool stringsMatch(const String& a, const String& b);
 
-	String makeNullTerminated(FixedArena* buffer, String string);
+	String makeNullTerminated(FixedArenaFrame&& arenaFrame, String string);
 
-	inline const char* createCString(FixedArena* arena, const String& string) {
-		return makeNullTerminated(arena, string).buffer;
+	inline const char*
+		createCString(FixedArenaFrame&& arenaFrame, const String& string) {
+		return makeNullTerminated(
+				   { arenaFrame.pArena, arenaFrame.state }, string
+		)
+			.buffer;
 	}
 
-	String concat(pstd::FixedArena* buffer, String a, String b);
+	String concat(pstd::FixedArenaFrame&& buffer, String a, String b);
 
 	bool substringMatchForward(
 		const String& a, const String& b, size_t* outIndex = nullptr
@@ -72,18 +79,24 @@ namespace pstd {
 		);
 	}
 
-	String formatString(pstd::FixedArena* buffer, const String& format);
+	String
+		formatString(pstd::FixedArenaFrame&& arenaFrame, const String& format);
 
 	template<typename T>
-	String formatString(pstd::FixedArena* buffer, const String& format, T val);
+	String formatString(
+		pstd::FixedArenaFrame&& arenaFrame, const String& format, T val
+	);
 
 	template<typename T, typename... Args>
 	String formatString(
-		pstd::FixedArena* buffer, const String& format, T val, Args... args
+		pstd::FixedArenaFrame&& arenaFrame,
+		const String& format,
+		T val,
+		Args... args
 	) {
-		String newFormat{ formatString(buffer, format, val) };
+		String newFormat{ formatString(arenaFrame, format, val) };
 
-		String res{ formatString(buffer, newFormat, args...) };
+		String res{ formatString(arenaFrame, newFormat, args...) };
 
 		return res;
 	}
@@ -96,19 +109,34 @@ namespace pstd {
 		return stringsMatch(createString(a), createString(b));
 	}
 
-	inline String formatString(pstd::FixedArena* buffer, const char* format) {
-		return formatString(buffer, createString(format));
+	inline String
+		formatString(pstd::FixedArenaFrame&& arenaFrame, const char* format) {
+		return formatString(
+			{ arenaFrame.pArena, arenaFrame.state }, createString(format)
+		);
 	}
 
 	template<typename T>
-	String formatString(pstd::FixedArena* buffer, const char* format, T val) {
-		return formatString(buffer, createString(format), val);
+	String formatString(
+		pstd::FixedArenaFrame&& arenaFrame, const char* format, T val
+	) {
+		return formatString(
+			{ arenaFrame.pArena, arenaFrame.state }, createString(format), val
+		);
 	}
 
 	template<typename T, typename... Args>
 	String formatString(
-		pstd::FixedArena* buffer, const char* format, T val, Args... args
+		pstd::FixedArenaFrame&& arenaFrame,
+		const char* format,
+		T val,
+		Args... args
 	) {
-		return formatString(buffer, createString(format), val, args...);
+		return formatString(
+			{ arenaFrame.pArena, arenaFrame.state },
+			createString(format),
+			val,
+			args...
+		);
 	}
 }  // namespace pstd
