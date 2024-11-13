@@ -9,9 +9,9 @@ using namespace pstd::internal;
 
 namespace {
 	pstd::Allocation
-		bottomAlloc(pstd::FixedArena* arena, size_t size, uint32_t alignment);
+		bottomAlloc(pstd::Arena* arena, size_t size, uint32_t alignment);
 	pstd::Allocation
-		topAlloc(pstd::FixedArena* arena, size_t size, uint32_t alignment);
+		topAlloc(pstd::Arena* arena, size_t size, uint32_t alignment);
 
 	void* getAlignedBottomOffset(
 		size_t baseAddress,
@@ -28,15 +28,15 @@ namespace {
 	);
 }  // namespace
 
-pstd::FixedArena
-	pstd::allocateFixedArena(AllocationRegistry* registry, const size_t size) {
+pstd::Arena
+	pstd::allocateArena(AllocationRegistry* registry, const size_t size) {
 	ASSERT(registry);
 
 	Allocation arenaAllocation{ heapAlloc(registry, size) };
 
-	return FixedArena{ .allocation = arenaAllocation, .isAllocated = true };
+	return Arena{ .allocation = arenaAllocation, .isAllocated = true };
 }
-void pstd::freeFixedArena(AllocationRegistry* registry, FixedArena* arena) {
+void pstd::freeArena(AllocationRegistry* registry, Arena* arena) {
 	ASSERT(arena);
 	ASSERT(arena->allocation.block);
 	if (arena->allocation.ownsMemory) {
@@ -46,22 +46,18 @@ void pstd::freeFixedArena(AllocationRegistry* registry, FixedArena* arena) {
 }
 
 Allocation
-	pstd::alloc(FixedArenaFrame* arenaFrame, size_t size, uint32_t alignment) {
+	pstd::alloc(ArenaFrame* arenaFrame, size_t size, uint32_t alignment) {
 	ASSERT(arenaFrame);
-	FixedArena* pArena{ arenaFrame->pArena };
-	FixedArenaFrameState* pState{ &arenaFrame->state };
+	Arena* pArena{ arenaFrame->pArena };
+	ArenaFrameState* pState{ &arenaFrame->state };
 
-	FixedArena tempArena{ pArena };
+	Arena tempArena{ pArena };
 
 	if (pState->isFlipped) {
 		Allocation allocation{ topAlloc(pArena, size, alignment) };
-		pArena->topOffset = tempArena.topOffset;  // we only persist the returns
+		pArena->topOffset = tempArena.topOffset;
 
-		pState->scratchOffset =
-			tempArena.bottomOffset;	 // stackOffset tracks the temps, since
-									 // topOffset is the retun, the stackOffset
-									 // is the bottomOffset
-
+		pState->scratchOffset = tempArena.bottomOffset;
 		return allocation;
 	}
 
@@ -72,13 +68,13 @@ Allocation
 }
 
 Allocation pstd::scratchAlloc(
-	FixedArenaFrame* arenaFrame, size_t size, uint32_t alignment
+	ArenaFrame* arenaFrame, size_t size, uint32_t alignment
 ) {
 	ASSERT(arenaFrame);
-	FixedArena* pArena{ arenaFrame->pArena };
-	FixedArenaFrameState* pState{ &arenaFrame->state };
+	Arena* pArena{ arenaFrame->pArena };
+	ArenaFrameState* pState{ &arenaFrame->state };
 
-	FixedArena tempArena{ pArena };
+	Arena tempArena{ pArena };
 	if (pState->isFlipped) {
 		Allocation allocation{ bottomAlloc(pArena, size, alignment) };
 
@@ -92,7 +88,7 @@ Allocation pstd::scratchAlloc(
 	return allocation;
 }
 
-void* pstd::getAlignedOffset(const FixedArenaFrame& frame, uint32_t alignment) {
+void* pstd::getAlignedOffset(const ArenaFrame& frame, uint32_t alignment) {
 	size_t baseAddress{ (size_t)frame.pArena->allocation.block };
 
 	if (frame.state.isFlipped) {
@@ -110,7 +106,7 @@ void* pstd::getAlignedOffset(const FixedArenaFrame& frame, uint32_t alignment) {
 }
 
 void* pstd::getAlignedScratchOffset(
-	const FixedArenaFrame& frame, uint32_t alignment
+	const ArenaFrame& frame, uint32_t alignment
 ) {
 	size_t baseAddress{ (size_t)frame.pArena->allocation.block };
 
@@ -128,7 +124,7 @@ void* pstd::getAlignedScratchOffset(
 
 namespace {
 	pstd::Allocation bottomAlloc(
-		pstd::FixedArena* arena, const size_t size, const uint32_t alignment
+		pstd::Arena* arena, const size_t size, const uint32_t alignment
 	) {
 		ASSERT(arena);
 		ASSERT(arena->isAllocated);
@@ -155,7 +151,7 @@ namespace {
 	}
 
 	pstd::Allocation topAlloc(
-		pstd::FixedArena* arena, const size_t size, const uint32_t alignment
+		pstd::Arena* arena, const size_t size, const uint32_t alignment
 	) {
 		ASSERT(arena);
 		ASSERT(arena->isAllocated);

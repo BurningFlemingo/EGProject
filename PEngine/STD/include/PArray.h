@@ -7,7 +7,7 @@
 
 namespace pstd {
 	template<typename T, typename I = size_t>
-	struct FixedArray {	 // <container type, index type>
+	struct Array {	// <container type, index type>
 		using ElementType = T;
 
 		const T& operator[](I index) const {
@@ -107,7 +107,7 @@ namespace pstd {
 	}
 
 	template<typename T, typename I>
-	void fill(FixedArray<T, I>* arena, T val) {
+	void fill(Array<T, I>* arena, T val) {
 		for (size_t i{}; i < pstd::getCapacity(*arena); i++) {
 			(*arena)[(I)i] = val;
 		}

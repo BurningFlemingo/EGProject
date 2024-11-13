@@ -98,7 +98,7 @@ void pstd::shallowMove(Allocation* dst, const Allocation& src) {
 }
 
 pstd::Allocation pstd::concat(
-	FixedArena* arena,
+	ArenaFrame&& frame,
 	const Allocation& a,
 	const Allocation& b,
 	uint32_t alignment
@@ -110,7 +110,7 @@ pstd::Allocation pstd::concat(
 
 	ASSERT(allocSize >= a.size);  // overflow check
 
-	Allocation allocation{ pstd::alloc(arena, allocSize, alignment) };
+	Allocation allocation{ pstd::alloc(&frame, allocSize, alignment) };
 
 	pstd::shallowMove(&allocation, a);
 
@@ -121,6 +121,25 @@ pstd::Allocation pstd::concat(
 	shallowMove(&headAllocation, b);
 
 	return allocation;
+}
+
+Allocation pstd::coalesce(const Allocation& a, const Allocation& b) {
+	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
+	ASSERT(~(a.isStackAllocated ^ b.isStackAllocated));
+
+	size_t aEnd{ (size_t)a.block + (size_t)a.size };
+	size_t bEnd{ (size_t)b.block + (size_t)b.size };
+	if (aEnd == (size_t)b.block) {
+		return Allocation{ .block = a.block,
+						   .size = a.size + b.size,
+						   .ownsMemory = a.ownsMemory,
+						   .isStackAllocated = a.isStackAllocated };
+	}
+	ASSERT(bEnd == (size_t)a.block);
+	return Allocation{ .block = b.block,
+					   .size = b.size + a.size,
+					   .ownsMemory = b.ownsMemory,
+					   .isStackAllocated = b.isStackAllocated };
 }
 
 AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {

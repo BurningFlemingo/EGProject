@@ -6,14 +6,14 @@ namespace {
 }
 
 namespace pstd {
-	struct FixedArena;
+	struct ArenaFrame;
 }
 
 namespace pstd {
 
 	struct Allocation {
 		void* block;
-		size_t size;  // always in bytes
+		uint32_t size;	// always in bytes
 		bool ownsMemory;  // if true, memory was allocated from the system
 		const bool isStackAllocated;
 	};
@@ -59,16 +59,19 @@ namespace pstd {
 	void shallowMove(Allocation* dst, const Allocation& src);
 
 	Allocation concat(
-		FixedArena* arena,
+		ArenaFrame&& arenaFrame,
 		const Allocation& a,
 		const Allocation& b,
 		uint32_t alignment
 	);
 
+	Allocation coalesce(const Allocation& a, const Allocation& b);
+
 	template<typename T>
-	Allocation
-		concat(FixedArena* arena, const Allocation& a, const Allocation& b) {
-		return concat(arena, a, b, alignof(T));
+	Allocation concat(
+		ArenaFrame&& arenaFrame, const Allocation& a, const Allocation& b
+	) {
+		return concat(arenaFrame, a, b, alignof(T));
 	}
 
 }  // namespace pstd

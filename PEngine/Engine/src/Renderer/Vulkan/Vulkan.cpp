@@ -24,15 +24,17 @@ namespace {
 Renderer::State* Renderer::startup(
 	pstd::FixedArenaFrame&& arenaFrame, const Platform::State& platformState
 ) {
-	VkInstance instance{
-		createInstance(pstd::flip({ arenaFrame.pArena, arenaFrame.frame }))
-	};
+	VkInstance instance{ createInstance(
+		pstd::makeFlipped({ arenaFrame.pArena, arenaFrame.state })
+	) };
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
 	Device device{ createDevice(
-		pstd::flip({ arenaFrame.pArena, arenaFrame.frame }), instance, surface
+		pstd::makeFlipped({ arenaFrame.pArena, arenaFrame.state }),
+		instance,
+		surface
 	) };
 
 	pstd::Allocation stateAllocation{ pstd::alloc<State>(&arenaFrame) };

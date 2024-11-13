@@ -82,7 +82,7 @@ pstd::FixedArray<const char*> findExtensions(pstd::FixedArenaFrame&& arenaFrame
 
 	pstd::FixedArray<const char*> res{ .allocation = pstd::concat<const char*>(
 										   { arenaFrame.pArena,
-											 arenaFrame.frame },
+											 arenaFrame.state },
 										   foundRequiredExtensions.allocation,
 										   foundOptionalExtensions.allocation
 									   ) };

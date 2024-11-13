@@ -11,14 +11,15 @@
 #include "PContainer.h"
 #include "PMemory.h"
 
-VkInstance createInstance(pstd::FixedArenaFrame&& arenaFrame) {
-	pstd::FixedArray<const char*> foundExtensions{ findExtensions(
-		pstd::makeFlipped({ arenaFrame.pArena, arenaFrame.frame })
-	) };
+VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
+	pstd::Array<const char*> foundExtensions{ findExtensions(pstd::makeFlipped(
+		pstd::ArenaFrame{ arenaFrame.pArena, arenaFrame.state }
+	)) };
 
-	pstd::FixedArray<const char*> foundValidationLayers{ findValidationLayers(
-		pstd::makeFlipped({ arenaFrame.pArena, arenaFrame.frame })
-	) };
+	pstd::Array<const char*> foundValidationLayers{
+		findValidationLayers(pstd::makeFlipped(pstd::ArenaFrame{
+			arenaFrame.pArena, arenaFrame.state }))
+	};
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",

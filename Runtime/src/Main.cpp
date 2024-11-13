@@ -26,20 +26,18 @@ namespace {
 }  // namespace
 
 int main() {
-	// TODO: clean up code
 	pstd::AllocationRegistry allocationRegistry{ pstd::createAllocationRegistry(
 	) };
+	size_t scratchSize{ 1024 * 1024 };
 	pstd::FixedArena engineArena{ pstd::allocateFixedArena(
-		&allocationRegistry, peng::internal::getSizeofState()
+		&allocationRegistry, peng::internal::getSizeofState() + scratchSize
 	) };
-	pstd::FixedArena scratchArena{
-		pstd::allocateFixedArena(&allocationRegistry, 1024 * 1024)
-	};
 
 	peng::internal::State* engineState{
-		peng::internal::startup(&allocationRegistry, &engineArena)
+		peng::internal::startup(&allocationRegistry, { &engineArena })
 	};
 
+	// TODO: clean up code
 	GameDll gameDll{ loadGameDll(scratchArena) };
 	Game::State* gameState{ gameDll.api.startup() };
 

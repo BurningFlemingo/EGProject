@@ -29,13 +29,12 @@ namespace pstd {
 	}
 
 	template<typename T>
-	FixedArray<T> getContents(const CircularBuffer<T>& buffer) {
+	Array<T> getContents(const CircularBuffer<T>& buffer) {
 		size_t address{ (size_t)buffer.allocation.block + buffer.tailIndex };
 		size_t count{ getCount(buffer) };
 		pstd::Allocation bufferAllocation{};
-		return pstd::FixedArray<T>{
-			.allocation = { .block = (void*)address, .size = count * sizeof(T) }
-		};
+		return pstd::Array<T>{ .allocation = { .block = (void*)address,
+											   .size = count * sizeof(T) } };
 	}
 
 	template<typename T>

@@ -4,5 +4,4 @@
 
 pstd::BoundedArray<const char*> getDebugExtensions();
 
-pstd::FixedArray<const char*> findExtensions(pstd::FixedArenaFrame&& arenaFrame
-);
+pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame);

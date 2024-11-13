@@ -60,8 +60,6 @@ size_t peng::internal::getSizeofState() {
 peng::internal::State* peng::internal::startup(
 	pstd::AllocationRegistry* registry, pstd::FixedArenaFrame&& arenaFrame
 ) {
-	// TODO: for possible alignment errors, find a better solution
-
 	pstd::FixedArena subsystemArena{
 		pstd::allocateFixedArena(registry, getSizeofSubsystems())
 	};

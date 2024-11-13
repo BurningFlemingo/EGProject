@@ -9,36 +9,34 @@
 using namespace pstd;
 
 namespace {
-	size_t pushUInt64AsString(
-		pstd::FixedArenaFrame&& arenaFrame, uint64_t number
+	Allocation pushUInt64AsString(
+		pstd::ArenaFrame&& arenaFrame, uint64_t number
 	);	// returns size of string pushed
-	size_t pushInt64AsString(
-		pstd::FixedArenaFrame&& arenaFrame, int64_t number
+	Allocation pushInt64AsString(
+		pstd::ArenaFrame&& arenaFrame, int64_t number
 	);	// returns size of string pushed
-	size_t pushDoubleAsString(
-		pstd::FixedArenaFrame&& arenaFrame,
+	Allocation pushDoubleAsString(
+		pstd::ArenaFrame&& arenaFrame,
 		double number,
 		uint32_t precision = 5
 	);	// returns size of string pushed
 
-	size_t pushString(
-		pstd::FixedArenaFrame&& arenaFrame, const String& string
+	Allocation pushString(
+		pstd::ArenaFrame&& arenaFrame, const String& string
 	);	// returns size of string pushed
 
-	size_t pushStringUntilControlCharacter(
-		pstd::FixedArenaFrame&& arenaFrame,
+	Allocation pushStringUntilControlCharacter(
+		pstd::ArenaFrame&& arenaFrame,
 		const String& format,
 		size_t* outFormatCharactersProccessed,
 		char* outControlCharacter
 	);
 	// returns size of string pushed
 
-	size_t pushLetter(pstd::FixedArenaFrame&& arenaFrame, char letter);
+	Allocation pushLetter(pstd::ArenaFrame&& arenaFrame, char letter);
 }  // namespace
 
-String pstd::createString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& string
-) {
+String pstd::createString(pstd::ArenaFrame&& arenaFrame, const String& string) {
 	Allocation newStringAllocation{
 		pstd::alloc<char>(&arenaFrame, string.size)
 	};
@@ -51,9 +49,7 @@ String pstd::createString(
 	return res;
 }
 
-String pstd::makeNullTerminated(
-	pstd::FixedArenaFrame&& arenaFrame, String string
-) {
+String pstd::makeNullTerminated(pstd::ArenaFrame&& arenaFrame, String string) {
 	ASSERT(string.buffer);
 	if (string.size == 0) {
 		return string;
@@ -71,7 +67,7 @@ String pstd::makeNullTerminated(
 		pstd::alloc<char>(&arenaFrame, lettersToCopy)
 	};
 	pstd::memCpy(stringAllocation.block, string.buffer, lettersToCopy);
-	pushLetter({ arenaFrame.pArena, arenaFrame.state }, '\0');
+	pushLetter(ArenaFrame{ arenaFrame.pArena, arenaFrame.state }, '\0');
 
 	string = String{ .buffer = (const char*)stringAllocation.block,
 					 .size = stringAllocation.size };
@@ -88,19 +84,19 @@ bool pstd::stringsMatch(const String& a, const String& b) {
 	return memcmp(a.buffer, b.buffer, a.size) == 0;
 }
 
-String pstd::concat(pstd::FixedArenaFrame&& arenaFrame, String a, String b) {
+String pstd::concat(pstd::ArenaFrame&& arenaFrame, String a, String b) {
 	void* const stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
 
-	size_t stringSize{ pushString(buffer, a) };
+	size_t stringSize{
+		pushString(pstd::ArenaFrame{ arenaFrame.pArena, arenaFrame.state }, a)
+	};
 	stringSize += pushString(buffer, b);
 
 	String res{ .buffer = (const char*)stringAddress, .size = stringSize };
 	return res;
 }
 
-String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format
-) {
+String pstd::formatString(pstd::ArenaFrame&& arenaFrame, const String& format) {
 	ASSERT(buffer);
 
 	const void* stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
@@ -112,7 +108,7 @@ String pstd::formatString(
 
 template<typename T>
 String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, T val
+	pstd::ArenaFrame&& arenaFrame, const String& format, T val
 ) {
 	ASSERT(buffer);
 	const void* stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
@@ -155,7 +151,7 @@ String pstd::formatString(
 
 template<>
 String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, pstd::String val
+	pstd::ArenaFrame&& arenaFrame, const String& format, pstd::String val
 ) {
 	ASSERT(buffer);
 	const void* stringAddress{ pstd::getNextAllocAddress<char>(*buffer) };
@@ -183,7 +179,7 @@ String pstd::formatString(
 
 template<>
 String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, const char* val
+	pstd::ArenaFrame&& arenaFrame, const String& format, const char* val
 ) {
 	return formatString(buffer, format, createString(val));
 }
@@ -267,7 +263,7 @@ bool pstd::substringMatchBackward(
 
 namespace {
 	size_t pushDoubleAsString(
-		pstd::FixedArenaFrame&& arenaFrame, double number, uint32_t precision
+		pstd::ArenaFrame&& arenaFrame, double number, uint32_t precision
 	) {
 		ASSERT(precision < 128);  // to avoid a loop that blows out the buffer
 		ASSERT(buffer);
@@ -291,8 +287,7 @@ namespace {
 		return stringSize;
 	}
 
-	size_t
-		pushInt64AsString(pstd::FixedArenaFrame&& arenaFrame, int64_t number) {
+	size_t pushInt64AsString(pstd::ArenaFrame&& arenaFrame, int64_t number) {
 		ASSERT(buffer);
 
 		size_t stringSize{};
@@ -308,9 +303,7 @@ namespace {
 		return stringSize;
 	}
 
-	size_t pushUInt64AsString(
-		pstd::FixedArenaFrame&& arenaFrame, uint64_t number
-	) {
+	size_t pushUInt64AsString(pstd::ArenaFrame&& arenaFrame, uint64_t number) {
 		ASSERT(buffer);
 
 		uint32_t count{ 1 };
@@ -324,7 +317,7 @@ namespace {
 			}
 		}
 
-		pstd::FixedArray<char> letterArray{
+		pstd::Array<char> letterArray{
 			.allocation = pstd::alloc<char>(buffer, count),
 		};
 
@@ -338,26 +331,28 @@ namespace {
 		return letterArray.allocation.size;
 	}
 
-	size_t pushLetter(pstd::FixedArenaFrame&& arenaFrame, char letter) {
+	size_t pushLetter(pstd::ArenaFrame&& arenaFrame, char letter) {
 		if (pstd::getAvailableCount<char>(*buffer) == 0) {
 			return 0;
 		}
-		pstd::FixedArray<char> letterArray{ .allocation =
-												pstd::alloc<char>(buffer, 1) };
+		pstd::Array<char> letterArray{ .allocation =
+										   pstd::alloc<char>(buffer, 1) };
 		letterArray[0] = letter;
 		return 1;
 	}
 
-	size_t
-		pushString(pstd::FixedArenaFrame&& arenaFrame, const String& string) {
-		pstd::Allocation allocation{ pstd::alloc<char>(buffer, string.size) };
+	pstd::Allocation
+		pushString(pstd::ArenaFrame&& arenaFrame, const String& string) {
+		pstd::Allocation allocation{
+			pstd::alloc<char>(&arenaFrame, string.size)
+		};
 
 		memcpy(allocation.block, string.buffer, allocation.size);
-		return allocation.size;
+		return allocation;
 	}
 
-	size_t pushStringUntilControlCharacter(
-		pstd::FixedArenaFrame&& arenaFrame,
+	Allocation pushStringUntilControlCharacter(
+		pstd::ArenaFrame&& arenaFrame,
 		const String& format,
 		size_t* outFormatCharactersProccessed,
 		char* outControlCharacter
@@ -398,21 +393,21 @@ namespace {
 }  // namespace
 
 template String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, uint64_t val
+	pstd::ArenaFrame&& arenaFrame, const String& format, uint64_t val
 );
 template String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, int64_t val
+	pstd::ArenaFrame&& arenaFrame, const String& format, int64_t val
 );
 template String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, double val
+	pstd::ArenaFrame&& arenaFrame, const String& format, double val
 );
 
 template String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, uint32_t val
+	pstd::ArenaFrame&& arenaFrame, const String& format, uint32_t val
 );
 template String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, int32_t val
+	pstd::ArenaFrame&& arenaFrame, const String& format, int32_t val
 );
 template String pstd::formatString(
-	pstd::FixedArenaFrame&& arenaFrame, const String& format, float val
+	pstd::ArenaFrame&& arenaFrame, const String& format, float val
 );
