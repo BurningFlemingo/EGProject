@@ -24,10 +24,10 @@ namespace {
 		MemoryPool* next;
 	};
 
-	MemoryPool* createMemoryPool(size_t size);
+	MemoryPool* createMemoryPool(uint32_t size);
 	void findFreeBlock(
 		MemoryPool* pool,
-		size_t size,
+		uint32_t requiredSize,
 		FreelistBlock** outPrevFreeBlock,
 		FreelistBlock** outFreeBlock
 	);
@@ -71,9 +71,9 @@ void pstd::memMov(void* dst, const void* src, size_t size) {
 }
 
 uint32_t pstd::calcAddressAlignmentPadding(
-	const void* address, const uint32_t alignment
+	uintptr_t address, const uint32_t alignment
 ) {
-	uint32_t bytesUnaligned{ (uint32_t)((size_t)address % alignment) };
+	auto bytesUnaligned{ ncast<uint32_t>(address % alignment) };
 	// the last % alignment is to set the bytes required to align to zero if
 	// the address is already aligned
 	return (alignment - bytesUnaligned) % alignment;
@@ -103,7 +103,7 @@ pstd::Allocation pstd::concat(
 	const Allocation& b,
 	uint32_t alignment
 ) {
-	ASSERT(arena);
+	ASSERT(frame);
 	ASSERT(a.block);
 	ASSERT(b.block);
 	size_t allocSize{ a.size + b.size };
@@ -115,7 +115,7 @@ pstd::Allocation pstd::concat(
 	pstd::shallowMove(&allocation, a);
 
 	Allocation headAllocation{ allocation };
-	headAllocation.block = (void*)((size_t)headAllocation.block + a.size);
+	headAllocation.block = headAllocation.block + a.size;
 	headAllocation.size -= a.size;
 
 	shallowMove(&headAllocation, b);
@@ -127,17 +127,21 @@ Allocation pstd::coalesce(const Allocation& a, const Allocation& b) {
 	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
 	ASSERT(~(a.isStackAllocated ^ b.isStackAllocated));
 
-	size_t aEnd{ (size_t)a.block + (size_t)a.size };
-	size_t bEnd{ (size_t)b.block + (size_t)b.size };
-	if (aEnd == (size_t)b.block) {
+	auto aEnd{ rcast<uintptr_t>(a.block + a.size) };
+	auto bEnd{ rcast<uintptr_t>(b.block + b.size) };
+	uint32_t size{ cast<uint32_t>(a.size + b.size) };
+	if (aEnd == rcast<uintptr_t>(b.block)) {
+		ASSERT(a.block + size == b.block + b.size);
 		return Allocation{ .block = a.block,
-						   .size = a.size + b.size,
+						   .size = size,
 						   .ownsMemory = a.ownsMemory,
 						   .isStackAllocated = a.isStackAllocated };
 	}
-	ASSERT(bEnd == (size_t)a.block);
+	ASSERT(bEnd == a.block);
+
+	ASSERT(a.block + size == a.block + a.size);
 	return Allocation{ .block = b.block,
-					   .size = b.size + a.size,
+					   .size = size,
 					   .ownsMemory = b.ownsMemory,
 					   .isStackAllocated = b.isStackAllocated };
 }
@@ -148,7 +152,7 @@ AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {
 }
 
 Allocation
-	pstd::internal::heapAlloc(AllocationRegistry* registry, size_t size) {
+	pstd::internal::heapAlloc(AllocationRegistry* registry, uint32_t size) {
 	ASSERT(registry);
 
 	AllocationLimits allocLimits{ getSystemAllocationLimits() };
@@ -179,16 +183,16 @@ Allocation
 		findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
 	}
 
-	void* commitAddr{ (void*)alignDownToPageBoundary((size_t
-	)freeBlock->usable.block) };
+	auto* commitAddr{
+		rcast<uint8_t*>(alignDownToPageBoundary(freeBlock->usable.block))
+	};
 
-	size_t commitSize{ alignUpToPageBoundary(
-		size + (size_t)freeBlock->usable.block - (size_t)commitAddr
-	) };
+	size_t commitSize{
+		alignUpToPageBoundary(size + freeBlock->usable.block - commitAddr)
+	};
 
-	size_t commitHeadPtr{ (size_t)commitAddr + commitSize };
-	size_t freelistHeadPtr{ (size_t)pool->allocation.block +
-							pool->allocation.size };
+	uint8_t* commitHeadPtr{ commitAddr + commitSize };
+	uint8_t* freelistHeadPtr{ pool->allocation.block + pool->allocation.size };
 	if (commitHeadPtr > freelistHeadPtr) {
 		pool->next = createMemoryPool(size);
 		pool = pool->next;
@@ -199,12 +203,12 @@ Allocation
 		commitSize, ALLOC_TYPE_COMMIT, commitAddr
 	);	// TODO: handle tracking, this will overcommit
 
-	void* newFreeBlockAddr{ (void*)((size_t)freeBlock->usable.block + size) };
-	new (newFreeBlockAddr)
-		FreelistBlock{ .usable = { .block = (void*)((size_t)newFreeBlockAddr +
-													sizeof(FreelistBlock)),
-								   .size = freeBlock->usable.size - size },
-					   .next = freeBlock->next };
+	uint8_t* newFreeBlockAddr{ freeBlock->usable.block + size };
+	new (newFreeBlockAddr) FreelistBlock{
+		.usable = { .block = newFreeBlockAddr + sizeof(FreelistBlock),
+					.size = freeBlock->usable.size - size },
+		.next = freeBlock->next
+	};
 	if (prevFreeBlock) {
 		prevFreeBlock->next = (FreelistBlock*)newFreeBlockAddr;
 	} else {
@@ -221,11 +225,11 @@ void pstd::internal::heapFree(
 ) {}
 
 namespace {
-	MemoryPool* createMemoryPool(size_t size) {
+	MemoryPool* createMemoryPool(uint32_t size) {
 		AllocationLimits allocLimits{ pstd::getSystemAllocationLimits() };
-		size_t allocSize{ ((size + allocLimits.pageSize) / allocLimits.pageSize
-						  ) *
-						  allocLimits.pageSize };
+		uint32_t allocSize{ ((size + allocLimits.pageSize) /
+							 allocLimits.pageSize) *
+							allocLimits.pageSize };
 		allocSize = max(allocSize, allocLimits.minAllocSize);
 
 		const Allocation poolAllocation{
@@ -236,28 +240,28 @@ namespace {
 		MemoryPool* pool{ new (poolAllocation.block) MemoryPool{
 			.allocation = poolAllocation,
 		} };
-		size_t freelistHeaderHead{ (size_t)poolAllocation.block +
-								   sizeof(MemoryPool) };
+		uint8_t* freelistHeaderHead{ poolAllocation.block +
+									 sizeof(MemoryPool) };
 
-		pool->firstFreeBlock =
-			new ((void*)freelistHeaderHead) FreelistBlock{ .usable{
-				.block = (void*)(freelistHeaderHead + sizeof(FreelistBlock)),
-				.size = poolAllocation.size - sizeof(FreelistBlock) -
-					sizeof(MemoryPool) } };
+		pool->firstFreeBlock = new ((void*)freelistHeaderHead) FreelistBlock{
+			.usable{ .block = freelistHeaderHead + sizeof(FreelistBlock),
+					 .size = poolAllocation.size - sizeof(FreelistBlock) -
+						 sizeof(MemoryPool) }
+		};
 
 		return pool;
 	}
 
 	void findFreeBlock(
 		MemoryPool* pool,
-		size_t size,
+		uint32_t requiredSize,
 		FreelistBlock** outPrevFreeBlock,
 		FreelistBlock** outFreeBlock
 	) {
 		FreelistBlock* prevFreeBlock{ nullptr };
 		FreelistBlock* freeBlock{ pool->firstFreeBlock };
 		while (freeBlock) {
-			if (freeBlock->usable.size >= size) {
+			if (freeBlock->usable.size >= requiredSize) {
 				break;
 			}
 			prevFreeBlock = freeBlock;

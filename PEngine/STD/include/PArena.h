@@ -161,14 +161,6 @@ namespace pstd {
 		return Allocation{ scratchAlloc(frame, allocSize, alignof(T)) };
 	}
 
-	// padding is added to offset
-	void* getAlignedOffset(const ArenaFrame& arenaFrame, uint32_t alignment);
-
-	// padding is subtracted to offset
-	void* getAlignedScratchOffset(
-		const ArenaFrame& arenaFrame, uint32_t alignment
-	);
-
 	template<typename T>
 	void* getAlignedOffset(const ArenaFrame& arenaFrame) {
 		return getAlignedOffset(arenaFrame, alignof(T));

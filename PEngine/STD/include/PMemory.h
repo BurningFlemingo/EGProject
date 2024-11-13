@@ -12,10 +12,10 @@ namespace pstd {
 namespace pstd {
 
 	struct Allocation {
-		void* block;
+		uint8_t* block;
 		uint32_t size;	// always in bytes
 		bool ownsMemory;  // if true, memory was allocated from the system
-		const bool isStackAllocated;
+		bool isStackAllocated;
 	};
 
 	struct AllocationLimits {
@@ -36,15 +36,23 @@ namespace pstd {
 	void memMov(void* dst, const void* src, size_t size);
 
 	AllocationLimits getSystemAllocationLimits();
-	size_t alignUpToPageBoundary(size_t size);
-	size_t alignDownToPageBoundary(size_t size);
+
+	uintptr_t alignUpToPageBoundary(uintptr_t address);
+	uintptr_t alignDownToPageBoundary(uintptr_t address);
+
+	inline uintptr_t alignUpToPageBoundary(void* address) {
+		return alignUpToPageBoundary(rcast<uintptr_t>(address));
+	}
+	inline uintptr_t alignDownToPageBoundary(void* address) {
+		return alignDownToPageBoundary(rcast<uintptr_t>(address));
+	}
 
 	uint32_t calcAddressAlignmentPadding(
-		const void* address, const uint32_t alignment
+		uintptr_t address, const uint32_t alignment
 	);
 
 	template<typename T>
-	uint32_t calcAddressAlignmentPadding(const void* address) {
+	uint32_t calcAddressAlignmentPadding(uintptr_t address) {
 		uint32_t alignment{ alignof(T) };
 		return calcAddressAlignmentPadding(address, alignment);
 	}

@@ -13,17 +13,17 @@ namespace {
 	pstd::Allocation
 		topAlloc(pstd::Arena* arena, size_t size, uint32_t alignment);
 
-	void* getAlignedBottomOffset(
-		size_t baseAddress,
-		size_t bottomOffset,
-		size_t topOffset,
+	uintptr_t getAlignedBottomOffset(
+		uint32_t baseAddress,
+		uint32_t bottomOffset,
+		uint32_t topOffset,
 		uint32_t alignment
 	);
 
-	void* getAlignedTopOffset(
-		size_t baseAddress,
-		size_t bottomOffset,
-		size_t topOffset,
+	uintptr_t getAlignedTopOffset(
+		uint32_t baseAddress,
+		uint32_t bottomOffset,
+		uint32_t topOffset,
 		uint32_t alignment
 	);
 }  // namespace
@@ -51,19 +51,19 @@ Allocation
 	Arena* pArena{ arenaFrame->pArena };
 	ArenaFrameState* pState{ &arenaFrame->state };
 
-	Arena tempArena{ pArena };
+	Arena* pTempArena{ pArena };
 
 	if (pState->isFlipped) {
-		Allocation allocation{ topAlloc(pArena, size, alignment) };
-		pArena->topOffset = tempArena.topOffset;
+		Allocation allocation{ topAlloc(pTempArena, size, alignment) };
+		pArena->topOffset = pTempArena->topOffset;
 
-		pState->scratchOffset = tempArena.bottomOffset;
+		pState->scratchOffset = pTempArena->bottomOffset;
 		return allocation;
 	}
 
-	Allocation allocation{ bottomAlloc(pArena, size, alignment) };
-	pArena->bottomOffset = tempArena.bottomOffset;
-	pState->scratchOffset = tempArena.topOffset;
+	Allocation allocation{ bottomAlloc(pTempArena, size, alignment) };
+	pArena->bottomOffset = pTempArena->bottomOffset;
+	pState->scratchOffset = pTempArena->topOffset;
 	return allocation;
 }
 
@@ -74,57 +74,23 @@ Allocation pstd::scratchAlloc(
 	Arena* pArena{ arenaFrame->pArena };
 	ArenaFrameState* pState{ &arenaFrame->state };
 
-	Arena tempArena{ pArena };
+	Arena* pTempArena{ pArena };
 	if (pState->isFlipped) {
-		Allocation allocation{ bottomAlloc(pArena, size, alignment) };
+		Allocation allocation{ bottomAlloc(pTempArena, size, alignment) };
 
-		pState->scratchOffset = tempArena.bottomOffset;
+		pState->scratchOffset = pTempArena->bottomOffset;
 		// nothing persists in scratchAlloc
 
 		return allocation;
 	}
-	Allocation allocation{ topAlloc(pArena, size, alignment) };
-	pState->scratchOffset = tempArena.topOffset;
+	Allocation allocation{ topAlloc(pTempArena, size, alignment) };
+	pState->scratchOffset = pTempArena->topOffset;
 	return allocation;
-}
-
-void* pstd::getAlignedOffset(const ArenaFrame& frame, uint32_t alignment) {
-	size_t baseAddress{ (size_t)frame.pArena->allocation.block };
-
-	if (frame.state.isFlipped) {
-		size_t bottomOffset{ frame.state.scratchOffset };
-		size_t topOffset{ frame.pArena->topOffset };
-		return getAlignedTopOffset(
-			baseAddress, bottomOffset, topOffset, alignment
-		);
-	}
-	size_t bottomOffset{ frame.pArena->bottomOffset };
-	size_t topOffset{ frame.state.scratchOffset };
-	return getAlignedBottomOffset(
-		baseAddress, bottomOffset, topOffset, alignment
-	);
-}
-
-void* pstd::getAlignedScratchOffset(
-	const ArenaFrame& frame, uint32_t alignment
-) {
-	size_t baseAddress{ (size_t)frame.pArena->allocation.block };
-
-	if (frame.state.isFlipped) {
-		size_t bottomOffset{ frame.state.scratchOffset };
-		size_t topOffset{ frame.pArena->topOffset };
-		return getAlignedBottomOffset(
-			baseAddress, bottomOffset, topOffset, alignment
-		);
-	}
-	size_t bottomOffset{ frame.pArena->bottomOffset };
-	size_t topOffset{ frame.state.scratchOffset };
-	return getAlignedTopOffset(baseAddress, bottomOffset, topOffset, alignment);
 }
 
 namespace {
 	pstd::Allocation bottomAlloc(
-		pstd::Arena* arena, const size_t size, const uint32_t alignment
+		pstd::Arena* arena, const uint32_t size, const uint32_t alignment
 	) {
 		ASSERT(arena);
 		ASSERT(arena->isAllocated);
@@ -132,26 +98,27 @@ namespace {
 		ASSERT(size != 0);
 		ASSERT(alignment != 0);
 
-		size_t bytesUnaligned{
-			((size_t)arena->allocation.block + arena->bottomOffset) % alignment
-		};
-		size_t alignmentPadding{ (alignment - bytesUnaligned) % alignment };
+		auto bytesUnaligned{ rcast<uint32_t>(
+			(rcast<uintptr_t>(arena->allocation.block) + arena->bottomOffset) %
+			alignment
+		) };
+		uint32_t alignmentPadding{ (alignment - bytesUnaligned) % alignment };
 
 		ASSERT(
 			(arena->bottomOffset + size + alignmentPadding) <= arena->topOffset
 		);
 
-		size_t alignedBaseAddress{
-			((size_t)arena->allocation.block + arena->bottomOffset +
-			 alignmentPadding)
-		};
+		uintptr_t alignedBaseAddress{ rcast<uintptr_t>(arena->allocation.block
+									  ) +
+									  arena->bottomOffset + alignmentPadding };
 		arena->bottomOffset += size + alignmentPadding;
 
-		return Allocation{ .block = (void*)alignedBaseAddress, .size = size };
+		return Allocation{ .block = rcast<uint8_t*>(alignedBaseAddress),
+						   .size = size };
 	}
 
 	pstd::Allocation topAlloc(
-		pstd::Arena* arena, const size_t size, const uint32_t alignment
+		pstd::Arena* arena, const uint32_t size, const uint32_t alignment
 	) {
 		ASSERT(arena);
 		ASSERT(arena->isAllocated);
@@ -161,43 +128,46 @@ namespace {
 		ASSERT(arena->topOffset >= size);
 		ASSERT((size_t)arena->allocation.block % alignment == 0);
 
-		size_t alignmentPadding{ ((size_t)arena->allocation.block +
-								  arena->topOffset - size) %
-								 alignment };
-		size_t adjustedSize{ size + alignmentPadding };
+		auto alignmentPadding{ rcast<uint32_t>(
+			(rcast<uintptr_t>(arena->allocation.block) + arena->topOffset - size
+			) %
+			alignment
+		) };
+		uint32_t adjustedSize{ size + alignmentPadding };
 
 		ASSERT(arena->topOffset >= arena->bottomOffset + adjustedSize);
 
-		size_t alignedBaseAddress{
-			((size_t)arena->allocation.block + arena->topOffset - adjustedSize)
-		};
+		uintptr_t alignedBaseAddress{ rcast<uintptr_t>(arena->allocation.block
+									  ) +
+									  arena->topOffset - adjustedSize };
 		arena->topOffset -= adjustedSize;
 
-		return Allocation{ .block = (void*)alignedBaseAddress, .size = size };
+		return Allocation{ .block = rcast<uint8_t*>(alignedBaseAddress),
+						   .size = size };
 	}
 
-	void* getAlignedBottomOffset(
-		size_t baseAddress,
-		size_t bottomOffset,
-		size_t topOffset,
+	uintptr_t getAlignedBottomOffset(
+		uint32_t baseAddress,
+		uint32_t bottomOffset,
+		uint32_t topOffset,
 		uint32_t alignment
 	) {
-		size_t bytesUnaligned{ (baseAddress + bottomOffset) % alignment };
+		uint32_t bytesUnaligned{ (baseAddress + bottomOffset) % alignment };
 
-		size_t alignmentPadding{ (alignment - bytesUnaligned) % alignment };
+		uint32_t alignmentPadding{ (alignment - bytesUnaligned) % alignment };
 
-		void* res{ (void*)((baseAddress + bottomOffset) + alignmentPadding) };
+		uintptr_t res{ ((baseAddress + bottomOffset) + alignmentPadding) };
 		return res;
 	}
 
-	void* getAlignedTopOffset(
-		size_t baseAddress,
-		size_t bottomOffset,
-		size_t topOffset,
+	uintptr_t getAlignedTopOffset(
+		uint32_t baseAddress,
+		uint32_t bottomOffset,
+		uint32_t topOffset,
 		uint32_t alignment
 	) {
-		size_t alignmentPadding{ (baseAddress + topOffset) % alignment };
-		void* res{ (void*)((baseAddress + topOffset) - alignmentPadding) };
+		uint32_t alignmentPadding{ (baseAddress + topOffset) % alignment };
+		uintptr_t res{ ((baseAddress + topOffset) - alignmentPadding) };
 		return res;
 	}
 }  // namespace

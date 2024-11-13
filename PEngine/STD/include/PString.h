@@ -57,10 +57,10 @@ namespace pstd {
 	String concat(pstd::ArenaFrame&& buffer, String a, String b);
 
 	bool substringMatchForward(
-		const String& a, const String& b, size_t* outIndex = nullptr
+		const String& a, const String& b, uint32_t* outIndex = nullptr
 	);
 	inline bool substringMatchForward(
-		const char* a, const char* b, size_t* outIndex = nullptr
+		const char* a, const char* b, uint32_t* outIndex = nullptr
 	) {
 		return substringMatchForward(
 			createString(a), createString(b), outIndex
@@ -68,10 +68,10 @@ namespace pstd {
 	}
 
 	bool substringMatchBackward(
-		const String& a, const String& b, size_t* outIndex = nullptr
+		const String& a, const String& b, uint32_t* outIndex = nullptr
 	);
 	inline bool substringMatchBackward(
-		const char* a, const char* b, size_t* outIndex = nullptr
+		const char* a, const char* b, uint32_t* outIndex = nullptr
 	) {
 		return substringMatchBackward(
 			createString(a), createString(b), outIndex
