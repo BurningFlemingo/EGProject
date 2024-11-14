@@ -148,7 +148,7 @@ String
 			break;
 	}
 	auto stringFormatSizeDifference{
-		pstd::abs(sncast<int>(format.size) - sncast<int>(allocation.size))
+		pstd::abs(ncast<int>(format.size) - ncast<int>(allocation.size))
 	};
 
 	if (formatCharactersProccessed < format.size) {
@@ -300,7 +300,7 @@ namespace {
 			number *= -1.f;
 		}
 
-		auto wholePart{ sncast<uint32_t>(number) };
+		auto wholePart{ ncast<uint32_t>(number) };
 		allocation = coalesce(
 			pushUInt64AsString({ frame.pArena, frame.state }, wholePart),
 			allocation
@@ -312,7 +312,7 @@ namespace {
 
 		size_t factor{ pstd::pow<size_t>(10, precision) };
 		auto decimalPart{
-			sncast<uint32_t>((pstd::abs(number - wholePart) * factor) + 0.5f)
+			ncast<uint32_t>((pstd::abs(number - wholePart) * factor) + 0.5f)
 		};
 		allocation = coalesce(
 			pushUInt64AsString({ frame.pArena, frame.state }, decimalPart),
@@ -332,7 +332,7 @@ namespace {
 		Allocation allocation{ pushLetter({ frame.pArena, frame.state }, '-') };
 
 		// this avoids overflow since |INT_MIN| = |INT_MAX| + 1
-		uint32_t positiveNumber{ sncast<uint32_t>(-(number + 1)) + 1 };
+		uint32_t positiveNumber{ ncast<uint32_t>(-(number + 1)) + 1 };
 		allocation = coalesce(
 			pushUInt64AsString({ frame.pArena, frame.state }, positiveNumber),
 			allocation

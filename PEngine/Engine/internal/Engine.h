@@ -9,8 +9,7 @@ namespace peng {
 		size_t getSizeofState();
 
 		State* startup(
-			pstd::AllocationRegistry* registry,
-			pstd::FixedArenaFrame&& arenaFrame
+			pstd::AllocationRegistry* registry, pstd::ArenaFrame&& arenaFrame
 		);
 		bool update(State* state);
 		void shutdown(State* state);

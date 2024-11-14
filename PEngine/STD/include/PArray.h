@@ -14,35 +14,32 @@ namespace pstd {
 			ASSERT(allocation.block);
 			ASSERT(pstd::getCapacity<T>(allocation) > index);
 
-			return ((const T*)allocation.block)[(size_t)index];
+			return rcast<const T*>(allocation.block)[cast<size_t>(index)];
 		}
 
 		T& operator[](I index) {
 			ASSERT(allocation.block);
 			ASSERT(pstd::getCapacity<T>(allocation) > index);
 
-			return ((T*)allocation.block)[(size_t)index];
+			return rcast<T*>(allocation.block)[cast<size_t>(index)];
 		}
 		Allocation allocation;
 	};
 
 	template<typename T, uint32_t n, typename I = size_t>
-	struct StackArray {	 // <container type, element count, index type>
+	struct StaticArray {  // <container type, element count, index type>
 		using ElementType = T;
 
 		const T& operator[](I index) const {
-			ASSERT(allocation.block);
-			ASSERT(allocation.);
 			ASSERT(n > index);
 
-			return data[(size_t)index];
+			return data[cast<size_t>(index)];
 		}
 
 		T& operator[](I index) {
-			ASSERT(allocation.block);
 			ASSERT(n > index);
 
-			return data[(size_t)index];
+			return data[cast<size_t>(index)];
 		}
 		T data[n];
 	};
@@ -56,7 +53,7 @@ namespace pstd {
 			ASSERT(pstd::getCapacity<T>(allocation) >= count);
 			ASSERT(count > index);
 
-			return ((const T*)allocation.block)[(size_t)index];
+			return rcast<const T*>(allocation.block)[cast<size_t>(index)];
 		}
 
 		T& operator[](I index) {
@@ -64,7 +61,7 @@ namespace pstd {
 			ASSERT(pstd::getCapacity<T>(allocation) >= count);
 			ASSERT(count > index);
 
-			return ((T*)allocation.block)[(size_t)index];
+			return rcast<T*>(allocation.block)[cast<size_t>(index)];
 		}
 
 		Allocation allocation;
@@ -72,7 +69,7 @@ namespace pstd {
 	};
 
 	template<typename T, uint32_t n, typename I = size_t>
-	struct BoundedStackArray {	// <container type, element count, index type>
+	struct BoundedStaticArray {	 // <container type, element count, index type>
 		using ElementType = T;
 
 		const T& operator[](I index) const {
@@ -81,7 +78,7 @@ namespace pstd {
 			ASSERT(n >= count);
 			ASSERT(count > index);
 
-			return data[(size_t)index];
+			return data[cast<size_t>(index)];
 		}
 
 		T& operator[](I index) {
@@ -89,19 +86,19 @@ namespace pstd {
 			ASSERT(n > index);
 			ASSERT(count > index);
 
-			return data[(size_t)index];
+			return data[cast<size_t>(index)];
 		}
 		T data[n];
 		size_t count;
 	};
 
 	template<typename T, uint32_t n>
-	constexpr size_t getCapacity(const StackArray<T, n>& array) {
+	constexpr size_t getCapacity(const StaticArray<T, n>& array) {
 		size_t res{ n };
 		return res;
 	}
 	template<typename T, uint32_t n, typename I>
-	constexpr size_t getCapacity(const BoundedStackArray<T, n, I>& array) {
+	constexpr size_t getCapacity(const BoundedStaticArray<T, n, I>& array) {
 		size_t res{ n };
 		return res;
 	}
@@ -131,9 +128,8 @@ namespace pstd {
 		array->count--;
 	}
 	template<typename T, uint32_t n, typename I>
-	void compactRemove(BoundedStackArray<T, n, I>* array, size_t index) {
+	void compactRemove(BoundedStaticArray<T, n, I>* array, size_t index) {
 		ASSERT(array);
-		ASSERT(array->allocation.block);
 		ASSERT(array->count <= n);
 		ASSERT(index < array->count);
 
@@ -157,9 +153,8 @@ namespace pstd {
 		array->count++;
 	}
 	template<typename T, size_t n, typename I>
-	void pushBack(BoundedStackArray<T, n, I>* array, const T& val) {
+	void pushBack(BoundedStaticArray<T, n, I>* array, const T& val) {
 		ASSERT(array);
-		ASSERT(array->allocation.block);
 		ASSERT(array->count < n);
 
 		(*array)[array->count] = val;

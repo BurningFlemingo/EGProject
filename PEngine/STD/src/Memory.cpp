@@ -183,9 +183,9 @@ Allocation
 		findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
 	}
 
-	auto* commitAddr{
-		rcast<uint8_t*>(alignDownToPageBoundary(freeBlock->usable.block))
-	};
+	auto* commitAddr{ rcast<uint8_t*>(
+		alignDownToPageBoundary(rcast<size_t>(freeBlock->usable.block))
+	) };
 
 	size_t commitSize{
 		alignUpToPageBoundary(size + freeBlock->usable.block - commitAddr)

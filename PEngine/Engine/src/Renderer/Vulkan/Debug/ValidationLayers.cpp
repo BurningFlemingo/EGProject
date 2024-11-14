@@ -11,25 +11,22 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-pstd::FixedArray<const char*> findValidationLayers(
-	pstd::FixedArena* layersArena, pstd::FixedArena scratchArena
-) {
+pstd::Array<const char*> findValidationLayers(pstd::ArenaFrame&& arenaFrame) {
 	uint32_t layerCount{};
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
-	pstd::FixedArray<VkLayerProperties> layerProps{
-		.allocation =
-			pstd::arenaAlloc<VkLayerProperties>(layersArena, layerCount),
+	pstd::Array<VkLayerProperties> layerProps{
+		.allocation = pstd::alloc<VkLayerProperties>(&arenaFrame, layerCount),
 	};
 	vkEnumerateInstanceLayerProperties(
 		&layerCount, (VkLayerProperties*)layerProps.allocation.block
 	);
 
-	pstd::BoundedStackArray<const char*, 1> requiredLayers{
+	pstd::BoundedStaticArray<const char*, 1> requiredLayers{
 		.data = { "VK_LAYER_KHRONOS_validation" }, .count = 1
 	};
 
-	pstd::BoundedStackArray<const char*, 1> foundLayers{};
+	pstd::BoundedStaticArray<const char*, 1> foundLayers{};
 
 	for (int i{}; i < layerCount; i++) {
 		if (requiredLayers.count == 0) {
@@ -43,7 +40,7 @@ pstd::FixedArray<const char*> findValidationLayers(
 
 		if (pstd::find(requiredLayers, matchFunction, &foundIndex)) {
 			pstd::pushBack(
-				&foundLayers, requiredLayers[foundIndex]
+				foundLayers, requiredLayers[foundIndex]
 			);	// ptr to string literal
 			pstd::compactRemove(&requiredLayers, foundIndex);
 		}
@@ -56,10 +53,9 @@ pstd::FixedArray<const char*> findValidationLayers(
 		LOG_INFO("found %m\n", foundLayers[i]);
 	}
 
-	pstd::FixedArray<const char*> res{
-		.allocation =
-			pstd::arenaAlloc<const char*>(layersArena, foundLayers.count),
+	pstd::Array<const char*> res{
+		.allocation = pstd::alloc<const char*>(&arenaFrame, foundLayers.count),
 	};
-	pstd::shallowMove(&res.allocation, pstd::getStackAllocation(foundLayers));
+	pstd::shallowMove(&res.allocation, pstd::getStaticAllocation(foundLayers));
 	return res;
 }

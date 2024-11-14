@@ -30,14 +30,14 @@ size_t Platform::getSizeofState() {
 }
 
 Platform::State* Platform::startup(
-	pstd::FixedArena* stateArena,
+	pstd::ArenaFrame&& arenaFrame,
 	const char* windowName,
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{ pstd::alloc<State>(stateArena) };
+	pstd::Allocation stateAllocation{ pstd::alloc<State>(&arenaFrame) };
 	pstd::Allocation eventBufferAllocation{
-		pstd::alloc<Event>(stateArena, WindowData::eventBufferCapacity)
+		pstd::alloc<Event>(&arenaFrame, WindowData::eventBufferCapacity)
 	};
 
 	HINSTANCE hInstance{ GetModuleHandle(0) };

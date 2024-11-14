@@ -13,7 +13,7 @@ namespace Console {
 		count,
 	};
 
-	pstd::ArenaFrame getLogArena();
+	pstd::Arena getLogArena();
 
 	void log(const LogLevel logLevel, const pstd::String& msg);
 
@@ -33,9 +33,9 @@ namespace Console {
 	template<typename... Args>
 	void
 		log(const LogLevel logLevel, const pstd::String& format, Args... args) {
-		pstd::ArenaFrame logArena{ getLogArena() };
+		pstd::Arena logArena{ getLogArena() };
 		pstd::String formattedString{
-			pstd::formatString(&logArena, format, args...)
+			pstd::formatString({ logArena }, format, args...)
 		};
 		log(logLevel, formattedString);
 	}

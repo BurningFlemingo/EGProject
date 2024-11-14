@@ -74,7 +74,7 @@ pstd::Allocation pstd::internal::allocPages(
 bool pstd::internal::freePages(
 	const Allocation& allocation, AllocationTypeFlagBits allocTypeFlags
 ) {
-	ASSERT(~allocTypeFlags & (ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE))
+	ASSERT(~allocTypeFlags & (ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE));
 
 	ASSERT(((uintptr_t)allocation.block % state.allocLimits.pageSize) == 0);
 	ASSERT(allocation.ownsMemory);

@@ -8,7 +8,7 @@ namespace pstd {
 	concept Container = requires(T arg) { typename T::ElementType; };
 
 	template<typename T>
-	concept StackContainer = Container<T> && requires(T arg) {
+	concept StaticContainer = Container<T> && requires(T arg) {
 		typename T::ElementType;
 		getCapacity(arg);
 
@@ -28,7 +28,7 @@ namespace pstd {
 	}
 
 	template<typename T>
-		requires StackContainer<T>
+		requires StaticContainer<T>
 	constexpr typename T::ElementType* getData(const T& container) {
 		return (typename T::ElementType*)container.data;
 	}
@@ -40,9 +40,9 @@ namespace pstd {
 	}
 
 	template<typename T>
-		requires StackContainer<T>
-	constexpr Allocation getStackAllocation(const T& container) {
-		Allocation allocation{ .block = (void*)container.data,
+		requires StaticContainer<T>
+	constexpr Allocation getStaticAllocation(const T& container) {
+		Allocation allocation{ .block = rcast<const uint8_t*>(container.data),
 							   .size = getCapacity(container) * sizeof(T),
 							   .isStackAllocated = true };
 		return allocation;

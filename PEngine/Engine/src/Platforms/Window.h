@@ -24,7 +24,7 @@ namespace Platform {
 	size_t getSizeofState();
 
 	State* startup(
-		pstd::FixedArenaFrame&& arenaFrame,
+		pstd::ArenaFrame&& arenaFrame,
 		const char* windowName,
 		const int windowWidth,
 		const int windowHeight

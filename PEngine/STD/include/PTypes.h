@@ -22,6 +22,9 @@ using uintptr_t = size_t;
 namespace pstd {
 
 	template<typename T>
+	concept DecimalType = requires { T{ 1.5 } || T{ 1.5f }; };
+
+	template<typename T>
 	constexpr bool getIsUnsigned() {
 		constexpr T a{};
 		constexpr T b{ (T)-1 };
@@ -40,12 +43,16 @@ namespace pstd {
 	constexpr bool getCanNarrow() {
 		constexpr bool signsChange{ getIsUnsigned<R>() != getIsUnsigned<T>() };
 		constexpr int losesBytes{ (sizeof(R) < sizeof(T)) };
-		constexpr bool losesDecimal{ static_cast<R>(1.5) !=
-									 static_cast<T>(1.5) };
-		if constexpr (signsChange || losesBytes || losesDecimal) {
+		if constexpr (signsChange || losesBytes) {
 			return true;
 		}
 		return false;
+	}
+
+	template<typename R, typename T>
+		requires((DecimalType<R> ^ DecimalType<T>) > 0)
+	constexpr bool getCanNarrow() {
+		return true;
 	}
 
 	template<typename T>
@@ -58,8 +65,9 @@ namespace pstd {
 		}
 		return allBitsSet ^ (1 << ((sizeof(T) * 8) - 1));
 	}
+
 	template<typename R, typename T>
-	R cast(T num) {	 // types dont narrow
+	constexpr R cast(T num) {  // types dont narrow
 		static_assert(
 			!getCanNarrow<R, T>(), "types should not narrow on this cast"
 		);
@@ -73,12 +81,12 @@ namespace pstd {
 	}
 
 	template<typename R, typename T>
-	R ncast(T num) {  // narrowing cast
+	constexpr R ncast(T num) {	// narrowing cast
 		return static_cast<R>(num);
 	}
 
 	template<typename R, typename T>
-	R rcast(T num) {  // reinterpret cast
+	constexpr R rcast(T num) {	// reinterpret cast
 		return reinterpret_cast<R>(num);
 	}
 }  // namespace pstd

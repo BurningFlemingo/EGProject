@@ -11,12 +11,31 @@ namespace pstd {
 
 namespace pstd {
 
-	struct Allocation {
-		uint8_t* block;
+	enum class Qualifier { none, constant };
+
+	struct AllocationInfo {
 		uint32_t size;	// always in bytes
 		bool ownsMemory;  // if true, memory was allocated from the system
 		bool isStackAllocated;
 	};
+
+	template<Qualifier T = Qualifier::none>
+	struct Allocation;
+
+	template<>
+	struct Allocation<Qualifier::none> {
+		uint8_t* block;
+		AllocationInfo info;
+	};
+
+	template<>
+	struct Allocation<Qualifier::constant> {
+		const uint8_t* block;
+		AllocationInfo info;
+	};
+
+	using ConstAllocation = Allocation<Qualifier::constant>;
+	using MutAllocation = Allocation<Qualifier::none>;
 
 	struct AllocationLimits {
 		uint32_t minAllocSize;
