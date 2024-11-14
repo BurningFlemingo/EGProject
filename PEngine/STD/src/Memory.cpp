@@ -127,10 +127,10 @@ Allocation pstd::coalesce(const Allocation& a, const Allocation& b) {
 	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
 	ASSERT(~(a.isStackAllocated ^ b.isStackAllocated));
 
-	auto aEnd{ rcast<uintptr_t>(a.block + a.size) };
-	auto bEnd{ rcast<uintptr_t>(b.block + b.size) };
-	uint32_t size{ cast<uint32_t>(a.size + b.size) };
-	if (aEnd == rcast<uintptr_t>(b.block)) {
+	uint8_t* aEnd{ a.block + a.size };
+	uint8_t* bEnd{ b.block + b.size };
+	uint32_t size{ a.size + b.size };
+	if (aEnd == b.block) {
 		ASSERT(a.block + size == b.block + b.size);
 		return Allocation{ .block = a.block,
 						   .size = size,
@@ -175,7 +175,7 @@ Allocation
 	if (!freeBlock) {
 		MemoryPool* newPool{ createMemoryPool(size) };
 		if (prevPool) {
-			prevPool->next = prevPool;
+			prevPool->next = newPool;
 		} else {
 			pool->next = newPool;
 		}
@@ -243,11 +243,11 @@ namespace {
 		uint8_t* freelistHeaderHead{ poolAllocation.block +
 									 sizeof(MemoryPool) };
 
-		pool->firstFreeBlock = new ((void*)freelistHeaderHead) FreelistBlock{
-			.usable{ .block = freelistHeaderHead + sizeof(FreelistBlock),
-					 .size = poolAllocation.size - sizeof(FreelistBlock) -
-						 sizeof(MemoryPool) }
-		};
+		pool->firstFreeBlock = new (freelistHeaderHead) FreelistBlock{ .usable{
+			.block = freelistHeaderHead + sizeof(FreelistBlock),
+			.size = poolAllocation.size -
+				ncast<uint32_t>(sizeof(FreelistBlock)) -
+				ncast<uint32_t>(sizeof(MemoryPool)) } };
 
 		return pool;
 	}

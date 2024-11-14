@@ -37,15 +37,8 @@ namespace pstd {
 
 	AllocationLimits getSystemAllocationLimits();
 
-	uintptr_t alignUpToPageBoundary(uintptr_t address);
-	uintptr_t alignDownToPageBoundary(uintptr_t address);
-
-	inline uintptr_t alignUpToPageBoundary(void* address) {
-		return alignUpToPageBoundary(rcast<uintptr_t>(address));
-	}
-	inline uintptr_t alignDownToPageBoundary(void* address) {
-		return alignDownToPageBoundary(rcast<uintptr_t>(address));
-	}
+	size_t alignUpToPageBoundary(size_t size);
+	size_t alignDownToPageBoundary(size_t size);
 
 	uint32_t calcAddressAlignmentPadding(
 		uintptr_t address, const uint32_t alignment

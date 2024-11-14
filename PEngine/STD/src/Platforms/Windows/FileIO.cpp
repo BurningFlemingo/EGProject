@@ -59,10 +59,12 @@ bool pstd::copyFile(const char* srcName, const char* dstName, bool replace) {
 	return res;
 }
 
-pstd::String pstd::getEXEPath(FixedArena* arena) {
+pstd::String pstd::getEXEPath(ArenaFrame&& frame) {
 	char exePath[MAX_PATH];
 	GetModuleFileNameA(0, exePath, MAX_PATH);
-	pstd::String res{ pstd::createString(arena, exePath) };
+	pstd::String res{
+		pstd::createString({ frame.pArena, frame.state }, exePath)
+	};
 	return res;
 }
 
@@ -116,7 +118,7 @@ size_t pstd::getLastFileWriteTime(const char* filename) {
 }
 
 pstd::Allocation
-	pstd::readFile(pstd::FixedArena* arena, pstd::FileHandle pHandle) {
+	pstd::readFile(pstd::ArenaFrame&& frame, pstd::FileHandle pHandle) {
 	auto hFile{ (FileHandleImpl)pHandle };
 	DWORD bytesRead{};
 	OVERLAPPED ol{};
@@ -125,7 +127,7 @@ pstd::Allocation
 
 	ASSERT(fileSize < pstd::getAvaliableCount<char>(*arena));
 
-	pstd::Allocation fileAlloc{ pstd::alloc<char>(arena, fileSize) };
+	pstd::Allocation fileAlloc{ pstd::alloc<char>(&frame, fileSize) };
 	if (ReadFile(hFile, fileAlloc.block, fileSize, &bytesRead, &ol) == false) {
 		ASSERT(false);
 	}

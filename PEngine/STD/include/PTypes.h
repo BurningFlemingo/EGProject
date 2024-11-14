@@ -28,6 +28,26 @@ namespace pstd {
 		return a < b;
 	}
 
+	template<typename R, typename T>
+	bool getIsNarrowing(T num) {
+		if (static_cast<R>(num) != num) {
+			return true;
+		}
+		return false;
+	}
+
+	template<typename R, typename T>
+	constexpr bool getCanNarrow() {
+		constexpr bool signsChange{ getIsUnsigned<R>() != getIsUnsigned<T>() };
+		constexpr int losesBytes{ (sizeof(R) < sizeof(T)) };
+		constexpr bool losesDecimal{ static_cast<R>(1.5) !=
+									 static_cast<T>(1.5) };
+		if constexpr (signsChange || losesBytes || losesDecimal) {
+			return true;
+		}
+		return false;
+	}
+
 	template<typename T>
 	constexpr T getMax() {
 		static_assert(sizeof(T) <= 8, "max size is 8 bytes");
@@ -39,33 +59,31 @@ namespace pstd {
 		return allBitsSet ^ (1 << ((sizeof(T) * 8) - 1));
 	}
 	template<typename R, typename T>
-	R cast(T num) {	 // not sign changing, not narrowing
-		bool narrowing{ num > getMax<R>() };
-		constexpr bool signsChange{ getIsUnsigned<T>() != getIsUnsigned<R>() };
-		static_assert(!signsChange, "signs must not change between types");
-		ASSERT(!narrowing);
+	R cast(T num) {	 // types dont narrow
+		static_assert(
+			!getCanNarrow<R, T>(), "types should not narrow on this cast"
+		);
 		return static_cast<R>(num);
 	}
 
 	template<typename R, typename T>
-	R ncast(T num) {  // not sign changing, narrowing
-		constexpr bool signsChange{ getIsUnsigned<T>() != getIsUnsigned<R>() };
-		static_assert(!signsChange, "signs must not change between types");
+	R vcast(T num) {  // value doesnt narrow
+		ASSERT(static_cast<R>(num) == num);
 		return static_cast<R>(num);
 	}
 
 	template<typename R, typename T>
-	R sncast(T num) {  // sign changing, narrowing
+	R ncast(T num) {  // narrowing cast
 		return static_cast<R>(num);
 	}
 
 	template<typename R, typename T>
-	R rcast(T num) {  // reinterprets
+	R rcast(T num) {  // reinterpret cast
 		return reinterpret_cast<R>(num);
 	}
 }  // namespace pstd
 
 using pstd::cast;
+using pstd::vcast;
 using pstd::ncast;
-using pstd::sncast;
 using pstd::rcast;

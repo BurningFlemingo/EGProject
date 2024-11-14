@@ -126,10 +126,11 @@ namespace {
 		ASSERT(size != 0);
 		ASSERT(alignment != 0);
 		ASSERT(arena->topOffset >= size);
-		ASSERT((size_t)arena->allocation.block % alignment == 0);
+		ASSERT(rcast<uintptr_t>(arena->allocation.block) % alignment == 0);
 
 		auto alignmentPadding{ rcast<uint32_t>(
-			(rcast<uintptr_t>(arena->allocation.block) + arena->topOffset - size
+			rcast<uintptr_t>(
+				arena->allocation.block + arena->topOffset - size
 			) %
 			alignment
 		) };
@@ -137,13 +138,11 @@ namespace {
 
 		ASSERT(arena->topOffset >= arena->bottomOffset + adjustedSize);
 
-		uintptr_t alignedBaseAddress{ rcast<uintptr_t>(arena->allocation.block
-									  ) +
-									  arena->topOffset - adjustedSize };
+		uint8_t* alignedBaseAddress{ arena->allocation.block +
+									 arena->topOffset - adjustedSize };
 		arena->topOffset -= adjustedSize;
 
-		return Allocation{ .block = rcast<uint8_t*>(alignedBaseAddress),
-						   .size = size };
+		return Allocation{ .block = alignedBaseAddress, .size = size };
 	}
 
 	uintptr_t getAlignedBottomOffset(

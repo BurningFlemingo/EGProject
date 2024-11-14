@@ -70,7 +70,7 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug", 
-				"CMAKE_CXX_FLAGS_DEBUG": "/Zi",
+				"CMAKE_CXX_FLAGS_DEBUG": "/DDEBUG_BUILD /Zi",
 				"CMAKE_EXE_LINKER_FLAGS_DEBUG": "/DEBUG"
             }
         },
@@ -80,6 +80,7 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
+				"CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/DRELEASE_BUILD /Zi",
             }
         },
         {
@@ -88,7 +89,7 @@
             "inherits": "windows-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/Zi",
+				"CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/DDEBUG_BUILD /Zi",
 				"CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO": "/DEBUG"
             }
         },
