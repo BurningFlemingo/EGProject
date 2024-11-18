@@ -9,9 +9,9 @@ using namespace pstd::internal;
 
 namespace {
 	pstd::Allocation
-		bottomAlloc(pstd::Arena* arena, size_t size, uint32_t alignment);
+		bottomAlloc(pstd::Arena* arena, uint32_t size, uint32_t alignment);
 	pstd::Allocation
-		topAlloc(pstd::Arena* arena, size_t size, uint32_t alignment);
+		topAlloc(pstd::Arena* arena, uint32_t size, uint32_t alignment);
 
 	uintptr_t getAlignedBottomOffset(
 		uint32_t baseAddress,
@@ -98,15 +98,14 @@ namespace {
 		ASSERT(size != 0);
 		ASSERT(alignment != 0);
 
-		auto bytesUnaligned{ rcast<uint32_t>(
+		auto bytesUnaligned{ ncast<uint32_t>(
 			(rcast<uintptr_t>(arena->allocation.block) + arena->bottomOffset) %
 			alignment
 		) };
 		uint32_t alignmentPadding{ (alignment - bytesUnaligned) % alignment };
 
-		ASSERT(
-			(arena->bottomOffset + size + alignmentPadding) <= arena->topOffset
-		);
+		uint32_t arenaSize{ arena->topOffset - arena->bottomOffset + 1 };
+		ASSERT((size + alignmentPadding) <= arenaSize);
 
 		uintptr_t alignedBaseAddress{ rcast<uintptr_t>(arena->allocation.block
 									  ) +
@@ -128,7 +127,7 @@ namespace {
 		ASSERT(arena->topOffset >= size);
 		ASSERT(rcast<uintptr_t>(arena->allocation.block) % alignment == 0);
 
-		auto alignmentPadding{ rcast<uint32_t>(
+		auto alignmentPadding{ ncast<uint32_t>(
 			rcast<uintptr_t>(
 				arena->allocation.block + arena->topOffset - size
 			) %

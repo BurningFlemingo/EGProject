@@ -22,8 +22,7 @@
 namespace peng {
 	namespace internal {
 		struct State {
-			pstd::FixedArena applicationArena;
-			pstd::FixedArena scratchArena;
+			pstd::Arena applicationArena;
 
 			Platform::State* platformState;
 			Renderer::State* rendererState;
@@ -43,10 +42,6 @@ namespace {
 		return totalSize;
 	}
 
-	constexpr size_t getSizeofScratchArena() {
-		constexpr size_t scratchSize{ 1024 * 1024 * 1024 };
-		return scratchSize;
-	}
 }  // namespace
 
 using namespace peng;
@@ -58,14 +53,11 @@ size_t peng::internal::getSizeofState() {
 }
 
 peng::internal::State* peng::internal::startup(
-	pstd::AllocationRegistry* registry, pstd::FixedArenaFrame&& arenaFrame
+	pstd::AllocationRegistry* registry, pstd::ArenaFrame&& arenaFrame
 ) {
-	pstd::FixedArena subsystemArena{
-		pstd::allocateFixedArena(registry, getSizeofSubsystems())
-	};
-
-	pstd::FixedArena scratchArena{
-		pstd::allocateFixedArena(registry, getSizeofScratchArena())
+	size_t scratchSize{ 1024 * 1024 };
+	pstd::Arena subsystemArena{
+		pstd::allocateArena(registry, getSizeofSubsystems() + scratchSize)
 	};
 
 	Platform::State* platformState{
@@ -73,14 +65,13 @@ peng::internal::State* peng::internal::startup(
 	};
 
 	Renderer::State* rendererState{
-		Renderer::startup({ &subsystemArena }, *platformState)
+		Renderer::startup(pstd::ArenaFrame{ &subsystemArena }, *platformState)
 	};
 
 	pstd::Allocation arenaAllocation{ pstd::alloc<State>(&arenaFrame) };
 
 	State* arenaPtr{ new (arenaAllocation.block)
 						 State{ .applicationArena = subsystemArena,
-								.scratchArena = scratchArena,
 								.platformState = platformState,
 								.rendererState = rendererState,
 								.isRunning = true } };

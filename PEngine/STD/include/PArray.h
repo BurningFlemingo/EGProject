@@ -19,7 +19,7 @@ namespace pstd {
 
 		T& operator[](I index) {
 			ASSERT(allocation.block);
-			ASSERT(pstd::getCapacity<T>(allocation) > index);
+			ASSERT(pstd::getCapacity<T>(allocation) > cast<size_t>(index));
 
 			return rcast<T*>(allocation.block)[cast<size_t>(index)];
 		}
@@ -31,13 +31,13 @@ namespace pstd {
 		using ElementType = T;
 
 		const T& operator[](I index) const {
-			ASSERT(n > index);
+			ASSERT(n > cast<size_t>(index));
 
 			return data[cast<size_t>(index)];
 		}
 
 		T& operator[](I index) {
-			ASSERT(n > index);
+			ASSERT(n > cast<size_t>(index));
 
 			return data[cast<size_t>(index)];
 		}
@@ -73,7 +73,6 @@ namespace pstd {
 		using ElementType = T;
 
 		const T& operator[](I index) const {
-			ASSERT(allocation.block);
 			ASSERT(n > index);
 			ASSERT(n >= count);
 			ASSERT(count > index);
@@ -82,7 +81,6 @@ namespace pstd {
 		}
 
 		T& operator[](I index) {
-			ASSERT(allocation.block);
 			ASSERT(n > index);
 			ASSERT(count > index);
 
@@ -111,10 +109,10 @@ namespace pstd {
 	}
 
 	template<typename T, typename I>
-	void compactRemove(BoundedArray<T, I>* array, size_t index) {
+	void compactRemove(BoundedArray<T, I>* array, I index) {
 		ASSERT(array);
 		ASSERT(array->allocation.block);
-		ASSERT(array->count <= pstd::getCapacity(array));
+		ASSERT(array->count <= pstd::getCapacity(*array));
 		ASSERT(index < array->count);
 
 		if (array->count <= 1) {
@@ -122,13 +120,13 @@ namespace pstd {
 			return;
 		}
 
-		size_t lastIndex{ array->count - 1 };
+		I lastIndex{ cast<I>(array->count - 1) };
 		T lastElement{ (*array)[lastIndex] };
 		(*array)[index] = lastElement;
 		array->count--;
 	}
 	template<typename T, uint32_t n, typename I>
-	void compactRemove(BoundedStaticArray<T, n, I>* array, size_t index) {
+	void compactRemove(BoundedStaticArray<T, n, I>* array, I index) {
 		ASSERT(array);
 		ASSERT(array->count <= n);
 		ASSERT(index < array->count);
@@ -138,7 +136,7 @@ namespace pstd {
 			return;
 		}
 
-		size_t lastIndex{ array->count - 1 };
+		I lastIndex{ cast<I>(array->count - 1) };
 		T lastElement{ (*array)[lastIndex] };
 		(*array)[index] = lastElement;
 		array->count--;
@@ -149,16 +147,18 @@ namespace pstd {
 		ASSERT(array->allocation.block);
 		ASSERT(array->count < pstd::getCapacity(*array));
 
-		(*array)[array->count] = val;
 		array->count++;
+		I index{ array->count - 1 };
+		(*array)[index] = val;
 	}
 	template<typename T, size_t n, typename I>
 	void pushBack(BoundedStaticArray<T, n, I>* array, const T& val) {
 		ASSERT(array);
 		ASSERT(array->count < n);
 
-		(*array)[array->count] = val;
 		array->count++;
+		I index{ array->count - 1 };
+		(*array)[index] = val;
 	}
 
 }  // namespace pstd

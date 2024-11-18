@@ -24,19 +24,19 @@ namespace pstd {
 	template<typename T>
 	concept DecimalType = requires { T{ 1.5 } || T{ 1.5f }; };
 
-	template<typename T>
-	constexpr bool getIsUnsigned() {
-		constexpr T a{};
-		constexpr T b{ (T)-1 };
-		return a < b;
-	}
-
 	template<typename R, typename T>
 	bool getIsNarrowing(T num) {
 		if (static_cast<R>(num) != num) {
 			return true;
 		}
 		return false;
+	}
+
+	template<typename T>
+	constexpr bool getIsUnsigned() {
+		constexpr T a{};
+		constexpr T b{ (T)-1 };
+		return a < b;
 	}
 
 	template<typename R, typename T>
@@ -88,6 +88,11 @@ namespace pstd {
 	template<typename R, typename T>
 	constexpr R rcast(T num) {	// reinterpret cast
 		return reinterpret_cast<R>(num);
+	}
+
+	template<typename T>
+	constexpr T&& move(T num) {
+		return static_cast<T&&>(num);
 	}
 }  // namespace pstd
 

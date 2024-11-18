@@ -10,12 +10,11 @@
 #include <vulkan/vulkan.h>
 #include <new>
 
-pstd::FixedArray<const char*> findExtensions(pstd::FixedArenaFrame&& arenaFrame
-) {
+pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 
-	pstd::FixedArray<VkExtensionProperties> extensionProps{
+	pstd::Array<VkExtensionProperties> extensionProps{
 		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
 			&arenaFrame, extensionCount
 		),
@@ -80,11 +79,10 @@ pstd::FixedArray<const char*> findExtensions(pstd::FixedArenaFrame&& arenaFrame
 		LOG_INFO("found %m\n", foundOptionalExtensions[i]);
 	}
 
-	pstd::FixedArray<const char*> res{ .allocation = pstd::concat<const char*>(
-										   { arenaFrame.pArena,
-											 arenaFrame.state },
-										   foundRequiredExtensions.allocation,
-										   foundOptionalExtensions.allocation
-									   ) };
+	pstd::Array<const char*> res{ .allocation = pstd::concat<const char*>(
+									  { arenaFrame.pArena, arenaFrame.state },
+									  foundRequiredExtensions.allocation,
+									  foundOptionalExtensions.allocation
+								  ) };
 	return res;
 }

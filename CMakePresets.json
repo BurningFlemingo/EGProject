@@ -79,8 +79,8 @@
             "displayName": "Windows Release",
             "inherits": "windows-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-				"CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/DRELEASE_BUILD /Zi",
+                "CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/DRELEASE_BUILD /Zi"
             }
         },
         {

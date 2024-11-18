@@ -2,7 +2,6 @@
 #include "include/PString.h"
 #include "include/PFileIO.h"
 #include "include/PAssert.h"
-#include "Engine/include/Logging.h"
 
 #include <Windows.h>
 #include "new"
@@ -31,9 +30,9 @@ pstd::FileHandle pstd::openFile(
 	const FileShare& shareFlags,
 	const FileCreate& createFlags
 ) {
-	ASSERT((uint32_t)accessFlags < pstd::FileAccess::COUNT);
-	ASSERT((uint32_t)shareFlags < pstd::FileShare::COUNT);
-	ASSERT((uint32_t)createFlags < pstd::FileCreate::COUNT);
+	ASSERT(accessFlags < pstd::FileAccess::COUNT);
+	ASSERT(shareFlags < pstd::FileShare::COUNT);
+	ASSERT(createFlags < pstd::FileCreate::COUNT);
 
 	uint64_t fileAccessFlags{ fileAccessWin32Flags[(size_t)accessFlags] };
 	uint64_t fileShareFlags{ fileShareWin32Flags[(size_t)shareFlags] };
@@ -71,8 +70,6 @@ pstd::String pstd::getEXEPath(ArenaFrame&& frame) {
 pstd::DllHandle pstd::loadDll(const char* filepath) {
 	HINSTANCE handle{ LoadLibraryA(filepath) };
 
-	LOG_INFO("filename: %m\n", filepath);
-	LOG_INFO("error: %u\n", (uint32_t)GetLastError());
 	return handle;
 }
 
@@ -95,7 +92,7 @@ void pstd::closeFile(pstd::FileHandle pHandle) {
 	CloseHandle(hFile);
 }
 
-size_t pstd::getFileSize(FileHandle pHandle) {
+uint32_t pstd::getFileSize(FileHandle pHandle) {
 	auto hFile{ (FileHandleImpl)pHandle };
 
 	size_t fileSize{};
@@ -123,9 +120,9 @@ pstd::Allocation
 	DWORD bytesRead{};
 	OVERLAPPED ol{};
 
-	size_t fileSize{ pstd::getFileSize(hFile) };
+	uint32_t fileSize{ pstd::getFileSize(hFile) };
 
-	ASSERT(fileSize < pstd::getAvaliableCount<char>(*arena));
+	ASSERT(fileSize < pstd::getAvailableCount<char>(frame));
 
 	pstd::Allocation fileAlloc{ pstd::alloc<char>(&frame, fileSize) };
 	if (ReadFile(hFile, fileAlloc.block, fileSize, &bytesRead, &ol) == false) {

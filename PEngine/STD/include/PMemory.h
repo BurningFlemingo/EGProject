@@ -11,31 +11,12 @@ namespace pstd {
 
 namespace pstd {
 
-	enum class Qualifier { none, constant };
-
-	struct AllocationInfo {
-		uint32_t size;	// always in bytes
+	struct Allocation {
+		uint8_t* block;
+		size_t size;  // always in bytes
 		bool ownsMemory;  // if true, memory was allocated from the system
 		bool isStackAllocated;
 	};
-
-	template<Qualifier T = Qualifier::none>
-	struct Allocation;
-
-	template<>
-	struct Allocation<Qualifier::none> {
-		uint8_t* block;
-		AllocationInfo info;
-	};
-
-	template<>
-	struct Allocation<Qualifier::constant> {
-		const uint8_t* block;
-		AllocationInfo info;
-	};
-
-	using ConstAllocation = Allocation<Qualifier::constant>;
-	using MutAllocation = Allocation<Qualifier::none>;
 
 	struct AllocationLimits {
 		uint32_t minAllocSize;
@@ -84,14 +65,12 @@ namespace pstd {
 		const Allocation& b,
 		uint32_t alignment
 	);
+	template<typename T>
+	Allocation
+		concat(ArenaFrame&& frame, const Allocation& a, const Allocation& b) {
+		return concat(pstd::move(frame), a, b, alignof(T));
+	}
 
 	Allocation coalesce(const Allocation& a, const Allocation& b);
-
-	template<typename T>
-	Allocation concat(
-		ArenaFrame&& arenaFrame, const Allocation& a, const Allocation& b
-	) {
-		return concat(arenaFrame, a, b, alignof(T));
-	}
 
 }  // namespace pstd

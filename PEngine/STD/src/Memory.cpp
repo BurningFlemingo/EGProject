@@ -24,10 +24,10 @@ namespace {
 		MemoryPool* next;
 	};
 
-	MemoryPool* createMemoryPool(uint32_t size);
+	MemoryPool* createMemoryPool(size_t size);
 	void findFreeBlock(
-		MemoryPool* pool,
-		uint32_t requiredSize,
+		const MemoryPool* pool,
+		size_t requiredSize,
 		FreelistBlock** outPrevFreeBlock,
 		FreelistBlock** outFreeBlock
 	);
@@ -103,7 +103,6 @@ pstd::Allocation pstd::concat(
 	const Allocation& b,
 	uint32_t alignment
 ) {
-	ASSERT(frame);
 	ASSERT(a.block);
 	ASSERT(b.block);
 	size_t allocSize{ a.size + b.size };
@@ -129,7 +128,7 @@ Allocation pstd::coalesce(const Allocation& a, const Allocation& b) {
 
 	uint8_t* aEnd{ a.block + a.size };
 	uint8_t* bEnd{ b.block + b.size };
-	uint32_t size{ a.size + b.size };
+	size_t size{ a.size + b.size };
 	if (aEnd == b.block) {
 		ASSERT(a.block + size == b.block + b.size);
 		return Allocation{ .block = a.block,
@@ -152,8 +151,9 @@ AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {
 }
 
 Allocation
-	pstd::internal::heapAlloc(AllocationRegistry* registry, uint32_t size) {
+	pstd::internal::heapAlloc(AllocationRegistry* registry, size_t size) {
 	ASSERT(registry);
+	size = alignUpToPageBoundary(size + sizeof(FreelistBlock));
 
 	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
@@ -192,27 +192,29 @@ Allocation
 	};
 
 	uint8_t* commitHeadPtr{ commitAddr + commitSize };
-	uint8_t* freelistHeadPtr{ pool->allocation.block + pool->allocation.size };
-	if (commitHeadPtr > freelistHeadPtr) {
-		pool->next = createMemoryPool(size);
-		pool = pool->next;
-		return heapAlloc(registry, size);  // TODO: make this better
-	}
+	uint8_t* freeBlockHeadPtr{ freeBlock->usable.block +
+							   freeBlock->usable.size };
+	ASSERT(commitHeadPtr <= freeBlockHeadPtr);
 
 	allocPages(
 		commitSize, ALLOC_TYPE_COMMIT, commitAddr
 	);	// TODO: handle tracking, this will overcommit
 
 	uint8_t* newFreeBlockAddr{ freeBlock->usable.block + size };
-	new (newFreeBlockAddr) FreelistBlock{
-		.usable = { .block = newFreeBlockAddr + sizeof(FreelistBlock),
-					.size = freeBlock->usable.size - size },
-		.next = freeBlock->next
-	};
+	uint8_t* poolHeadAddr{ pool->allocation.block + pool->allocation.size };
+	if ((newFreeBlockAddr + sizeof(FreelistBlock) + 1) < poolHeadAddr) {
+		new (newFreeBlockAddr) FreelistBlock{
+			.usable = { .block = newFreeBlockAddr + sizeof(FreelistBlock),
+						.size = freeBlock->usable.size - size -
+							sizeof(FreelistBlock) },
+			.next = freeBlock->next
+		};
+	}
+
 	if (prevFreeBlock) {
 		prevFreeBlock->next = (FreelistBlock*)newFreeBlockAddr;
 	} else {
-		registry->firstPool->firstFreeBlock = (FreelistBlock*)newFreeBlockAddr;
+		pool->firstFreeBlock = (FreelistBlock*)newFreeBlockAddr;
 	}
 
 	return Allocation{ .block = freeBlock->usable.block,
@@ -221,15 +223,19 @@ Allocation
 }
 
 void pstd::internal::heapFree(
-	AllocationRegistry* registry, Allocation* allocation
-) {}
+	AllocationRegistry* registry, const Allocation* allocation
+) {
+	// TODO: implement
+}
 
 namespace {
-	MemoryPool* createMemoryPool(uint32_t size) {
+	MemoryPool* createMemoryPool(size_t size) {
 		AllocationLimits allocLimits{ pstd::getSystemAllocationLimits() };
-		uint32_t allocSize{ ((size + allocLimits.pageSize) /
-							 allocLimits.pageSize) *
-							allocLimits.pageSize };
+		size += sizeof(FreelistBlock);
+
+		size_t allocSize{ ((size + allocLimits.pageSize) / allocLimits.pageSize
+						  ) *
+						  allocLimits.pageSize };
 		allocSize = max(allocSize, allocLimits.minAllocSize);
 
 		const Allocation poolAllocation{
@@ -245,16 +251,15 @@ namespace {
 
 		pool->firstFreeBlock = new (freelistHeaderHead) FreelistBlock{ .usable{
 			.block = freelistHeaderHead + sizeof(FreelistBlock),
-			.size = poolAllocation.size -
-				ncast<uint32_t>(sizeof(FreelistBlock)) -
-				ncast<uint32_t>(sizeof(MemoryPool)) } };
+			.size = poolAllocation.size - sizeof(FreelistBlock) -
+				sizeof(MemoryPool) } };
 
 		return pool;
 	}
 
 	void findFreeBlock(
-		MemoryPool* pool,
-		uint32_t requiredSize,
+		const MemoryPool* pool,
+		size_t requiredSize,
 		FreelistBlock** outPrevFreeBlock,
 		FreelistBlock** outFreeBlock
 	) {

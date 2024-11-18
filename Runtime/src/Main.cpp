@@ -1,4 +1,5 @@
 #include "Engine/internal/Engine.h"
+#include "Engine/internal/Logging.h"
 #include "Engine/include/Game.h"
 #include "Engine/include/Logging.h"
 #include "PArena.h"
@@ -17,32 +18,39 @@ namespace {
 		size_t lastWriteTime;
 	};
 
-	pstd::String appendToExePath(
-		pstd::FixedArena* scratchArena, const pstd::String& dllName
-	);
+	pstd::String
+		appendToExePath(pstd::ArenaFrame&& frame, const pstd::String& dllName);
 
-	GameDll loadGameDll(pstd::FixedArena arena);
+	GameDll loadGameDll(pstd::ScratchArenaFrame&& frame);
 	void unloadGameDll(GameDll dll);
+
+	peng::internal::State* engineState;
 }  // namespace
 
 int main() {
+	Console::startup();
 	pstd::AllocationRegistry allocationRegistry{ pstd::createAllocationRegistry(
 	) };
 	size_t scratchSize{ 1024 * 1024 };
-	pstd::FixedArena engineArena{ pstd::allocateFixedArena(
-		&allocationRegistry, peng::internal::getSizeofState() + scratchSize
+	size_t gameSize{ 1024 * 1024 };
+
+	pstd::Arena engineArena{ pstd::allocateArena(
+		&allocationRegistry, peng::internal::getSizeofState()
 	) };
 
-	peng::internal::State* engineState{
-		peng::internal::startup(&allocationRegistry, { &engineArena })
+	pstd::Arena gameArena{
+		pstd::allocateArena(&allocationRegistry, scratchSize + gameSize)
 	};
 
+	engineState =
+		peng::internal::startup(&allocationRegistry, { &engineArena });
+
 	// TODO: clean up code
-	GameDll gameDll{ loadGameDll(scratchArena) };
+	GameDll gameDll{ loadGameDll({ gameArena }) };
 	Game::State* gameState{ gameDll.api.startup() };
 
 	pstd::String dllPath{
-		appendToExePath(&scratchArena, pstd::createString("Game.dll"))
+		appendToExePath({ &gameArena }, pstd::createString("Game.dll"))
 	};
 
 	bool isRunning{ true };
@@ -63,11 +71,13 @@ int main() {
 }
 
 namespace {
-	pstd::String appendToExePath(
-		pstd::FixedArena* scratchArena, const pstd::String& dllName
-	) {
-		pstd::String exeString{ pstd::getEXEPath(scratchArena) };
-		size_t seperatorIndex{};
+	pstd::String
+		appendToExePath(pstd::ArenaFrame&& frame, const pstd::String& dllName) {
+		pstd::String exeString{
+			pstd::getEXEPath(pstd::makeFlipped({ frame.pArena, frame.state }))
+		};
+
+		uint32_t seperatorIndex{};
 		bool seperatorFound{ pstd::substringMatchBackward(
 			exeString, pstd::createString("/"), &seperatorIndex
 		) };
@@ -77,11 +87,17 @@ namespace {
 			);
 		}
 		exeString.size = seperatorIndex + 1;
-		pstd::String res{ pstd::concat(scratchArena, exeString, dllName) };
+		pstd::String res{ pstd::makeConcatted(
+			{ frame.pArena, frame.state }, exeString, dllName
+		) };
 		return res;
 	}
 
-	GameDll loadGameDll(pstd::FixedArena arena) {
+	GameDll loadGameDll(pstd::ScratchArenaFrame&& scratchFrame) {
+		pstd::ArenaFrame frame{
+			.pArena = &scratchFrame.arena,
+			.state = scratchFrame.state,
+		};
 		constexpr pstd::String writtenGameDllName{ pstd::createString("Game.dll"
 		) };
 		constexpr pstd::String runningGameDllName{
@@ -89,11 +105,13 @@ namespace {
 		};
 
 		const char* writtenGameDllPath{ pstd::createCString(
-			&arena, appendToExePath(&arena, writtenGameDllName)
+			{ frame.pArena, frame.state },
+			appendToExePath({ frame.pArena, frame.state }, writtenGameDllName)
 		) };
 
 		const char* runningGameDllPath{ pstd::createCString(
-			&arena, appendToExePath(&arena, runningGameDllName)
+			{ frame.pArena, frame.state },
+			appendToExePath({ frame.pArena, frame.state }, runningGameDllName)
 		) };
 
 		pstd::copyFile(

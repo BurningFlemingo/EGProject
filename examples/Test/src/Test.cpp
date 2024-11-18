@@ -12,17 +12,16 @@
 namespace Game {
 	struct State {
 		pstd::AllocationRegistry allocRegistry;
-		pstd::FixedArena gameArena;
+		pstd::Arena gameArena;
 	};
 }  // namespace Game
 
 GAME_API Game::State* Game::startup() {
 	pstd::AllocationRegistry allocRegistry{ pstd::createAllocationRegistry() };
-	pstd::FixedArena gameArena{
-		pstd::allocateFixedArena(&allocRegistry, 1024)
-	};
+	pstd::Arena gameArena{ pstd::allocateArena(&allocRegistry, 1024) };
+	pstd::ArenaFrame frame{ .pArena = &gameArena };
 
-	pstd::Allocation stateAllocation{ pstd::alloc<Game::State>(&gameArena) };
+	pstd::Allocation stateAllocation{ pstd::alloc<Game::State>(&frame) };
 	Game::State* statePtr{ new (stateAllocation.block
 	) Game::State{ .allocRegistry = allocRegistry, .gameArena = gameArena } };
 	return statePtr;

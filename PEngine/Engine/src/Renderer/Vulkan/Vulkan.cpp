@@ -22,11 +22,10 @@ namespace {
 }  // namespace
 
 Renderer::State* Renderer::startup(
-	pstd::FixedArenaFrame&& arenaFrame, const Platform::State& platformState
+	pstd::ArenaFrame&& arenaFrame, const Platform::State& platformState
 ) {
-	VkInstance instance{ createInstance(
-		pstd::makeFlipped({ arenaFrame.pArena, arenaFrame.state })
-	) };
+	VkInstance instance{ createInstance(pstd::makeFlipped(pstd::ArenaFrame{
+		arenaFrame.pArena, arenaFrame.state })) };
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };

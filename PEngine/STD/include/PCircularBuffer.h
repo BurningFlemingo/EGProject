@@ -29,15 +29,6 @@ namespace pstd {
 	}
 
 	template<typename T>
-	Array<T> getContents(const CircularBuffer<T>& buffer) {
-		size_t address{ (size_t)buffer.allocation.block + buffer.tailIndex };
-		size_t count{ getCount(buffer) };
-		pstd::Allocation bufferAllocation{};
-		return pstd::Array<T>{ .allocation = { .block = (void*)address,
-											   .size = count * sizeof(T) } };
-	}
-
-	template<typename T>
 	bool isFull(const CircularBuffer<T>& buffer) {
 		return getCount(buffer) >= getCapacity(buffer);
 	}
@@ -51,6 +42,7 @@ namespace pstd {
 	bool popBack(CircularBuffer<T>* buffer, T* popOut) {
 		ASSERT(buffer);
 		ASSERT(popOut);
+		ASSERT(buffer->headIndex < getCapacity(*buffer));
 
 		if (pstd::isEmpty(*buffer)) {
 			return false;
@@ -58,7 +50,11 @@ namespace pstd {
 
 		T* const typedBlock{ (T*)buffer->allocation.block };
 
-		buffer->headIndex--;  // headIndex points to the next avaliable index
+		if (buffer->headIndex == 0) {
+			buffer->headIndex = getCapacity(*buffer) - 1;
+		} else {
+			buffer->headIndex--;
+		}
 		*popOut = typedBlock[buffer->headIndex];
 
 		return true;
@@ -68,12 +64,14 @@ namespace pstd {
 	void pushBackOverwrite(CircularBuffer<T>* buffer, const T val) {
 		ASSERT(buffer);
 
+		bool bufferWasFull{ isFull(*buffer) };
+
 		T* const typedBlock{ (T*)buffer->allocation.block };
 		typedBlock[buffer->headIndex] = val;
 
 		buffer->headIndex = (buffer->headIndex + 1) % (getCapacity(*buffer));
 
-		if (isFull(*buffer)) {
+		if (bufferWasFull) {
 			buffer->tailIndex =
 				(buffer->tailIndex + 1) % (getCapacity(*buffer));
 		}

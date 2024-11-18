@@ -13,7 +13,7 @@ namespace pstd {
 		using AllocationTypeFlagBits = uint32_t;
 
 		Allocation allocPages(
-			const uint32_t size,
+			const size_t size,
 			const AllocationTypeFlagBits allocTypeFlags,
 			void* baseAddress = nullptr
 		);
@@ -24,7 +24,7 @@ namespace pstd {
 			const AllocationTypeFlagBits allocTypeFlags
 		);
 
-		Allocation heapAlloc(AllocationRegistry* state, uint32_t size);
-		void heapFree(AllocationRegistry* state, Allocation* allocation);
+		Allocation heapAlloc(AllocationRegistry* state, size_t size);
+		void heapFree(AllocationRegistry* state, const Allocation* allocation);
 	}  // namespace internal
 }  // namespace pstd

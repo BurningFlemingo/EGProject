@@ -42,7 +42,7 @@ namespace pstd {
 	template<typename T>
 		requires StaticContainer<T>
 	constexpr Allocation getStaticAllocation(const T& container) {
-		Allocation allocation{ .block = rcast<const uint8_t*>(container.data),
+		Allocation allocation{ .block = rcast<uint8_t*>(container.data),
 							   .size = getCapacity(container) * sizeof(T),
 							   .isStackAllocated = true };
 		return allocation;

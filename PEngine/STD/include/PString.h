@@ -54,7 +54,10 @@ namespace pstd {
 			.buffer;
 	}
 
-	String concat(pstd::ArenaFrame&& buffer, String a, String b);
+	// strings must be right next to eachother in memory
+	bool concat(String* a, String&& b);
+
+	String makeConcatted(pstd::ArenaFrame&& buffer, String a, String b);
 
 	bool substringMatchForward(
 		const String& a, const String& b, uint32_t* outIndex = nullptr
@@ -89,9 +92,13 @@ namespace pstd {
 	String formatString(
 		pstd::ArenaFrame&& arenaFrame, const String& format, T val, Args... args
 	) {
-		String newFormat{ formatString(arenaFrame, format, val) };
+		String newFormat{
+			formatString({ arenaFrame.pArena, arenaFrame.state }, format, val)
+		};
 
-		String res{ formatString(arenaFrame, newFormat, args...) };
+		String res{ formatString(
+			{ arenaFrame.pArena, arenaFrame.state }, newFormat, args...
+		) };
 
 		return res;
 	}

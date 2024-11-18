@@ -35,7 +35,7 @@ namespace Console {
 		log(const LogLevel logLevel, const pstd::String& format, Args... args) {
 		pstd::Arena logArena{ getLogArena() };
 		pstd::String formattedString{
-			pstd::formatString({ logArena }, format, args...)
+			pstd::formatString({ &logArena }, format, args...)
 		};
 		log(logLevel, formattedString);
 	}

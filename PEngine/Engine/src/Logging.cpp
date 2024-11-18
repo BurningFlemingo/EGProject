@@ -1,4 +1,5 @@
 #include "include/Logging.h"
+#include "internal/Logging.h"
 #include "PArena.h"
 #include "PConsole.h"
 #include "PString.h"
@@ -7,9 +8,7 @@
 namespace {
 	constexpr uint32_t LOG_ARENA_SIZE{ 1024 };
 	char g_RawLogArray[LOG_ARENA_SIZE]{};
-	pstd::Arena g_LogArena{ .allocation = { .block =
-												rcast<uint8_t*>(g_RawLogArray),
-											.size = LOG_ARENA_SIZE } };
+	pstd::Arena g_LogArena{};
 
 	constexpr pstd::StaticArray<
 		const char*,
@@ -19,12 +18,19 @@ namespace {
 							   "", "[INFO]: ", "[WARNING] ", "[ERROR] " } };
 }  // namespace
 
+void Console::startup() {
+	g_LogArena =
+		pstd::Arena{ .allocation = { .block = rcast<uint8_t*>(g_RawLogArray),
+									 .size = LOG_ARENA_SIZE },
+					 .isAllocated = true };
+}
+
 pstd::Arena Console::getLogArena() {
 	return g_LogArena;
 }
 
 void Console::log(const Console::LogLevel logLevel, const pstd::String& msg) {
-	ASSERT(logLevel <= (uint32_t)LogLevel::error);
+	ASSERT(logLevel <= LogLevel::error);
 
 	pstd::reset(&g_LogArena);
 

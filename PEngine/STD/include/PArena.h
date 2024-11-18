@@ -7,11 +7,13 @@
 namespace pstd {
 	// has 2 regions that grow towards eachother
 	struct Arena {
-		const Allocation allocation;
+		Allocation allocation;
 		uint32_t bottomOffset;	// grows up
-		uint32_t topOffset{ allocation.size - 1 };	// grows down
+		uint32_t topOffset{
+			ncast<uint32_t>(allocation.size - 1)
+		};	// grows down
 
-		bool isAllocated;
+		bool isAllocated{ true };
 	};
 
 	struct ArenaFrameState {
@@ -46,7 +48,7 @@ namespace pstd {
 	template<typename T>
 	Arena allocateArena(AllocationRegistry* registry, const size_t count) {
 		size_t byteAllocSize{ count * sizeof(T) };
-		return Arena{ allocateFixedArena(registry, byteAllocSize) };
+		return allocateArena(registry, byteAllocSize);
 	}
 
 	template<typename T>
@@ -58,21 +60,24 @@ namespace pstd {
 		return frame.pArena->bottomOffset / sizeof(T);
 	}
 	template<typename T>
-	size_t getAvailableCount(const ArenaFrame& frame) {
-		size_t baseAddress{ (size_t)frame.pArena->allocation.block };
+	uint32_t getAvailableCount(const ArenaFrame& frame) {
+		uintptr_t baseAddress{ (size_t)frame.pArena->allocation.block };
 		uint32_t alignment{ alignof(T) };
 
-		size_t alignedTopOffset{};
-		size_t alignedBottomOffset{};
+		uint32_t alignedTopOffset{};
+		uint32_t alignedBottomOffset{};
 
 		if (frame.state.isFlipped) {
-			size_t topOffset{ frame.pArena->allocation.size };
-			size_t bottomOffset{ frame.pArena->topOffset };
+			uint32_t topOffset{ ncast<uint32_t>(frame.pArena->allocation.size
+			) };
+			uint32_t bottomOffset{ frame.pArena->topOffset };
 
-			size_t bottomPadding{ bottomOffset +
-								  ((bottomOffset + alignment) % alignment) };
+			uint32_t bottomPadding{
+				bottomOffset + uint32_t((bottomOffset + alignment) % alignment)
+			};
 
-			size_t topPadding{ (baseAddress + topOffset) % alignment };
+			auto topPadding{ ncast<uint32_t>(baseAddress + topOffset) %
+							 alignment };
 
 			alignedBottomOffset = bottomOffset + bottomPadding;
 			alignedTopOffset = topOffset - topPadding;
@@ -81,8 +86,9 @@ namespace pstd {
 			alignedBottomOffset =
 				0;	// if this wasnt true, alloc would have asserted
 
-			size_t topOffset{ frame.state.scratchOffset };
-			size_t topPadding{ (baseAddress + topOffset) % alignment };
+			uint32_t topOffset{ frame.state.scratchOffset };
+			auto topPadding{ ncast<uint32_t>(baseAddress + topOffset) %
+							 alignment };
 
 			alignedTopOffset = topOffset + topPadding;
 		}
@@ -91,9 +97,9 @@ namespace pstd {
 			alignedTopOffset >= alignedBottomOffset
 		);	// overlapped is free memory
 
-		size_t avaliableBytes{ alignedTopOffset - alignedBottomOffset +
-							   1 };	 // overlapped is free memory
-		size_t res{ avaliableBytes / sizeof(T) };
+		uint32_t avaliableBytes{ alignedTopOffset - alignedBottomOffset +
+								 1 };  // overlapped is free memory
+		uint32_t res{ avaliableBytes / sizeof(T) };
 		return res;
 	}
 

@@ -26,7 +26,9 @@ pstd::Array<const char*> findValidationLayers(pstd::ArenaFrame&& arenaFrame) {
 		.data = { "VK_LAYER_KHRONOS_validation" }, .count = 1
 	};
 
-	pstd::BoundedStaticArray<const char*, 1> foundLayers{};
+	pstd::BoundedArray<const char*> foundLayers{
+		.allocation = pstd::alloc<const char*>(&arenaFrame, 1)
+	};
 
 	for (int i{}; i < layerCount; i++) {
 		if (requiredLayers.count == 0) {
@@ -40,7 +42,7 @@ pstd::Array<const char*> findValidationLayers(pstd::ArenaFrame&& arenaFrame) {
 
 		if (pstd::find(requiredLayers, matchFunction, &foundIndex)) {
 			pstd::pushBack(
-				foundLayers, requiredLayers[foundIndex]
+				&foundLayers, requiredLayers[foundIndex]
 			);	// ptr to string literal
 			pstd::compactRemove(&requiredLayers, foundIndex);
 		}
@@ -53,9 +55,6 @@ pstd::Array<const char*> findValidationLayers(pstd::ArenaFrame&& arenaFrame) {
 		LOG_INFO("found %m\n", foundLayers[i]);
 	}
 
-	pstd::Array<const char*> res{
-		.allocation = pstd::alloc<const char*>(&arenaFrame, foundLayers.count),
-	};
-	pstd::shallowMove(&res.allocation, pstd::getStaticAllocation(foundLayers));
+	pstd::Array<const char*> res{ .allocation = foundLayers.allocation };
 	return res;
 }

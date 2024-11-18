@@ -50,7 +50,7 @@ namespace pstd {
 
 	void closeFile(FileHandle handle);
 
-	size_t getFileSize(FileHandle handle);
+	uint32_t getFileSize(FileHandle handle);
 	size_t getLastFileWriteTime(const char*);
 
 	Allocation readFile(ArenaFrame&& frame, FileHandle handle);
