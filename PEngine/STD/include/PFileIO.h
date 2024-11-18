@@ -40,10 +40,12 @@ namespace pstd {
 		);
 	}
 
-	bool copyFile(const char* srcName, const char* dstName, bool replace);
+	bool copyFile(const char* dstName, const char* srcName, bool replace);
 
 	String getEXEPath(ArenaFrame&& frame);	// includes the exe name
 
+	// returned string is cstring
+	String getDllExtensionName();
 	DllHandle loadDll(const char* filepath);
 	void unloadDll(DllHandle handle);
 	void* findDllFunction(DllHandle handle, const char* functionName);

@@ -53,7 +53,7 @@ pstd::FileHandle pstd::openFile(
 	return hFile;
 }
 
-bool pstd::copyFile(const char* srcName, const char* dstName, bool replace) {
+bool pstd::copyFile(const char* dstName, const char* srcName, bool replace) {
 	auto res{ (bool)CopyFileA(srcName, dstName, !replace) };
 	return res;
 }
@@ -65,6 +65,10 @@ pstd::String pstd::getEXEPath(ArenaFrame&& frame) {
 		pstd::createString({ frame.pArena, frame.state }, exePath)
 	};
 	return res;
+}
+
+pstd::String pstd::getDllExtensionName() {
+	return pstd::String{ .buffer = "dll", .size = 3 };
 }
 
 pstd::DllHandle pstd::loadDll(const char* filepath) {

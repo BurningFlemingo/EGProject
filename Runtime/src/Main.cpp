@@ -18,8 +18,7 @@ namespace {
 		size_t lastWriteTime;
 	};
 
-	pstd::String
-		appendToExePath(pstd::ArenaFrame&& frame, const pstd::String& dllName);
+	pstd::String makeExeDirectoryPath(pstd::ArenaFrame&& frame);
 
 	GameDll loadGameDll(pstd::ScratchArenaFrame&& frame);
 	void unloadGameDll(GameDll dll);
@@ -42,25 +41,33 @@ int main() {
 		pstd::allocateArena(&allocationRegistry, scratchSize + gameSize)
 	};
 
+	pstd::Arena runtimeArena{
+		pstd::allocateArena(&allocationRegistry, 1024 + scratchSize)
+	};
+
 	engineState =
 		peng::internal::startup(&allocationRegistry, { &engineArena });
 
-	// TODO: clean up code
 	GameDll gameDll{ loadGameDll({ gameArena }) };
 	Game::State* gameState{ gameDll.api.startup() };
 
-	pstd::String dllPath{
-		appendToExePath({ &gameArena }, pstd::createString("Game.dll"))
-	};
+	pstd::String originalDllPath{ pstd::formatString(
+		{ &runtimeArena },
+		"%mGame.%m",
+		makeExeDirectoryPath({ &runtimeArena }),
+		pstd::getDllExtensionName()
+	) };
 
 	bool isRunning{ true };
+	const char* originalDllPathCString{
+		pstd::createCString({ &runtimeArena }, originalDllPath)
+	};
 	while (isRunning) {
-		// if (pstd::getLastFileWriteTime(
-		// 		pstd::createCString(&scratchArena, dllPath)
-		// 	) != gameDll.lastWriteTime) {
-		// 	unloadGameDll(gameDll);
-		// 	gameDll = loadGameDll(scratchArena);
-		// }
+		if (pstd::getLastFileWriteTime(originalDllPathCString) !=
+			gameDll.lastWriteTime) {
+			unloadGameDll(gameDll);
+			gameDll = loadGameDll({ runtimeArena });
+		}
 
 		isRunning &= peng::internal::update(engineState);
 		isRunning &= gameDll.api.update(gameState);
@@ -71,8 +78,7 @@ int main() {
 }
 
 namespace {
-	pstd::String
-		appendToExePath(pstd::ArenaFrame&& frame, const pstd::String& dllName) {
+	pstd::String makeExeDirectoryPath(pstd::ArenaFrame&& frame) {
 		pstd::String exeString{
 			pstd::getEXEPath(pstd::makeFlipped({ frame.pArena, frame.state }))
 		};
@@ -87,38 +93,49 @@ namespace {
 			);
 		}
 		exeString.size = seperatorIndex + 1;
-		pstd::String res{ pstd::makeConcatted(
-			{ frame.pArena, frame.state }, exeString, dllName
-		) };
-		return res;
+		return exeString;
 	}
 
-	GameDll loadGameDll(pstd::ScratchArenaFrame&& scratchFrame) {
-		pstd::ArenaFrame frame{
-			.pArena = &scratchFrame.arena,
-			.state = scratchFrame.state,
-		};
-		constexpr pstd::String writtenGameDllName{ pstd::createString("Game.dll"
-		) };
-		constexpr pstd::String runningGameDllName{
-			pstd::createString("Game_Loaded.dll")
-		};
+	GameDll loadGameDll(pstd::ScratchArenaFrame&& frame) {
+		static uint32_t loadedDllSlot{};
 
-		const char* writtenGameDllPath{ pstd::createCString(
-			{ frame.pArena, frame.state },
-			appendToExePath({ frame.pArena, frame.state }, writtenGameDllName)
+		constexpr pstd::String originalDllName{ pstd::createString("Game") };
+
+		pstd::String loadedDllPath{ pstd::formatString(
+			{ &frame.arena, frame.state },
+			"%mGame_Loaded_%u.%m",
+			makeExeDirectoryPath({ &frame.arena, frame.state }),
+			loadedDllSlot,
+			pstd::getDllExtensionName()
 		) };
 
-		const char* runningGameDllPath{ pstd::createCString(
-			{ frame.pArena, frame.state },
-			appendToExePath({ frame.pArena, frame.state }, runningGameDllName)
+		uint32_t unloadedDllSlot{ (loadedDllSlot + 1) % 2 };
+
+		pstd::String toLoadDllPath{ pstd::formatString(
+			{ &frame.arena, frame.state },
+			"%mGame_Loaded_%u.%m",
+			makeExeDirectoryPath({ &frame.arena, frame.state }),
+			unloadedDllSlot,
+			pstd::getDllExtensionName()
+		) };
+
+		pstd::String originalDllPath{ pstd::formatString(
+			{ &frame.arena, frame.state },
+			"%mGame.%m",
+			makeExeDirectoryPath({ &frame.arena, frame.state }),
+			pstd::getDllExtensionName()
 		) };
 
 		pstd::copyFile(
-			writtenGameDllPath, runningGameDllPath, true
-		);	// running game dll should be unloaded at this point
+			pstd::createCString({ &frame.arena, frame.state }, toLoadDllPath),
+			pstd::createCString({ &frame.arena, frame.state }, originalDllPath),
+			true
+		);
 
-		pstd::DllHandle gameHandle{ pstd::loadDll(runningGameDllPath) };
+		pstd::DllHandle gameHandle{ pstd::loadDll(
+			pstd::createCString({ &frame.arena, frame.state }, toLoadDllPath)
+		) };
+		loadedDllSlot = unloadedDllSlot;
 
 		Game::API gameAPI{
 			.startup = (Game::API::Startup
@@ -135,7 +152,7 @@ namespace {
 					 .api = gameAPI,
 					 .isValid = isValid,
 					 .lastWriteTime =
-						 pstd::getLastFileWriteTime(writtenGameDllPath) };
+						 pstd::getLastFileWriteTime(originalDllPath.buffer) };
 		return res;
 	}
 	void unloadGameDll(GameDll dll) {

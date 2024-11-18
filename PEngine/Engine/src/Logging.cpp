@@ -26,11 +26,17 @@ void Console::startup() {
 }
 
 pstd::Arena Console::getLogArena() {
+	if (!g_LogArena.isAllocated || g_LogArena.allocation.block == nullptr) {
+		Console::startup();
+	}
 	return g_LogArena;
 }
 
 void Console::log(const Console::LogLevel logLevel, const pstd::String& msg) {
 	ASSERT(logLevel <= LogLevel::error);
+	if (!g_LogArena.isAllocated || g_LogArena.allocation.block == nullptr) {
+		Console::startup();
+	}
 
 	pstd::reset(&g_LogArena);
 
