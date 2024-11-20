@@ -32,7 +32,9 @@ namespace pstd {
 		const FileCreate& createFlags
 	) {
 		return pstd::openFile(
-			pstd::makeNullTerminated({ frame.pArena, frame.state }, filepath)
+			pstd::makeNullTerminated(
+				pstd::makeFrame(frame, frame.pPersistOffset), filepath
+			)
 				.buffer,
 			accessFlags,
 			shareFlags,

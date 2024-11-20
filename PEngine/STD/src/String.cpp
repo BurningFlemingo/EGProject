@@ -69,7 +69,7 @@ String pstd::makeNullTerminated(pstd::ArenaFrame&& arenaFrame, String string) {
 	pstd::memCpy(
 		rcast<void*>(stringAllocation.block), string.buffer, lettersToCopy
 	);
-	pushLetter(ArenaFrame{ arenaFrame.pArena, arenaFrame.state }, '\0');
+	pushLetter(pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), '\0');
 
 	string = String{ .buffer = rcast<const char*>(stringAllocation.block),
 					 .size = ncast<uint32_t>(stringAllocation.size) };
@@ -109,17 +109,19 @@ bool pstd::concat(String* a, String&& b) {
 }
 
 String pstd::makeConcatted(pstd::ArenaFrame&& frame, String a, String b) {
-	String res{ pushString({ frame.pArena, frame.state }, a) };
-	bool succeeded{
-		pstd::concat(&res, pushString({ frame.pArena, frame.state }, b))
-	};
+	String res{ pushString(pstd::makeFrame(frame, frame.pPersistOffset), a) };
+	bool succeeded{ pstd::concat(
+		&res, pushString(pstd::makeFrame(frame, frame.pPersistOffset), b)
+	) };
 	ASSERT(succeeded);
 
 	return res;
 }
 
 String pstd::formatString(pstd::ArenaFrame&& frame, const String& format) {
-	String res{ pushString({ frame.pArena, frame.state }, format) };
+	String res{
+		pushString(pstd::makeFrame(frame, frame.pPersistOffset), format)
+	};
 	return res;
 }
 
@@ -129,7 +131,7 @@ String
 	char controlCharacter{};
 	uint32_t formatCharactersProccessed{};
 	String string{ pushStringUntilControlCharacter(
-		{ frame.pArena, frame.state },
+		pstd::makeFrame(frame, frame.pPersistOffset),
 		format,
 		&formatCharactersProccessed,
 		&controlCharacter
@@ -140,7 +142,8 @@ String
 			concat(
 				&string,
 				pushInt64AsString(
-					{ frame.pArena, frame.state }, ncast<int64_t>(val)
+					pstd::makeFrame(frame, frame.pPersistOffset),
+					ncast<int64_t>(val)
 				)
 			);
 		} break;
@@ -148,7 +151,8 @@ String
 			concat(
 				&string,
 				pushInt64AsString(
-					{ frame.pArena, frame.state }, ncast<uint64_t>(val)
+					pstd::makeFrame(frame, frame.pPersistOffset),
+					ncast<uint64_t>(val)
 				)
 			);
 		} break;
@@ -156,7 +160,8 @@ String
 			concat(
 				&string,
 				pushInt64AsString(
-					{ frame.pArena, frame.state }, ncast<double>(val)
+					pstd::makeFrame(frame, frame.pPersistOffset),
+					ncast<double>(val)
 				)
 			);
 		} break;
@@ -173,7 +178,10 @@ String
 							 .size = format.size - formatCharactersProccessed };
 
 		concat(
-			&string, pushString({ frame.pArena, frame.state }, restOfFormat)
+			&string,
+			pushString(
+				pstd::makeFrame(frame, frame.pPersistOffset), restOfFormat
+			)
 		);
 	}
 
@@ -187,14 +195,17 @@ String pstd::formatString(
 	char controlCharacter{};
 	uint32_t formatCharactersProccessed{};
 	String string{ pushStringUntilControlCharacter(
-		{ frame.pArena, frame.state },
+		pstd::makeFrame(frame, frame.pPersistOffset),
 		format,
 		&formatCharactersProccessed,
 		&controlCharacter
 	) };
 
 	if (controlCharacter == 'm') {
-		concat(&string, pushString({ frame.pArena, frame.state }, val));
+		concat(
+			&string,
+			pushString(pstd::makeFrame(frame, frame.pPersistOffset), val)
+		);
 	}
 
 	if (formatCharactersProccessed < format.size) {
@@ -203,7 +214,10 @@ String pstd::formatString(
 							 .size = format.size - formatCharactersProccessed };
 
 		concat(
-			&string, pushString({ frame.pArena, frame.state }, restOfFormat)
+			&string,
+			pushString(
+				pstd::makeFrame(frame, frame.pPersistOffset), restOfFormat
+			)
 		);
 	}
 
@@ -215,7 +229,7 @@ String pstd::formatString(
 	pstd::ArenaFrame&& frame, const String& format, const char* val
 ) {
 	return formatString(
-		{ frame.pArena, frame.state }, format, createString(val)
+		pstd::makeFrame(frame, frame.pPersistOffset), format, createString(val)
 	);
 }
 
@@ -304,17 +318,25 @@ namespace {
 
 		String string{};
 		if (number < 0) {
-			concat(&string, pushLetter({ frame.pArena, frame.state }, '-'));
+			concat(
+				&string,
+				pushLetter(pstd::makeFrame(frame, frame.pPersistOffset), '-')
+			);
 			number *= -1.f;
 		}
 
 		auto wholePart{ ncast<uint32_t>(number) };
 		concat(
 			&string,
-			pushUInt64AsString({ frame.pArena, frame.state }, wholePart)
+			pushUInt64AsString(
+				pstd::makeFrame(frame, frame.pPersistOffset), wholePart
+			)
 		);
 
-		concat(&string, pushLetter({ frame.pArena, frame.state }, '.'));
+		concat(
+			&string,
+			pushLetter(pstd::makeFrame(frame, frame.pPersistOffset), '.')
+		);
 
 		size_t factor{ pstd::pow<size_t>(10, precision) };
 		auto decimalPart{
@@ -322,7 +344,9 @@ namespace {
 		};
 		concat(
 			&string,
-			pushUInt64AsString({ frame.pArena, frame.state }, decimalPart)
+			pushUInt64AsString(
+				pstd::makeFrame(frame, frame.pPersistOffset), decimalPart
+			)
 		);
 		return string;
 	}
@@ -331,17 +355,21 @@ namespace {
 		size_t stringSize{};
 		if (number >= 0) {
 			return pushUInt64AsString(
-				{ frame.pArena, frame.state }, (uint32_t)number
+				pstd::makeFrame(frame, frame.pPersistOffset), (uint32_t)number
 			);
 		}
 
-		String string{ pushLetter({ frame.pArena, frame.state }, '-') };
+		String string{
+			pushLetter(pstd::makeFrame(frame, frame.pPersistOffset), '-')
+		};
 
 		// this avoids overflow since |INT_MIN| = |INT_MAX| + 1
 		uint32_t positiveNumber{ ncast<uint32_t>(-(number + 1)) + 1 };
 		concat(
 			&string,
-			pushUInt64AsString({ frame.pArena, frame.state }, positiveNumber)
+			pushUInt64AsString(
+				pstd::makeFrame(frame, frame.pPersistOffset), positiveNumber
+			)
 		);
 		return string;
 	}
@@ -431,7 +459,9 @@ namespace {
 		*outFormatCharactersProccessed =
 			normalStringSize + controlCharactersProccessedSize;
 
-		String res{ pushString({ frame.pArena, frame.state }, normalString) };
+		String res{ pushString(
+			pstd::makeFrame(frame, frame.pPersistOffset), normalString
+		) };
 		return res;
 	}
 }  // namespace

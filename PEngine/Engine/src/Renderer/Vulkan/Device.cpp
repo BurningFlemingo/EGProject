@@ -25,17 +25,17 @@ namespace {
 Device createDevice(
 	pstd::ArenaFrame&& arenaFrame, VkInstance instance, VkSurfaceKHR surface
 ) {
-	VkPhysicalDevice physicalDevice{
-		createPhysicalDevice({ arenaFrame.pArena, arenaFrame.state }, instance)
-	};
+	VkPhysicalDevice physicalDevice{ createPhysicalDevice(
+		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), instance
+	) };
 
 	DeviceQueueFamilyIndices qfi{ findDeviceIndices(
-		{ .pArena = arenaFrame.pArena, .state = arenaFrame.state },
+		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 		physicalDevice,
 		surface
 	) };
 	VkDevice device{ createLogicalDevice(
-		{ .pArena = arenaFrame.pArena, .state = arenaFrame.state },
+		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 		instance,
 		physicalDevice,
 		qfi

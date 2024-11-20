@@ -12,14 +12,13 @@
 #include "PMemory.h"
 
 VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
-	pstd::Array<const char*> foundExtensions{ findExtensions(pstd::makeFlipped(
-		pstd::ArenaFrame{ arenaFrame.pArena, arenaFrame.state }
-	)) };
-
-	pstd::Array<const char*> foundValidationLayers{
-		findValidationLayers(pstd::makeFlipped(pstd::ArenaFrame{
-			arenaFrame.pArena, arenaFrame.state }))
+	pstd::Array<const char*> foundExtensions{
+		findExtensions(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
 	};
+
+	pstd::Array<const char*> foundValidationLayers{ findValidationLayers(
+		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset)
+	) };
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",

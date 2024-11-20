@@ -20,7 +20,7 @@ namespace {
 
 	pstd::String makeExeDirectoryPath(pstd::ArenaFrame&& frame);
 
-	GameDll loadGameDll(pstd::ScratchArenaFrame&& frame);
+	GameDll loadGameDll(pstd::ArenaScratchFrame&& frame);
 	void unloadGameDll(GameDll dll);
 
 	peng::internal::State* engineState;
@@ -80,7 +80,7 @@ int main() {
 namespace {
 	pstd::String makeExeDirectoryPath(pstd::ArenaFrame&& frame) {
 		pstd::String exeString{
-			pstd::getEXEPath(pstd::makeFlipped({ frame.pArena, frame.state }))
+			pstd::getEXEPath(pstd::makeFrame(frame, &frame.scratchOffset))
 		};
 
 		uint32_t seperatorIndex{};
@@ -96,15 +96,15 @@ namespace {
 		return exeString;
 	}
 
-	GameDll loadGameDll(pstd::ScratchArenaFrame&& frame) {
+	GameDll loadGameDll(pstd::ArenaScratchFrame&& frame) {
 		static uint32_t loadedDllSlot{};
 
 		constexpr pstd::String originalDllName{ pstd::createString("Game") };
 
 		pstd::String loadedDllPath{ pstd::formatString(
-			{ &frame.arena, frame.state },
+			pstd::makeFrame(&frame),
 			"%mGame_Loaded_%u.%m",
-			makeExeDirectoryPath({ &frame.arena, frame.state }),
+			makeExeDirectoryPath(pstd::makeFrame(&frame)),
 			loadedDllSlot,
 			pstd::getDllExtensionName()
 		) };
@@ -112,28 +112,28 @@ namespace {
 		uint32_t unloadedDllSlot{ (loadedDllSlot + 1) % 2 };
 
 		pstd::String toLoadDllPath{ pstd::formatString(
-			{ &frame.arena, frame.state },
+			pstd::makeFrame(&frame),
 			"%mGame_Loaded_%u.%m",
-			makeExeDirectoryPath({ &frame.arena, frame.state }),
+			makeExeDirectoryPath(pstd::makeFrame(&frame)),
 			unloadedDllSlot,
 			pstd::getDllExtensionName()
 		) };
 
 		pstd::String originalDllPath{ pstd::formatString(
-			{ &frame.arena, frame.state },
+			pstd::makeFrame(&frame),
 			"%mGame.%m",
-			makeExeDirectoryPath({ &frame.arena, frame.state }),
+			makeExeDirectoryPath(pstd::makeFrame(&frame)),
 			pstd::getDllExtensionName()
 		) };
 
 		pstd::copyFile(
-			pstd::createCString({ &frame.arena, frame.state }, toLoadDllPath),
-			pstd::createCString({ &frame.arena, frame.state }, originalDllPath),
+			pstd::createCString(pstd::makeFrame(&frame), toLoadDllPath),
+			pstd::createCString(pstd::makeFrame(&frame), originalDllPath),
 			true
 		);
 
 		pstd::DllHandle gameHandle{ pstd::loadDll(
-			pstd::createCString({ &frame.arena, frame.state }, toLoadDllPath)
+			pstd::createCString(pstd::makeFrame(&frame), toLoadDllPath)
 		) };
 		loadedDllSlot = unloadedDllSlot;
 

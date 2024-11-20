@@ -38,7 +38,8 @@ namespace pstd {
 	String createString(ArenaFrame&& arenaFrame, const String& string);
 	inline String createString(ArenaFrame&& arenaFrame, const char* string) {
 		return createString(
-			{ arenaFrame.pArena, arenaFrame.state }, createString(string)
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+			createString(string)
 		);
 	}
 
@@ -49,7 +50,8 @@ namespace pstd {
 	inline const char*
 		createCString(ArenaFrame&& arenaFrame, const String& string) {
 		return makeNullTerminated(
-				   { arenaFrame.pArena, arenaFrame.state }, string
+				   pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+				   string
 		)
 			.buffer;
 	}
@@ -92,12 +94,14 @@ namespace pstd {
 	String formatString(
 		pstd::ArenaFrame&& arenaFrame, const String& format, T val, Args... args
 	) {
-		String newFormat{
-			formatString({ arenaFrame.pArena, arenaFrame.state }, format, val)
-		};
+		String newFormat{ formatString(
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), format, val
+		) };
 
 		String res{ formatString(
-			{ arenaFrame.pArena, arenaFrame.state }, newFormat, args...
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+			newFormat,
+			args...
 		) };
 
 		return res;
@@ -114,7 +118,8 @@ namespace pstd {
 	inline String
 		formatString(pstd::ArenaFrame&& arenaFrame, const char* format) {
 		return formatString(
-			{ arenaFrame.pArena, arenaFrame.state }, createString(format)
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+			createString(format)
 		);
 	}
 
@@ -122,7 +127,9 @@ namespace pstd {
 	String
 		formatString(pstd::ArenaFrame&& arenaFrame, const char* format, T val) {
 		return formatString(
-			{ arenaFrame.pArena, arenaFrame.state }, createString(format), val
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+			createString(format),
+			val
 		);
 	}
 
@@ -131,7 +138,7 @@ namespace pstd {
 		pstd::ArenaFrame&& arenaFrame, const char* format, T val, Args... args
 	) {
 		return formatString(
-			{ arenaFrame.pArena, arenaFrame.state },
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 			createString(format),
 			val,
 			args...

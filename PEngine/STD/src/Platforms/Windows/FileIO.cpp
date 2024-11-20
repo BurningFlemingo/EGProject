@@ -61,9 +61,9 @@ bool pstd::copyFile(const char* dstName, const char* srcName, bool replace) {
 pstd::String pstd::getEXEPath(ArenaFrame&& frame) {
 	char exePath[MAX_PATH];
 	GetModuleFileNameA(0, exePath, MAX_PATH);
-	pstd::String res{
-		pstd::createString({ frame.pArena, frame.state }, exePath)
-	};
+	pstd::String res{ pstd::createString(
+		pstd::makeFrame(frame, frame.pPersistOffset), exePath
+	) };
 	return res;
 }
 

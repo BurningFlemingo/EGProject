@@ -27,8 +27,8 @@ pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2),
 		.count = 2
 	};
-	new (pstd::getData(requiredExtensions))(const char* [2]
-	){ Platform::getPlatformSurfaceExtension(), VK_KHR_SURFACE_EXTENSION_NAME };
+	requiredExtensions[0] = Platform::getPlatformSurfaceExtension();
+	requiredExtensions[1] = VK_KHR_SURFACE_EXTENSION_NAME;
 
 	pstd::BoundedArray<const char*> optionalExtensions{ getDebugExtensions() };
 
@@ -79,10 +79,12 @@ pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 		LOG_INFO("found %m\n", foundOptionalExtensions[i]);
 	}
 
-	pstd::Array<const char*> res{ .allocation = pstd::concat<const char*>(
-									  { arenaFrame.pArena, arenaFrame.state },
-									  foundRequiredExtensions.allocation,
-									  foundOptionalExtensions.allocation
-								  ) };
+	pstd::Array<const char*> res{
+		.allocation = pstd::concat<const char*>(
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+			foundRequiredExtensions.allocation,
+			foundOptionalExtensions.allocation
+		)
+	};
 	return res;
 }
