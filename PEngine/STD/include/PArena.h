@@ -3,44 +3,57 @@
 #include "PTypes.h"
 #include "PMemory.h"
 #include "PAssert.h"
+#include "PAlgorithm.h"
 
 namespace pstd {
-	// has 2 regions that grow towards eachother
 	struct Arena {
 		Allocation allocation;
-		uint32_t bottomOffset;	// grows up
-		uint32_t topOffset{
-			ncast<uint32_t>(allocation.size - 1)
-		};	// grows down
+		uint32_t offset;
 
-		bool isAllocated{ true };
+		bool isAllocated;
 	};
 
-	struct ArenaFrameState {
-		uint32_t scratchOffset;
-		bool isFlipped{ false };
-	};
-
-	// used to control function return placement within pArena.
-	// Also limits scratch allocations lifetime to the frame's scope. returns
-	// live in pArena.
 	struct ArenaFrame {
 		Arena* pArena;
-		ArenaFrameState state{ .scratchOffset = pArena->topOffset };
+
+		uint32_t* pPersistOffset{ &pArena->offset };
+		uint32_t scratchOffset{ ncast<uint32_t>(pArena->allocation.size - 1) };
+
+		bool isFlipped;
 	};
 
-	// uses a copy of an arena for scratch allocations, returns dont live here.
-	struct ScratchArenaFrame {
+	struct ArenaScratchFrame {
 		Arena arena;
-		ArenaFrameState state{ .scratchOffset = arena.topOffset };
+
+		uint32_t bottomOffset{ ncast<uint32_t>(arena.allocation.size - 1) };
+		uint32_t topOffset{ ncast<uint32_t>(arena.allocation.size - 1) };
+		bool isFlipped;
 	};
 
-	// the return should be used for function passing as an r-value.
-	// makes alloc -> scratchAlloc and scratchAlloc -> alloc. note, scratchAlloc
-	// allocations dont persist after ArenaFrame's scope ends
-	inline ArenaFrame makeFlipped(ArenaFrame&& frame) {
-		frame.state.isFlipped = !frame.state.isFlipped;
-		return ArenaFrame{ .pArena = frame.pArena, .state = frame.state };
+	inline ArenaFrame
+		makeFrame(const ArenaFrame& frame, uint32_t* pNewPersistOffset) {
+		bool isFlipped{ pNewPersistOffset != frame.pPersistOffset };
+		uint32_t scratchOffset{};
+		if (isFlipped) {
+			scratchOffset = *frame.pPersistOffset;
+		} else {
+			scratchOffset = frame.scratchOffset;
+		}
+		return ArenaFrame{ .pArena = frame.pArena,
+						   .pPersistOffset = pNewPersistOffset,
+						   .scratchOffset = scratchOffset,
+						   .isFlipped = isFlipped };
+	}
+
+	inline ArenaScratchFrame makeScratchFrame(const ArenaFrame& frame) {
+		uint32_t bottomOffset{
+			min(*frame.pPersistOffset, frame.scratchOffset)
+		};
+		uint32_t topOffset{ max(*frame.pPersistOffset, frame.scratchOffset) };
+		return ArenaScratchFrame{ .arena = *frame.pArena,
+								  .bottomOffset = bottomOffset,
+								  .topOffset = topOffset,
+								  .isFlipped = frame.isFlipped };
 	}
 
 	Arena allocateArena(AllocationRegistry* registry, const size_t size);
@@ -51,57 +64,57 @@ namespace pstd {
 		return allocateArena(registry, byteAllocSize);
 	}
 
-	template<typename T>
-	constexpr size_t getCount(const ArenaFrame& frame) {
-		if (frame.state.isFlipped) {
-			size_t allocSize{ frame.pArena->allocation.size };
-			return (allocSize - frame.state.scratchOffset) / sizeof(T);
-		}
-		return frame.pArena->bottomOffset / sizeof(T);
-	}
-	template<typename T>
-	uint32_t getAvailableCount(const ArenaFrame& frame) {
-		uintptr_t baseAddress{ (size_t)frame.pArena->allocation.block };
-		uint32_t alignment{ alignof(T) };
+	// template<typename T>
+	// constexpr size_t getCount(const ArenaFrame& frame) {
+	// 	if (frame.isFlipped) {
+	// 		size_t allocSize{ frame.pArena->allocation.size };
+	// 		return (allocSize - frame.scratchOffset) / sizeof(T);
+	// 	}
+	// 	return *frame.pPersistOffset / sizeof(T);
+	// }
+	// template<typename T>
+	// uint32_t getAvailableCount(const ArenaFrame& frame) {
+	// 	uintptr_t baseAddress{ (size_t)frame.pArena->allocation.block };
+	// 	uint32_t alignment{ alignof(T) };
 
-		uint32_t alignedTopOffset{};
-		uint32_t alignedBottomOffset{};
+	// 	uint32_t alignedTopOffset{};
+	// 	uint32_t alignedBottomOffset{};
 
-		if (frame.state.isFlipped) {
-			uint32_t topOffset{ ncast<uint32_t>(frame.pArena->allocation.size
-			) };
-			uint32_t bottomOffset{ frame.pArena->topOffset };
+	// 	if (frame.state.isFlipped) {
+	// 		uint32_t topOffset{ ncast<uint32_t>(frame.pArena->allocation.size
+	// 		) };
+	// 		uint32_t bottomOffset{ frame.pArena->topOffset };
 
-			uint32_t bottomPadding{
-				bottomOffset + uint32_t((bottomOffset + alignment) % alignment)
-			};
+	// 		uint32_t bottomPadding{
+	// 			bottomOffset + uint32_t((bottomOffset + alignment) % alignment)
+	// 		};
 
-			auto topPadding{ ncast<uint32_t>(baseAddress + topOffset) %
-							 alignment };
+	// 		auto topPadding{ ncast<uint32_t>(baseAddress + topOffset) %
+	// 						 alignment };
 
-			alignedBottomOffset = bottomOffset + bottomPadding;
-			alignedTopOffset = topOffset - topPadding;
+	// 		alignedBottomOffset = bottomOffset + bottomPadding;
+	// 		alignedTopOffset = topOffset - topPadding;
 
-		} else {
-			alignedBottomOffset =
-				0;	// if this wasnt true, alloc would have asserted
+	// 	} else {
+	// 		alignedBottomOffset =
+	// 			0;	// if this wasnt true, alloc would have asserted
 
-			uint32_t topOffset{ frame.state.scratchOffset };
-			auto topPadding{ ncast<uint32_t>(baseAddress + topOffset) %
-							 alignment };
+	// 		uint32_t topOffset{ frame.state.scratchOffset };
+	// 		auto topPadding{ ncast<uint32_t>(baseAddress + topOffset) %
+	// 						 alignment };
 
-			alignedTopOffset = topOffset + topPadding;
-		}
+	// 		alignedTopOffset = topOffset + topPadding;
+	// 	}
 
-		ASSERT(
-			alignedTopOffset >= alignedBottomOffset
-		);	// overlapped is free memory
+	// 	ASSERT(
+	// 		alignedTopOffset >= alignedBottomOffset
+	// 	);	// overlapped is free memory
 
-		uint32_t avaliableBytes{ alignedTopOffset - alignedBottomOffset +
-								 1 };  // overlapped is free memory
-		uint32_t res{ avaliableBytes / sizeof(T) };
-		return res;
-	}
+	// 	uint32_t avaliableBytes{ alignedTopOffset - alignedBottomOffset +
+	// 							 1 };  // overlapped is free memory
+	// 	uint32_t res{ avaliableBytes / sizeof(T) };
+	// 	return res;
+	// }
 
 	void freeArena(AllocationRegistry* registry, Arena* arena);
 
@@ -109,7 +122,7 @@ namespace pstd {
 		ArenaFrame* arenaFrame, const size_t size, const uint32_t alignment
 	);
 	inline Allocation alloc(
-		ScratchArenaFrame* frame, const size_t size, const uint32_t alignment
+		ArenaScratchFrame* frame, const size_t size, const uint32_t alignment
 	) {
 		ASSERT(frame);
 		ArenaFrame intermediateFrame{ .pArena = &frame->arena,
@@ -124,7 +137,7 @@ namespace pstd {
 	);
 
 	inline Allocation scratchAlloc(
-		ScratchArenaFrame* frame, const size_t size, const uint32_t alignment
+		ArenaScratchFrame* frame, const size_t size, const uint32_t alignment
 	) {
 		ASSERT(frame);
 		ArenaFrame intermediateFrame{ .pArena = &frame->arena,

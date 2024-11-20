@@ -26,8 +26,6 @@ foreach(pdb ${old_pdbs})
 endforeach()
 
 add_custom_command(TARGET ${PROJ_NAME} PRE_BUILD
-   COMMAND ${CMAKE_COMMAND} -E echo "Cleaning old PDB files..."
+   COMMAND ${CMAKE_COMMAND} -E echo "Cleaning old PDBs..."
    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/scripts/remove_pdbs.cmake || true
 )
-
-
