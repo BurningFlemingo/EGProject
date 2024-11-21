@@ -32,7 +32,7 @@ Renderer::State* Renderer::startup(
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
 	Device device{ createDevice(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 		instance,
 		surface
 	) };

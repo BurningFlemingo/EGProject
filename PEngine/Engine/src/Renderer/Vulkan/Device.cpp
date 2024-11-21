@@ -1,5 +1,6 @@
 #include "Device.h"
 #include "PArena.h"
+#include "PContainer.h"
 
 namespace {
 	struct DeviceQueueFamilyIndices {
@@ -137,8 +138,11 @@ namespace {
 		};
 		pstd::fill(&indices, invalidIndex);
 
-		pstd::BoundedStaticArray<uint32_t, cast<size_t>(QueueFamily::count)>
-			uniqueIndices{};
+		pstd::BoundedArray<uint32_t> uniqueIndices{
+			.allocation = pstd::alloc<uint32_t>(
+				&arenaFrame, cast<size_t>(QueueFamily::count)
+			)
+		};
 
 		for (uint32_t i{}; i < queueFamilyPropCount; i++) {
 			VkQueueFamilyProperties familyProps{ queueFamilyProps[i] };
@@ -178,9 +182,9 @@ namespace {
 		}
 
 		pstd::Array<uint32_t> uniqueIndicesArray{
-			.allocation =
-				pstd::alloc<uint32_t>(&arenaFrame, uniqueIndices.count)
+			pstd::createArrayAliasing(uniqueIndices)
 		};
+
 		return DeviceQueueFamilyIndices{ .indices = indices,
 										 .uniqueIndices = uniqueIndicesArray };
 	}

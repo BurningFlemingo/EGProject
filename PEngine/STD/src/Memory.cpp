@@ -97,31 +97,6 @@ void pstd::shallowMove(Allocation* dst, const Allocation& src) {
 	memMov(dst->block, src.block, moveSize);
 }
 
-pstd::Allocation pstd::concat(
-	ArenaFrame&& frame,
-	const Allocation& a,
-	const Allocation& b,
-	uint32_t alignment
-) {
-	ASSERT(a.block);
-	ASSERT(b.block);
-	size_t allocSize{ a.size + b.size };
-
-	ASSERT(allocSize >= a.size);  // overflow check
-
-	Allocation allocation{ pstd::alloc(&frame, allocSize, alignment) };
-
-	pstd::shallowMove(&allocation, a);
-
-	Allocation headAllocation{ allocation };
-	headAllocation.block = headAllocation.block + a.size;
-	headAllocation.size -= a.size;
-
-	shallowMove(&headAllocation, b);
-
-	return allocation;
-}
-
 Allocation pstd::coalesce(const Allocation& a, const Allocation& b) {
 	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
 	ASSERT(~(a.isStackAllocated ^ b.isStackAllocated));

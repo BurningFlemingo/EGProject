@@ -90,6 +90,39 @@ Allocation pstd::scratchAlloc(
 	return allocation;
 }
 
+Allocation pstd::makeShallowCopy(
+	ArenaFrame&& arenaFrame, const Allocation& b, uint32_t alignment
+) {
+	Allocation newAllocation{ pstd::alloc(&arenaFrame, b.size, alignment) };
+	pstd::shallowCopy(&newAllocation, b);
+	return newAllocation;
+}
+
+pstd::Allocation pstd::concat(
+	ArenaFrame&& frame,
+	const Allocation& a,
+	const Allocation& b,
+	uint32_t alignment
+) {
+	ASSERT(a.block);
+	ASSERT(b.block);
+	size_t allocSize{ a.size + b.size };
+
+	ASSERT(allocSize >= a.size);  // overflow check
+
+	Allocation allocation{ pstd::alloc(&frame, allocSize, alignment) };
+
+	pstd::shallowMove(&allocation, a);
+
+	Allocation headAllocation{ allocation };
+	headAllocation.block = headAllocation.block + a.size;
+	headAllocation.size -= a.size;
+
+	shallowMove(&headAllocation, b);
+
+	return allocation;
+}
+
 namespace {
 	Allocation bottomAlloc(
 		const ArenaFrame& frame,

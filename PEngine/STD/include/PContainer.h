@@ -39,15 +39,6 @@ namespace pstd {
 		return res;
 	}
 
-	template<typename T>
-		requires StaticContainer<T>
-	constexpr Allocation getStaticAllocation(const T& container) {
-		Allocation allocation{ .block = rcast<uint8_t*>(container.data),
-							   .size = getCapacity(container) * sizeof(T),
-							   .isStackAllocated = true };
-		return allocation;
-	}
-
 	template<Container T>
 	bool find(const T& container, const T& val, size_t* outIndex = nullptr) {
 		size_t capacity{ pstd::getCapacity(container) };
@@ -79,4 +70,5 @@ namespace pstd {
 
 		return false;
 	}
+
 }  // namespace pstd

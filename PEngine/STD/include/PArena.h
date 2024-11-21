@@ -215,6 +215,28 @@ namespace pstd {
 		return getAlignedScratchOffset(arenaFrame, alignof(T));
 	}
 
+	Allocation makeShallowCopy(
+		ArenaFrame&& arenaFrame, const Allocation& b, uint32_t alignment
+	);
+
+	template<typename T>
+	Allocation makeShallowCopy(ArenaFrame&& arenaFrame, const Allocation& b) {
+		return makeShallowCopy(pstd::move(arenaFrame), b, alignof(T));
+	}
+
+	Allocation concat(
+		ArenaFrame&& arenaFrame,
+		const Allocation& a,
+		const Allocation& b,
+		uint32_t alignment
+	);
+
+	template<typename T>
+	Allocation
+		concat(ArenaFrame&& frame, const Allocation& a, const Allocation& b) {
+		return concat(pstd::move(frame), a, b, alignof(T));
+	}
+
 	inline void reset(Arena* arena) {
 		ASSERT(arena);
 

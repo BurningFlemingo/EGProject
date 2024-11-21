@@ -90,6 +90,15 @@ namespace pstd {
 		size_t count;
 	};
 
+	// will alias old array
+	template<typename T, typename I>
+	Array<T, I> createArrayAliasing(const BoundedArray<T, I>& oldArray) {
+		Allocation allocation{
+			pstd::makeTrunced<T>(oldArray.allocation, oldArray.count)
+		};
+		return Array<T, I>{ .allocation = allocation };
+	}
+
 	template<typename T, uint32_t n>
 	constexpr size_t getCapacity(const StaticArray<T, n>& array) {
 		size_t res{ n };

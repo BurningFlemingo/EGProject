@@ -59,16 +59,16 @@ namespace pstd {
 	void shallowCopy(Allocation* dst, const Allocation& src);
 	void shallowMove(Allocation* dst, const Allocation& src);
 
-	Allocation concat(
-		ArenaFrame&& arenaFrame,
-		const Allocation& a,
-		const Allocation& b,
-		uint32_t alignment
-	);
+	inline Allocation makeTrunced(Allocation allocation, size_t newSize) {
+		ASSERT(newSize <= allocation.size);
+		allocation.size = newSize;
+		return allocation;
+	}
+
 	template<typename T>
-	Allocation
-		concat(ArenaFrame&& frame, const Allocation& a, const Allocation& b) {
-		return concat(pstd::move(frame), a, b, alignof(T));
+	Allocation makeTrunced(const Allocation& allocation, size_t newCount) {
+		size_t newSize{ newCount * sizeof(T) };
+		return makeTrunced(allocation, newSize);
 	}
 
 	Allocation coalesce(const Allocation& a, const Allocation& b);
