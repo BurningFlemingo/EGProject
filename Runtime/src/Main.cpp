@@ -45,14 +45,15 @@ int main() {
 		pstd::allocateArena(&allocationRegistry, 1024 + scratchSize)
 	};
 
-	engineState =
-		peng::internal::startup(&allocationRegistry, { &engineArena });
+	engineState = peng::internal::startup(
+		&allocationRegistry, pstd::makeFrame(&engineArena)
+	);
 
-	GameDll gameDll{ loadGameDll({ gameArena }) };
+	GameDll gameDll{ loadGameDll(pstd::makeScratchFrame(gameArena)) };
 	Game::State* gameState{ gameDll.api.startup() };
 
 	pstd::String originalDllPath{ pstd::formatString(
-		{ &runtimeArena },
+		pstd::makeFrame(&runtimeArena),
 		"%mGame.%m",
 		makeExeDirectoryPath({ &runtimeArena }),
 		pstd::getDllExtensionName()
@@ -60,7 +61,7 @@ int main() {
 
 	bool isRunning{ true };
 	const char* originalDllPathCString{
-		pstd::createCString({ &runtimeArena }, originalDllPath)
+		pstd::createCString(pstd::makeFrame(&runtimeArena), originalDllPath)
 	};
 	while (isRunning) {
 		if (pstd::getLastFileWriteTime(originalDllPathCString) !=

@@ -53,22 +53,22 @@ size_t peng::internal::getSizeofState() {
 }
 
 peng::internal::State* peng::internal::startup(
-	pstd::AllocationRegistry* registry, pstd::ArenaFrame&& arenaFrame
+	pstd::AllocationRegistry* registry, pstd::ArenaFrame&& stateFrame
 ) {
 	size_t scratchSize{ 1024 * 1024 };
 	pstd::Arena subsystemArena{
 		pstd::allocateArena(registry, getSizeofSubsystems() + scratchSize)
 	};
 
-	Platform::State* platformState{
-		Platform::startup({ &subsystemArena }, "window", 1920 / 2, 1080 / 2)
-	};
+	Platform::State* platformState{ Platform::startup(
+		pstd::makeFrame(&subsystemArena), "window", 1920 / 2, 1080 / 2
+	) };
 
 	Renderer::State* rendererState{
-		Renderer::startup(pstd::ArenaFrame{ &subsystemArena }, *platformState)
+		Renderer::startup(pstd::makeFrame(&subsystemArena), *platformState)
 	};
 
-	pstd::Allocation arenaAllocation{ pstd::alloc<State>(&arenaFrame) };
+	pstd::Allocation arenaAllocation{ pstd::alloc<State>(&stateFrame) };
 
 	State* arenaPtr{ new (arenaAllocation.block)
 						 State{ .applicationArena = subsystemArena,

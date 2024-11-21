@@ -77,6 +77,15 @@ namespace pstd {
 								  .isFlipped = frame.isFlipped };
 	}
 
+	inline ArenaScratchFrame makeScratchFrame(const Arena& arena) {
+		return ArenaScratchFrame{
+			.arena = arena,
+			.bottomOffset = arena.offset,
+			.topOffset = ncast<uint32_t>(arena.allocation.size - 1),
+			.isFlipped = false
+		};
+	}
+
 	Arena allocateArena(AllocationRegistry* registry, const size_t size);
 
 	template<typename T>
