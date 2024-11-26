@@ -90,6 +90,7 @@ Rot3 pstd::calcRotor(Vec3 a, Vec3 b) {
 }
 
 Rot3 pstd::calcRotor(Vec3 a, Vec3 b, float radians) {
+	// credit for these equations goes to https://jacquesheunis.com/post/rotors/
 	pstd::normalize(&a);
 	pstd::normalize(&b);
 	radians *= 0.5;

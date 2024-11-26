@@ -9,6 +9,47 @@
 
 #include <vulkan/vulkan.h>
 #include <new>
+#include <vulkan/vulkan_core.h>
+
+namespace {}
+
+pstd::Array<pstd::String> findMatchedExtensions(
+	pstd::ArenaFrame&& frame,
+	const pstd::Array<const char*>& extensionNamesToQuery,
+	const pstd::Array<VkExtensionProperties>& availableExtensions
+) {
+	size_t largestArrayCount{
+		max(pstd::getCapacity(extensionNamesToQuery),
+			pstd::getCapacity(availableExtensions))
+	};
+	size_t smallestArrayCount{
+		min(pstd::getCapacity(extensionNamesToQuery),
+			pstd::getCapacity(availableExtensions))
+	};
+	pstd::BoundedArray<uint32_t> matchedIndices{
+		.allocation = pstd::scratchAlloc<uint32_t>(&frame, largestArrayCount)
+	};
+
+	for (uint32_t i{}; i < largestArrayCount; i++) {
+		if (matchedIndicesA.count == smallestArrayCount) {
+			break;
+		}
+
+		const char* avaliableExtension{ availableExtensions[i].extensionName };
+
+		auto matchFunction{ [&](const char* queriedExtension) {
+			return pstd::stringsMatch(queriedExtension, avaliableExtension);
+		} };
+
+		size_t foundIndex{};
+		if (pstd::find(queriedExtensions, matchFunction, &foundIndex)) {
+			pstd::pushBack(
+				&matchedI,
+				requiredExtensions[foundIndex]	// ptr to string literal
+			);
+		}
+	}
+}
 
 pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 	uint32_t extensionCount{};
@@ -45,12 +86,13 @@ pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 		if (requiredExtensions.count == 0 && optionalExtensions.count == 0) {
 			break;
 		}
+
 		char* avaliableExtension{ extensionProps[i].extensionName };
-		size_t foundIndex{};
 		auto matchFunction{ [&](const char* requiredExtension) {
 			return pstd::stringsMatch(requiredExtension, avaliableExtension);
 		} };
 
+		size_t foundIndex{};
 		if (pstd::find(requiredExtensions, matchFunction, &foundIndex)) {
 			pstd::pushBack(
 				&foundRequiredExtensions,
@@ -58,6 +100,7 @@ pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 			);
 			pstd::compactRemove(&requiredExtensions, foundIndex);
 		}
+
 		if (pstd::find(optionalExtensions, matchFunction, &foundIndex)) {
 			pstd::pushBack(
 				&foundOptionalExtensions,

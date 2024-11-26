@@ -94,6 +94,10 @@ namespace pstd {
 	constexpr T&& move(T num) {
 		return static_cast<T&&>(num);
 	}
+
+	// template<typename T>
+	// using ErrorHandler = void (*)(const T&);
+
 }  // namespace pstd
 
 using pstd::cast;
