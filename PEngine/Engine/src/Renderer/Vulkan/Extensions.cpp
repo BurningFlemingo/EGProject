@@ -8,47 +8,14 @@
 #include "PContainer.h"
 
 #include <vulkan/vulkan.h>
-#include <new>
 #include <vulkan/vulkan_core.h>
 
-namespace {}
-
-pstd::Array<pstd::String> findMatchedExtensions(
-	pstd::ArenaFrame&& frame,
-	const pstd::Array<const char*>& extensionNamesToQuery,
-	const pstd::Array<VkExtensionProperties>& availableExtensions
-) {
-	size_t largestArrayCount{
-		max(pstd::getCapacity(extensionNamesToQuery),
-			pstd::getCapacity(availableExtensions))
-	};
-	size_t smallestArrayCount{
-		min(pstd::getCapacity(extensionNamesToQuery),
-			pstd::getCapacity(availableExtensions))
-	};
-	pstd::BoundedArray<uint32_t> matchedIndices{
-		.allocation = pstd::scratchAlloc<uint32_t>(&frame, largestArrayCount)
-	};
-
-	for (uint32_t i{}; i < largestArrayCount; i++) {
-		if (matchedIndicesA.count == smallestArrayCount) {
-			break;
-		}
-
-		const char* avaliableExtension{ availableExtensions[i].extensionName };
-
-		auto matchFunction{ [&](const char* queriedExtension) {
-			return pstd::stringsMatch(queriedExtension, avaliableExtension);
-		} };
-
-		size_t foundIndex{};
-		if (pstd::find(queriedExtensions, matchFunction, &foundIndex)) {
-			pstd::pushBack(
-				&matchedI,
-				requiredExtensions[foundIndex]	// ptr to string literal
-			);
-		}
-	}
+namespace {
+	pstd::Array<const char*> stealMatchedExtensions(
+		pstd::ArenaFrame&& frame,
+		pstd::BoundedArray<const char*>* extensionNamesToQuery,
+		const pstd::Array<VkExtensionProperties>& availableExtensions
+	);
 }
 
 pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
@@ -71,54 +38,32 @@ pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 	requiredExtensions[0] = Platform::getPlatformSurfaceExtension();
 	requiredExtensions[1] = VK_KHR_SURFACE_EXTENSION_NAME;
 
-	pstd::BoundedArray<const char*> optionalExtensions{ getDebugExtensions() };
-
-	pstd::BoundedArray<const char*> foundRequiredExtensions{
-		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2)
-	};
-	pstd::BoundedArray<const char*> foundOptionalExtensions{
-		.allocation = pstd::scratchAlloc<const char*>(
-			&arenaFrame, optionalExtensions.count
-		),
+	pstd::BoundedArray<const char*> optionalExtensions{
+		pstd::makeBoundedArray<const char*>(getDebugExtensions().allocation)
 	};
 
-	for (int i{}; i < extensionCount; i++) {
-		if (requiredExtensions.count == 0 && optionalExtensions.count == 0) {
-			break;
-		}
+	pstd::Array<const char*> foundRequiredExtensions{ stealMatchedExtensions(
+		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+		&requiredExtensions,
+		extensionProps
+	) };
 
-		char* avaliableExtension{ extensionProps[i].extensionName };
-		auto matchFunction{ [&](const char* requiredExtension) {
-			return pstd::stringsMatch(requiredExtension, avaliableExtension);
-		} };
+	pstd::Array<const char*> foundOptionalExtensions{ stealMatchedExtensions(
+		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+		&optionalExtensions,
+		extensionProps
+	) };
 
-		size_t foundIndex{};
-		if (pstd::find(requiredExtensions, matchFunction, &foundIndex)) {
-			pstd::pushBack(
-				&foundRequiredExtensions,
-				requiredExtensions[foundIndex]	// ptr to string literal
-			);
-			pstd::compactRemove(&requiredExtensions, foundIndex);
-		}
-
-		if (pstd::find(optionalExtensions, matchFunction, &foundIndex)) {
-			pstd::pushBack(
-				&foundOptionalExtensions,
-				optionalExtensions[foundIndex]	// ptr to string literal
-			);
-			pstd::compactRemove(&optionalExtensions, foundIndex);
-		}
-	}
-	for (int i{}; i < requiredExtensions.count; i++) {
+	for (int i{}; i < pstd::getCapacity(requiredExtensions); i++) {
 		LOG_ERROR("could not find %m\n", requiredExtensions[i]);
 	}
-	for (int i{}; i < optionalExtensions.count; i++) {
+	for (int i{}; i < pstd::getCapacity(optionalExtensions); i++) {
 		LOG_WARN("could not find %m\n", optionalExtensions[i]);
 	}
-	for (int i{}; i < foundRequiredExtensions.count; i++) {
+	for (int i{}; i < pstd::getCapacity(foundRequiredExtensions); i++) {
 		LOG_INFO("found %m\n", foundRequiredExtensions[i]);
 	}
-	for (int i{}; i < foundOptionalExtensions.count; i++) {
+	for (int i{}; i < pstd::getCapacity(foundOptionalExtensions); i++) {
 		LOG_INFO("found %m\n", foundOptionalExtensions[i]);
 	}
 
@@ -131,3 +76,57 @@ pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 	};
 	return res;
 }
+
+namespace {
+	pstd::Array<const char*> stealMatchedExtensions(
+		pstd::ArenaFrame&& frame,
+		pstd::BoundedArray<const char*>* pExtensionNamesToQuery,
+		const pstd::Array<VkExtensionProperties>& availableExtensions
+	) {
+		ASSERT(pExtensionNamesToQuery);
+		size_t largestArrayCount{
+			max(pstd::getCapacity(*pExtensionNamesToQuery),
+				pstd::getCapacity(availableExtensions))
+		};
+		size_t smallestArrayCount{
+			min(pstd::getCapacity(*pExtensionNamesToQuery),
+				pstd::getCapacity(availableExtensions))
+		};
+		pstd::BoundedArray<const char*> matchedNames{
+			.allocation =
+				pstd::scratchAlloc<const char*>(&frame, largestArrayCount)
+		};
+
+		for (uint32_t i{}; i < largestArrayCount; i++) {
+			if (pExtensionNamesToQuery->count == 0) {
+				break;
+			}
+
+			const char* avaliableExtension{
+				availableExtensions[i].extensionName
+			};
+
+			auto matchFunction{ [&](const char* queriedExtension) {
+				return pstd::stringsMatch(queriedExtension, avaliableExtension);
+			} };
+
+			size_t foundIndex{};
+			if (pstd::find(
+					*pExtensionNamesToQuery, matchFunction, &foundIndex
+				)) {
+				pstd::pushBack(
+					&matchedNames, (*pExtensionNamesToQuery)[foundIndex]
+				);
+				pstd::compactRemove(pExtensionNamesToQuery, foundIndex);
+			}
+		}
+
+		pstd::Array<const char*> res{
+			.allocation = pstd::alloc<const char*>(&frame, matchedNames.count)
+		};
+		for (uint32_t i{}; i < matchedNames.count; i++) {
+			res[i] = matchedNames[i];
+		}
+		return res;
+	}
+}  // namespace

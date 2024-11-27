@@ -99,6 +99,25 @@ namespace pstd {
 		return Array<T, I>{ .allocation = allocation };
 	}
 
+	template<typename T, typename I = size_t>
+	BoundedArray<T, I> makeBoundedArray(Allocation&& allocation) {
+		size_t count{ allocation.size / sizeof(T) };
+		BoundedArray<T, I> res{ .allocation = allocation, .count = count };
+
+		allocation = {};
+		return res;
+	}
+
+	template<typename T, typename I>
+	BoundedArray<T, I> makeBoundedArray(Allocation&& allocation, size_t count) {
+		size_t maxCount{ allocation.size / sizeof(T) };
+		ASSERT(maxCount >= count);
+		BoundedArray<T, I> res{ .allocation = allocation, .count = count };
+
+		allocation = {};
+		return res;
+	}
+
 	template<typename T, uint32_t n>
 	constexpr size_t getCapacity(const StaticArray<T, n>& array) {
 		size_t res{ n };

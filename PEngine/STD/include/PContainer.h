@@ -8,9 +8,11 @@ namespace pstd {
 	concept Container = requires(T arg) { typename T::ElementType; };
 
 	template<typename T>
+	concept CountableContainer = Container<T> && requires(T arg) { arg.count; };
+
+	template<typename T>
 	concept StaticContainer = Container<T> && requires(T arg) {
 		typename T::ElementType;
-		getCapacity(arg);
 
 		arg.data[getCapacity(arg) - 1];	 // .data implies the container doesnt
 										 // have an allocation, and the index is
@@ -18,7 +20,23 @@ namespace pstd {
 	};
 
 	template<Container T>
+	size_t getCapacity(const T& container) {
+		size_t res{ container.allocation.size / sizeof(T::ElementType) };
+		return res;
+	}
+
+	template<Container T>
 	size_t getCount(const T& container) {
+		return container.count;
+	}
+
+	template<Container T>
+	size_t getAddressable(const T& container) {
+		return pstd::getCapacity(container);
+	}
+
+	template<CountableContainer T>
+	size_t getAddressable(const T& container) {
 		return container.count;
 	}
 
@@ -34,14 +52,8 @@ namespace pstd {
 	}
 
 	template<Container T>
-	size_t getCapacity(const T& container) {
-		size_t res{ container.allocation.size / sizeof(T::ElementType) };
-		return res;
-	}
-
-	template<Container T>
 	bool find(const T& container, const T& val, size_t* outIndex = nullptr) {
-		size_t capacity{ pstd::getCapacity(container) };
+		size_t capacity{ pstd::getAddressable(container) };
 		for (size_t i{}; i < capacity; i++) {
 			if (container[i] == val) {
 				if (outIndex) {
@@ -54,11 +66,13 @@ namespace pstd {
 		return false;
 	}
 
-	template<typename T, typename Callable>
+	template<typename Container, typename Callable>
 	bool find(
-		const T& container, Callable matchFunction, size_t* outIndex = nullptr
+		const Container& container,
+		Callable matchFunction,
+		size_t* outIndex = nullptr
 	) {
-		for (size_t i{}; i < pstd::getCount(container); i++) {
+		for (size_t i{}; i < pstd::getAddressable(container); i++) {
 			if (matchFunction(container[i])) {
 				if (outIndex) {
 					*outIndex = i;
