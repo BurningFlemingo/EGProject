@@ -3,6 +3,7 @@
 #include "PContainer.h"
 
 #include "Extensions.h"
+#include <vulkan/vulkan_core.h>
 
 namespace {
 	struct DeviceQueueFamilyIndices {
@@ -21,16 +22,12 @@ namespace {
 		pstd::ArenaFrame&& arenaFrame,
 		VkInstance instance,
 		VkPhysicalDevice physicalDevice,
-		const DeviceQueueFamilyIndices& qfi,
-		const pstd::Array<VkExtensionProperties>& extensionProps
+		const DeviceQueueFamilyIndices& qfi
 	);
 }  // namespace
 
 Device createDevice(
-	pstd::ArenaFrame&& arenaFrame,
-	VkInstance instance,
-	VkSurfaceKHR surface,
-	const pstd::Array<VkExtensionProperties>& extensionProps
+	pstd::ArenaFrame&& arenaFrame, VkInstance instance, VkSurfaceKHR surface
 ) {
 	VkPhysicalDevice physicalDevice{ createPhysicalDevice(
 		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), instance
@@ -45,8 +42,7 @@ Device createDevice(
 		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 		instance,
 		physicalDevice,
-		qfi,
-		extensionProps
+		qfi
 	) };
 
 	pstd::Array<VkQueue, QueueFamily> queues{
@@ -200,9 +196,23 @@ namespace {
 		pstd::ArenaFrame&& arenaFrame,
 		VkInstance instance,
 		VkPhysicalDevice physicalDevice,
-		const DeviceQueueFamilyIndices& qfi,
-		const pstd::Array<VkExtensionProperties>& extensionProps
+		const DeviceQueueFamilyIndices& qfi
 	) {
+		uint32_t extensionCount{};
+		vkEnumerateDeviceExtensionProperties(
+			physicalDevice, nullptr, &extensionCount, nullptr
+		);
+		pstd::Array<VkExtensionProperties> extensionProps{
+			.allocation = pstd::scratchAlloc<VkExtensionProperties>(
+				&arenaFrame, extensionCount
+			),
+		};
+		vkEnumerateDeviceExtensionProperties(
+			physicalDevice,
+			nullptr,
+			&extensionCount,
+			pstd::getData(extensionProps)
+		);
 		pstd::BoundedArray<const char*> requiredExtensions{
 			.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 1),
 			.count = 1
@@ -237,9 +247,9 @@ namespace {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 			.queueCreateInfoCount = (uint32_t)deviceQueueCreateInfos.count,
 			.pQueueCreateInfos = pstd::getData(deviceQueueCreateInfos),
-			// .enabledExtensionCount =
-			// 	ncast<uint32_t>(pstd::getLength(foundExtensions)),
-			// .ppEnabledExtensionNames = pstd::getData(foundExtensions)
+			.enabledExtensionCount =
+				ncast<uint32_t>(pstd::getLength(foundExtensions)),
+			.ppEnabledExtensionNames = pstd::getData(foundExtensions)
 
 		};
 

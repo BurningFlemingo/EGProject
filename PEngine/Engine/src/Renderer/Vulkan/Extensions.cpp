@@ -118,7 +118,6 @@ namespace {
 		};
 		for (uint32_t i{}; i < matchedNames.count; i++) {
 			res[i] = matchedNames[i];
-			LOG_INFO("found %m", matchedNames[i]);
 		}
 		return res;
 	}

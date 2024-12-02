@@ -19,10 +19,18 @@
 // indexWrite. also get rid of constructor-like makeBoundedArray in favor of
 // BoundedArray{}
 
-VkInstance createInstance(
-	pstd::ArenaFrame&& arenaFrame,
-	const pstd::Array<VkExtensionProperties>& extensionProps
-) {
+VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
+	uint32_t extensionCount{};
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	pstd::Array<VkExtensionProperties> extensionProps{
+		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
+			&arenaFrame, extensionCount
+		),
+	};
+	vkEnumerateInstanceExtensionProperties(
+		nullptr, &extensionCount, pstd::getData(extensionProps)
+	);
+
 	pstd::BoundedArray<const char*> requiredExtensions{
 		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2),
 		.count = 2

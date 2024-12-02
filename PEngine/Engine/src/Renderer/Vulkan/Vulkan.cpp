@@ -24,20 +24,9 @@ namespace {
 Renderer::State* Renderer::startup(
 	pstd::ArenaFrame&& arenaFrame, const Platform::State& platformState
 ) {
-	uint32_t extensionCount{};
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	pstd::Array<VkExtensionProperties> extensionProps{
-		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
-			&arenaFrame, extensionCount
-		),
+	VkInstance instance{
+		createInstance(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
 	};
-	vkEnumerateInstanceExtensionProperties(
-		nullptr, &extensionCount, pstd::getData(extensionProps)
-	);
-
-	VkInstance instance{ createInstance(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset), extensionProps
-	) };
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
@@ -45,8 +34,7 @@ Renderer::State* Renderer::startup(
 	Device device{ createDevice(
 		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 		instance,
-		surface, 
-		extensionProps
+		surface
 	) };
 
 	pstd::Allocation stateAllocation{ pstd::alloc<State>(&arenaFrame) };
