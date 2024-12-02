@@ -24,6 +24,17 @@ namespace {
 Renderer::State* Renderer::startup(
 	pstd::ArenaFrame&& arenaFrame, const Platform::State& platformState
 ) {
+	uint32_t extensionCount{};
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	pstd::Array<VkExtensionProperties> extensionProps{
+		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
+			&arenaFrame, extensionCount
+		),
+	};
+	vkEnumerateInstanceExtensionProperties(
+		nullptr, &extensionCount, pstd::getData(extensionProps)
+	);
+
 	VkInstance instance{
 		createInstance(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
 	};

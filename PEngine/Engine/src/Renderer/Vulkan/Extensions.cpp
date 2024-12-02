@@ -1,7 +1,6 @@
 #include "Extensions.h"
 
 #include "include/Logging.h"
-#include "Platforms/VulkanSurface.h"
 
 #include "PArena.h"
 #include "PArray.h"
@@ -11,59 +10,44 @@
 #include <vulkan/vulkan_core.h>
 
 namespace {
-	pstd::Array<const char*> stealMatchedExtensions(
+	pstd::Array<const char*> takeMatchedExtensions(
 		pstd::ArenaFrame&& frame,
 		pstd::BoundedArray<const char*>* extensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	);
 }
 
-pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
-	uint32_t extensionCount{};
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+pstd::Array<const char*> takeMatchedExtensions(
+	pstd::ArenaFrame&& arenaFrame,
+	const pstd::Array<VkExtensionProperties>& availableExtensionProps,
+	pstd::BoundedArray<const char*>* pRequiredExtensions,
+	pstd::BoundedArray<const char*>* pOptionalExtensions
+) {
+	pstd::Array<const char*> foundOptionalExtensions{};
+	if (pOptionalExtensions != nullptr) {
+		foundOptionalExtensions = takeMatchedExtensions(
+			pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+			pOptionalExtensions,
+			availableExtensionProps
+		);
+	}
 
-	pstd::Array<VkExtensionProperties> extensionProps{
-		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
-			&arenaFrame, extensionCount
-		),
-	};
-	vkEnumerateInstanceExtensionProperties(
-		nullptr, &extensionCount, pstd::getData(extensionProps)
-	);
-
-	pstd::BoundedArray<const char*> requiredExtensions{
-		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2),
-		.count = 2
-	};
-	requiredExtensions[0] = Platform::getPlatformSurfaceExtension();
-	requiredExtensions[1] = VK_KHR_SURFACE_EXTENSION_NAME;
-
-	pstd::BoundedArray<const char*> optionalExtensions{
-		pstd::makeBoundedArray<const char*>(getDebugExtensions().allocation)
-	};
-
-	pstd::Array<const char*> foundRequiredExtensions{ stealMatchedExtensions(
+	pstd::Array<const char*> foundRequiredExtensions{ takeMatchedExtensions(
 		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
-		&requiredExtensions,
-		extensionProps
+		pRequiredExtensions,
+		availableExtensionProps
 	) };
 
-	pstd::Array<const char*> foundOptionalExtensions{ stealMatchedExtensions(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
-		&optionalExtensions,
-		extensionProps
-	) };
-
-	for (int i{}; i < pstd::getCapacity(requiredExtensions); i++) {
-		LOG_ERROR("could not find %m\n", requiredExtensions[i]);
+	for (int i{}; i < pstd::getLength(*pRequiredExtensions); i++) {
+		LOG_ERROR("could not find %m\n", (*pRequiredExtensions)[i]);
 	}
-	for (int i{}; i < pstd::getCapacity(optionalExtensions); i++) {
-		LOG_WARN("could not find %m\n", optionalExtensions[i]);
+	for (int i{}; i < pstd::getLength(*pOptionalExtensions); i++) {
+		LOG_WARN("could not find %m\n", (*pOptionalExtensions)[i]);
 	}
-	for (int i{}; i < pstd::getCapacity(foundRequiredExtensions); i++) {
+	for (int i{}; i < pstd::getLength(foundRequiredExtensions); i++) {
 		LOG_INFO("found %m\n", foundRequiredExtensions[i]);
 	}
-	for (int i{}; i < pstd::getCapacity(foundOptionalExtensions); i++) {
+	for (int i{}; i < pstd::getLength(foundOptionalExtensions); i++) {
 		LOG_INFO("found %m\n", foundOptionalExtensions[i]);
 	}
 
@@ -78,12 +62,11 @@ pstd::Array<const char*> findExtensions(pstd::ArenaFrame&& arenaFrame) {
 }
 
 namespace {
-	pstd::Array<const char*> stealMatchedExtensions(
+	pstd::Array<const char*> takeMatchedExtensions(
 		pstd::ArenaFrame&& frame,
 		pstd::BoundedArray<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	) {
-		ASSERT(pExtensionNamesToQuery);
 		size_t largestArrayCount{
 			max(pstd::getCapacity(*pExtensionNamesToQuery),
 				pstd::getCapacity(availableExtensions))
@@ -121,11 +104,15 @@ namespace {
 			}
 		}
 
+		if (matchedNames.count == 0) {
+			return {};
+		}
 		pstd::Array<const char*> res{
 			.allocation = pstd::alloc<const char*>(&frame, matchedNames.count)
 		};
 		for (uint32_t i{}; i < matchedNames.count; i++) {
 			res[i] = matchedNames[i];
+			LOG_INFO("found %m", matchedNames[i]);
 		}
 		return res;
 	}

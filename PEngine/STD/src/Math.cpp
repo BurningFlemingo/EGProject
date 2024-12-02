@@ -83,27 +83,6 @@ float pstd::asinf(const float ratio) {
 }
 
 namespace Soft {
-	float sqrtfNewton(const float num) {
-		ASSERT(num >= 0);
-		if (num == 0) {
-			return 0;
-		}
-
-		float guess{ num / 2.f };
-		float prevGuess{};
-		constexpr int maxItterations{ 10 };
-		constexpr float tolerance{ 0.00001f };
-		float epsilon{ tolerance * num };
-		for (int i{}; i < maxItterations; i++) {
-			prevGuess = guess;
-			guess = (guess + (num / guess)) * 0.5f;
-
-			if (absf(guess - prevGuess) <= epsilon) {
-				break;
-			}
-		}
-		return guess;
-	}
 
 	float sinfTaylor(float radians) {
 		// makes x in between -TAU and TAU
@@ -177,6 +156,28 @@ namespace Soft {
 		float denominator{ 15.f + 9.f * x2 };
 
 		return (numerator / denominator) + rangeAdjustment;
+	}
+
+	float sqrtfNewton(const float num) {
+		ASSERT(num >= 0);
+		if (num == 0) {
+			return 0;
+		}
+
+		float guess{ num / 2.f };
+		float prevGuess{};
+		constexpr int maxItterations{ 10 };
+		constexpr float tolerance{ 0.00001f };
+		float epsilon{ tolerance * num };
+		for (int i{}; i < maxItterations; i++) {
+			prevGuess = guess;
+			guess = (guess + (num / guess)) * 0.5f;
+
+			if (absf(guess - prevGuess) <= epsilon) {
+				break;
+			}
+		}
+		return guess;
 	}
 
 }  // namespace Soft

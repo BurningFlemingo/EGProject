@@ -26,17 +26,12 @@ namespace pstd {
 	}
 
 	template<Container T>
-	size_t getCount(const T& container) {
-		return container.count;
-	}
-
-	template<Container T>
-	size_t getAddressable(const T& container) {
+	size_t getLength(const T& container) {
 		return pstd::getCapacity(container);
 	}
 
 	template<CountableContainer T>
-	size_t getAddressable(const T& container) {
+	size_t getLength(const T& container) {
 		return container.count;
 	}
 
@@ -53,8 +48,7 @@ namespace pstd {
 
 	template<Container T>
 	bool find(const T& container, const T& val, size_t* outIndex = nullptr) {
-		size_t capacity{ pstd::getAddressable(container) };
-		for (size_t i{}; i < capacity; i++) {
+		for (size_t i{}; i < pstd::getLength(container); i++) {
 			if (container[i] == val) {
 				if (outIndex) {
 					*outIndex = i;
@@ -72,7 +66,7 @@ namespace pstd {
 		Callable matchFunction,
 		size_t* outIndex = nullptr
 	) {
-		for (size_t i{}; i < pstd::getAddressable(container); i++) {
+		for (size_t i{}; i < pstd::getLength(container); i++) {
 			if (matchFunction(container[i])) {
 				if (outIndex) {
 					*outIndex = i;

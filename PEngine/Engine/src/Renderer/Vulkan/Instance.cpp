@@ -11,10 +11,41 @@
 #include "PContainer.h"
 #include "PMemory.h"
 
+#include "Platforms/VulkanSurface.h"
+#include <vulkan/vulkan_core.h>
+
+// TODO: finish this, then push it to dev
+// after, refactor arrays to not use operator[] and instead indexRead /
+// indexWrite. also get rid of constructor-like makeBoundedArray in favor of
+// BoundedArray{}
+
 VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
-	pstd::Array<const char*> foundExtensions{
-		findExtensions(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
+	uint32_t extensionPropCount{};
+	vkEnumerateInstanceExtensionProperties(
+		nullptr, &extensionPropCount, nullptr
+	);
+	pstd::Array<VkExtensionProperties> extensionProps{
+		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
+			&arenaFrame, extensionPropCount
+		)
 	};
+
+	pstd::BoundedArray<const char*> requiredExtensions{
+		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2),
+		.count = 2
+	};
+	requiredExtensions[0] = Platform::getPlatformSurfaceExtension();
+	requiredExtensions[1] = VK_KHR_SURFACE_EXTENSION_NAME;
+
+	pstd::BoundedArray<const char*> optionalExtensions{
+		pstd::makeBoundedArray<const char*>(getDebugExtensions().allocation)
+	};
+	pstd::Array<const char*> foundExtensions{ takeMatchedExtensions(
+		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+		extensionProps,
+		&requiredExtensions,
+		&optionalExtensions
+	) };
 
 	pstd::Array<const char*> foundValidationLayers{ findValidationLayers(
 		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset)
