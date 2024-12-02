@@ -363,12 +363,10 @@ namespace {
 			pushLetter(pstd::makeFrame(frame, frame.pPersistOffset), '-')
 		};
 
-		// this avoids overflow since |INT_MIN| = |INT_MAX| + 1
-		uint32_t positiveNumber{ ncast<uint32_t>(-(number + 1)) + 1 };
 		concat(
 			&string,
 			pushUInt64AsString(
-				pstd::makeFrame(frame, frame.pPersistOffset), positiveNumber
+				pstd::makeFrame(frame, frame.pPersistOffset), -number
 			)
 		);
 		return string;
