@@ -23,3 +23,11 @@ VkSurfaceKHR Platform::createSurface(VkInstance instance, const State& state) {
 const char* Platform::getPlatformSurfaceExtension() {
 	return VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
 }
+
+VkExtent2D Platform::calcClientExtent(const State& state) {
+	RECT clientRect{};
+	GetClientRect(state.hwnd, &clientRect);
+	auto width{ ncast<uint32_t>(clientRect.right - clientRect.left) };
+	auto height{ ncast<uint32_t>(clientRect.bottom - clientRect.top) };
+	return VkExtent2D{ .width = width, .height = height };
+}

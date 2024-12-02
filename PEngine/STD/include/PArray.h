@@ -2,7 +2,6 @@
 #include "PAssert.h"
 #include "PMemory.h"
 #include "PTypes.h"
-#include "PArena.h"
 #include "PContainer.h"
 
 namespace pstd {
@@ -90,13 +89,14 @@ namespace pstd {
 		size_t count;
 	};
 
-	// will alias old array
-	template<typename T, typename I>
-	Array<T, I> createArrayAliasing(const BoundedArray<T, I>& oldArray) {
-		Allocation allocation{
-			pstd::makeTrunced<T>(oldArray.allocation, oldArray.count)
-		};
-		return Array<T, I>{ .allocation = allocation };
+	template<typename T, typename I = size_t>
+	Array<T, I> consumeToArray(BoundedArray<T, I>* pBoundedArray) {
+		ASSERT(pBoundedArray);
+		Array<T, I> res{ .allocation = pstd::makeTrunced<T>(
+							 pBoundedArray->allocation, pBoundedArray->count
+						 ) };
+		*pBoundedArray = {};
+		return res;
 	}
 
 	template<typename T, typename I = size_t>

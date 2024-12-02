@@ -1,5 +1,6 @@
 #include "Device.h"
 #include "PArena.h"
+#include "PArray.h"
 #include "PContainer.h"
 
 #include "Extensions.h"
@@ -184,12 +185,10 @@ namespace {
 			}
 		}
 
-		pstd::Array<uint32_t> uniqueIndicesArray{
-			pstd::createArrayAliasing(uniqueIndices)
+		return DeviceQueueFamilyIndices{
+			.indices = indices,
+			.uniqueIndices = pstd::consumeToArray(&uniqueIndices)
 		};
-
-		return DeviceQueueFamilyIndices{ .indices = indices,
-										 .uniqueIndices = uniqueIndicesArray };
 	}
 
 	VkDevice createLogicalDevice(

@@ -5,6 +5,7 @@
 
 namespace Renderer {
 	struct State {
+		VkSwapchainKHR swapchain;
 		Device device;
 		VkSurfaceKHR surface;
 		VkInstance instance;
