@@ -35,9 +35,9 @@ Renderer::State* Renderer::startup(
 		nullptr, &extensionCount, pstd::getData(extensionProps)
 	);
 
-	VkInstance instance{
-		createInstance(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
-	};
+	VkInstance instance{ createInstance(
+		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset), extensionProps
+	) };
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
@@ -45,7 +45,8 @@ Renderer::State* Renderer::startup(
 	Device device{ createDevice(
 		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 		instance,
-		surface
+		surface, 
+		extensionProps
 	) };
 
 	pstd::Allocation stateAllocation{ pstd::alloc<State>(&arenaFrame) };

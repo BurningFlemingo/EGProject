@@ -41,9 +41,12 @@ pstd::Array<const char*> takeMatchedExtensions(
 	for (int i{}; i < pstd::getLength(*pRequiredExtensions); i++) {
 		LOG_ERROR("could not find %m\n", (*pRequiredExtensions)[i]);
 	}
-	for (int i{}; i < pstd::getLength(*pOptionalExtensions); i++) {
-		LOG_WARN("could not find %m\n", (*pOptionalExtensions)[i]);
+	if (pOptionalExtensions) {
+		for (int i{}; i < pstd::getLength(*pOptionalExtensions); i++) {
+			LOG_WARN("could not find %m\n", (*pOptionalExtensions)[i]);
+		}
 	}
+
 	for (int i{}; i < pstd::getLength(foundRequiredExtensions); i++) {
 		LOG_INFO("found %m\n", foundRequiredExtensions[i]);
 	}
@@ -51,14 +54,17 @@ pstd::Array<const char*> takeMatchedExtensions(
 		LOG_INFO("found %m\n", foundOptionalExtensions[i]);
 	}
 
-	pstd::Array<const char*> res{
-		.allocation = pstd::concat<const char*>(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-			foundRequiredExtensions.allocation,
-			foundOptionalExtensions.allocation
-		)
-	};
-	return res;
+	if (pstd::getLength(foundOptionalExtensions) > 0) {
+		return pstd::Array<const char*>{
+			.allocation = pstd::concat<const char*>(
+				pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+				foundRequiredExtensions.allocation,
+				foundOptionalExtensions.allocation
+			)
+		};
+	}
+
+	return foundRequiredExtensions;
 }
 
 namespace {

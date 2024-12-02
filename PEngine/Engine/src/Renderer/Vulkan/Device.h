@@ -18,5 +18,8 @@ struct Device {
 };
 
 Device createDevice(
-	pstd::ArenaFrame&& arenaFrame, VkInstance instance, VkSurfaceKHR surface
+	pstd::ArenaFrame&& arenaFrame,
+	VkInstance instance,
+	VkSurfaceKHR surface,
+	const pstd::Array<VkExtensionProperties>& extensionProps
 );

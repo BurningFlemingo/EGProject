@@ -2,6 +2,8 @@
 #include "PArena.h"
 #include "PContainer.h"
 
+#include "Extensions.h"
+
 namespace {
 	struct DeviceQueueFamilyIndices {
 		pstd::Array<uint32_t, QueueFamily> indices;
@@ -19,12 +21,16 @@ namespace {
 		pstd::ArenaFrame&& arenaFrame,
 		VkInstance instance,
 		VkPhysicalDevice physicalDevice,
-		const DeviceQueueFamilyIndices& qfi
+		const DeviceQueueFamilyIndices& qfi,
+		const pstd::Array<VkExtensionProperties>& extensionProps
 	);
 }  // namespace
 
 Device createDevice(
-	pstd::ArenaFrame&& arenaFrame, VkInstance instance, VkSurfaceKHR surface
+	pstd::ArenaFrame&& arenaFrame,
+	VkInstance instance,
+	VkSurfaceKHR surface,
+	const pstd::Array<VkExtensionProperties>& extensionProps
 ) {
 	VkPhysicalDevice physicalDevice{ createPhysicalDevice(
 		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), instance
@@ -39,7 +45,8 @@ Device createDevice(
 		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
 		instance,
 		physicalDevice,
-		qfi
+		qfi,
+		extensionProps
 	) };
 
 	pstd::Array<VkQueue, QueueFamily> queues{
@@ -193,8 +200,21 @@ namespace {
 		pstd::ArenaFrame&& arenaFrame,
 		VkInstance instance,
 		VkPhysicalDevice physicalDevice,
-		const DeviceQueueFamilyIndices& qfi
+		const DeviceQueueFamilyIndices& qfi,
+		const pstd::Array<VkExtensionProperties>& extensionProps
 	) {
+		pstd::BoundedArray<const char*> requiredExtensions{
+			.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 1),
+			.count = 1
+		};
+		requiredExtensions[0] = "VK_KHR_swapchain";
+
+		pstd::Array<const char*> foundExtensions{ takeMatchedExtensions(
+			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+			extensionProps,
+			&requiredExtensions
+		) };
+
 		const float priorities[1]{ 1.f };
 
 		pstd::BoundedStaticArray<
@@ -217,6 +237,10 @@ namespace {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 			.queueCreateInfoCount = (uint32_t)deviceQueueCreateInfos.count,
 			.pQueueCreateInfos = pstd::getData(deviceQueueCreateInfos),
+			// .enabledExtensionCount =
+			// 	ncast<uint32_t>(pstd::getLength(foundExtensions)),
+			// .ppEnabledExtensionNames = pstd::getData(foundExtensions)
+
 		};
 
 		VkDevice device{};
