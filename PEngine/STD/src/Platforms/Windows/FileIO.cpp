@@ -48,7 +48,8 @@ pstd::FileHandle pstd::openFile(
 		0
 	) };
 
-	ASSERT(hFile != INVALID_HANDLE_VALUE);
+	// ASSERT(hFile != INVALID_HANDLE_VALUE);
+	DWORD errorCode{ GetLastError() };
 
 	return hFile;
 }
@@ -58,12 +59,10 @@ bool pstd::copyFile(const char* dstName, const char* srcName, bool replace) {
 	return res;
 }
 
-pstd::String pstd::getEXEPath(ArenaFrame&& frame) {
+pstd::String pstd::getEXEPath(Arena* pArena) {
 	char exePath[MAX_PATH];
 	GetModuleFileNameA(0, exePath, MAX_PATH);
-	pstd::String res{ pstd::createString(
-		pstd::makeFrame(frame, frame.pPersistOffset), exePath
-	) };
+	pstd::String res{ pstd::createString(pArena, exePath) };
 	return res;
 }
 
@@ -118,17 +117,16 @@ size_t pstd::getLastFileWriteTime(const char* filename) {
 	return time;
 }
 
-pstd::Allocation
-	pstd::readFile(pstd::ArenaFrame&& frame, pstd::FileHandle pHandle) {
+pstd::Allocation pstd::readFile(pstd::Arena* pArena, pstd::FileHandle pHandle) {
 	auto hFile{ (FileHandleImpl)pHandle };
 	DWORD bytesRead{};
 	OVERLAPPED ol{};
 
 	uint32_t fileSize{ pstd::getFileSize(hFile) };
 
-	ASSERT(fileSize < pstd::getAvailableCount<char>(frame));
+	ASSERT(fileSize < pstd::getAvailableCount<char>(*pArena));
 
-	pstd::Allocation fileAlloc{ pstd::alloc<char>(&frame, fileSize) };
+	pstd::Allocation fileAlloc{ pstd::alloc<char>(pArena, fileSize) };
 	if (ReadFile(hFile, fileAlloc.block, fileSize, &bytesRead, &ol) == false) {
 		ASSERT(false);
 	}

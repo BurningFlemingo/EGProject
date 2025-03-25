@@ -9,7 +9,9 @@ namespace Renderer {
 	size_t getSizeofState();
 
 	State* startup(
-		pstd::ArenaFrame&& arenaFrame, const Platform::State& platformState
+		pstd::Arena* pPersistArena,
+		pstd::LinkedArenaPair scratchArenas,
+		const Platform::State& platformState
 	);
 
 	void shutdown(State* state);

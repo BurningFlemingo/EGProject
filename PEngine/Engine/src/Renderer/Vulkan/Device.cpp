@@ -1,10 +1,6 @@
 #include "Device.h"
 #include "PArena.h"
-#include "PArray.h"
 #include "PContainer.h"
-
-#include "Extensions.h"
-#include <vulkan/vulkan_core.h>
 
 namespace {
 	struct DeviceQueueFamilyIndices {
@@ -12,15 +8,14 @@ namespace {
 		pstd::Array<uint32_t> uniqueIndices;
 	};
 	DeviceQueueFamilyIndices findDeviceIndices(
-		pstd::ArenaFrame&& frame,
+		pstd::Arena* pPersistArena,
+		pstd::Arena scratchArena,
 		VkPhysicalDevice physicalDevice,
 		VkSurfaceKHR surface
 	);
-	VkPhysicalDevice createPhysicalDevice(
-		pstd::ArenaFrame&& arenaFrame, VkInstance instance
-	);
+	VkPhysicalDevice
+		createPhysicalDevice(pstd::Arena scratchArena, VkInstance instance);
 	VkDevice createLogicalDevice(
-		pstd::ArenaFrame&& arenaFrame,
 		VkInstance instance,
 		VkPhysicalDevice physicalDevice,
 		const DeviceQueueFamilyIndices& qfi
@@ -28,27 +23,23 @@ namespace {
 }  // namespace
 
 Device createDevice(
-	pstd::ArenaFrame&& arenaFrame, VkInstance instance, VkSurfaceKHR surface
+	pstd::Arena* pPersistArena,
+	pstd::LinkedArenaPair scratchArenas,
+	VkInstance instance,
+	VkSurfaceKHR surface
 ) {
-	VkPhysicalDevice physicalDevice{ createPhysicalDevice(
-		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), instance
-	) };
+	VkPhysicalDevice physicalDevice{
+		createPhysicalDevice(scratchArenas.current, instance)
+	};
 
 	DeviceQueueFamilyIndices qfi{ findDeviceIndices(
-		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-		physicalDevice,
-		surface
+		pPersistArena, scratchArenas.current, physicalDevice, surface
 	) };
-	VkDevice device{ createLogicalDevice(
-		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-		instance,
-		physicalDevice,
-		qfi
-	) };
+	VkDevice device{ createLogicalDevice(instance, physicalDevice, qfi) };
 
 	pstd::Array<VkQueue, QueueFamily> queues{
 		.allocation = pstd::alloc<VkQueue>(
-			&arenaFrame, pstd::getCapacity(qfi.uniqueIndices)
+			pPersistArena, pstd::getCapacity(qfi.uniqueIndices)
 		)
 	};
 	for (uint32_t i{}; i < pstd::getCapacity(queues); i++) {
@@ -67,15 +58,15 @@ Device createDevice(
 }
 
 namespace {
-	VkPhysicalDevice createPhysicalDevice(
-		pstd::ArenaFrame&& arenaFrame, VkInstance instance
-	) {
+	VkPhysicalDevice
+		createPhysicalDevice(pstd::Arena scratchArena, VkInstance instance) {
 		uint32_t physicalDeviceCount{};
 		vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
 
 		pstd::Array<VkPhysicalDevice> physicalDevices{
-			.allocation =
-				pstd::alloc<VkPhysicalDevice>(&arenaFrame, physicalDeviceCount)
+			.allocation = pstd::alloc<VkPhysicalDevice>(
+				&scratchArena, physicalDeviceCount
+			)
 		};
 		vkEnumeratePhysicalDevices(
 			instance, &physicalDeviceCount, pstd::getData(physicalDevices)
@@ -115,7 +106,8 @@ namespace {
 	}
 
 	DeviceQueueFamilyIndices findDeviceIndices(
-		pstd::ArenaFrame&& arenaFrame,
+		pstd::Arena* pPersistArena,
+		pstd::Arena scratchArena,
 		VkPhysicalDevice physicalDevice,
 		VkSurfaceKHR surface
 	) {
@@ -125,8 +117,8 @@ namespace {
 		);
 
 		pstd::Array<VkQueueFamilyProperties> queueFamilyProps{
-			.allocation = pstd::scratchAlloc<VkQueueFamilyProperties>(
-				&arenaFrame, queueFamilyPropCount
+			.allocation = pstd::alloc<VkQueueFamilyProperties>(
+				&scratchArena, queueFamilyPropCount
 			)
 		};
 		vkGetPhysicalDeviceQueueFamilyProperties(
@@ -137,14 +129,15 @@ namespace {
 
 		constexpr uint32_t invalidIndex{ -1u };
 		pstd::Array<uint32_t, QueueFamily> indices{
-			.allocation =
-				pstd::alloc<uint32_t>(&arenaFrame, (size_t)QueueFamily::count),
+			.allocation = pstd::alloc<uint32_t>(
+				pPersistArena, (size_t)QueueFamily::count
+			),
 		};
 		pstd::fill(&indices, invalidIndex);
 
 		pstd::BoundedArray<uint32_t> uniqueIndices{
 			.allocation = pstd::alloc<uint32_t>(
-				&arenaFrame, cast<size_t>(QueueFamily::count)
+				pPersistArena, cast<size_t>(QueueFamily::count)
 			)
 		};
 
@@ -185,45 +178,19 @@ namespace {
 			}
 		}
 
-		return DeviceQueueFamilyIndices{
-			.indices = indices,
-			.uniqueIndices = pstd::consumeToArray(&uniqueIndices)
+		pstd::Array<uint32_t> uniqueIndicesArray{
+			.allocation = uniqueIndices.allocation
 		};
+
+		return DeviceQueueFamilyIndices{ .indices = indices,
+										 .uniqueIndices = uniqueIndicesArray };
 	}
 
 	VkDevice createLogicalDevice(
-		pstd::ArenaFrame&& arenaFrame,
 		VkInstance instance,
 		VkPhysicalDevice physicalDevice,
 		const DeviceQueueFamilyIndices& qfi
 	) {
-		uint32_t extensionCount{};
-		vkEnumerateDeviceExtensionProperties(
-			physicalDevice, nullptr, &extensionCount, nullptr
-		);
-		pstd::Array<VkExtensionProperties> extensionProps{
-			.allocation = pstd::scratchAlloc<VkExtensionProperties>(
-				&arenaFrame, extensionCount
-			),
-		};
-		vkEnumerateDeviceExtensionProperties(
-			physicalDevice,
-			nullptr,
-			&extensionCount,
-			pstd::getData(extensionProps)
-		);
-		pstd::BoundedArray<const char*> requiredExtensions{
-			.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 1),
-			.count = 1
-		};
-		requiredExtensions[0] = "VK_KHR_swapchain";
-
-		pstd::Array<const char*> foundExtensions{ takeMatchedExtensions(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-			extensionProps,
-			&requiredExtensions
-		) };
-
 		const float priorities[1]{ 1.f };
 
 		pstd::BoundedStaticArray<
@@ -246,10 +213,6 @@ namespace {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 			.queueCreateInfoCount = (uint32_t)deviceQueueCreateInfos.count,
 			.pQueueCreateInfos = pstd::getData(deviceQueueCreateInfos),
-			.enabledExtensionCount =
-				ncast<uint32_t>(pstd::getLength(foundExtensions)),
-			.ppEnabledExtensionNames = pstd::getData(foundExtensions)
-
 		};
 
 		VkDevice device{};

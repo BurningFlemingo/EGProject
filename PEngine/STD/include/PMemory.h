@@ -6,7 +6,7 @@ namespace {
 }
 
 namespace pstd {
-	struct ArenaFrame;
+	struct Arena;
 }
 
 namespace pstd {
@@ -29,6 +29,9 @@ namespace pstd {
 
 	AllocationRegistry
 		createAllocationRegistry(size_t initialSize = 1024 * 1024);
+
+	Allocation heapAlloc(AllocationRegistry* state, size_t size);
+	void heapFree(AllocationRegistry* state, const Allocation* allocation);
 
 	void memSet(void* dst, int val, size_t size);
 	void memZero(void* dst, size_t size);
@@ -71,6 +74,21 @@ namespace pstd {
 		return makeTrunced(allocation, newSize);
 	}
 
-	Allocation coalesce(const Allocation& a, const Allocation& b);
+	Allocation makeCoalesced(const Allocation& a, const Allocation& b);
+	bool coalesce(Allocation* a, const Allocation& b);
+
+	Allocation makeConcatted(
+		pstd::Arena* pArena,
+		const Allocation& a,
+		const Allocation& b,
+		uint32_t alignment
+	);
+
+	template<typename T>
+	Allocation
+		makeConcatted(Arena* pArena, const Allocation& a, const Allocation& b) {
+		size_t alignment{ alignof(T) };
+		return makeConcatted(pArena, a, b, alignment);
+	}
 
 }  // namespace pstd

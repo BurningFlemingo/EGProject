@@ -24,7 +24,5 @@ namespace pstd {
 			const AllocationTypeFlagBits allocTypeFlags
 		);
 
-		Allocation heapAlloc(AllocationRegistry* state, size_t size);
-		void heapFree(AllocationRegistry* state, const Allocation* allocation);
 	}  // namespace internal
 }  // namespace pstd

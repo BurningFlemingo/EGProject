@@ -33,100 +33,12 @@ namespace {
 	);
 }  // namespace
 
-void pstd::memSet(void* dst, int val, size_t size) {
-	memset(dst, val, size);
-}
-void pstd::memZero(void* dst, size_t size) {
-	memset(dst, 0, size);
-}
-void pstd::memCpy(void* dst, const void* src, size_t size) {
-	memcpy(dst, src, size);
-}
-
-void pstd::memMov(void* dst, const void* src, size_t size) {
-	ASSERT(dst);
-	ASSERT(src);
-
-	auto dstBlock{ (char*)dst };
-	auto srcBlock = (const char*)src;
-
-	if (dstBlock < srcBlock) {
-		while (size) {
-			*dstBlock = *srcBlock;
-			dstBlock++;
-			srcBlock++;
-			size--;
-		}
-		return;
-	}
-
-	dstBlock += size - 1;
-	srcBlock += size - 1;
-	while (size) {
-		*dstBlock = *srcBlock;
-		dstBlock--;
-		srcBlock--;
-		size--;
-	}
-}
-
-uint32_t pstd::calcAddressAlignmentPadding(
-	uintptr_t address, const uint32_t alignment
-) {
-	auto bytesUnaligned{ ncast<uint32_t>(address % alignment) };
-	// the last % alignment is to set the bytes required to align to zero if
-	// the address is already aligned
-	return (alignment - bytesUnaligned) % alignment;
-}
-
-void pstd::shallowCopy(Allocation* dst, const Allocation& src) {
-	ASSERT(dst);
-	ASSERT(dst->block);
-	ASSERT(src.block);
-
-	size_t copySize{ min(src.size, dst->size) };
-	memCpy(dst->block, src.block, copySize);
-}
-
-void pstd::shallowMove(Allocation* dst, const Allocation& src) {
-	ASSERT(dst);
-	ASSERT(dst->block);
-	ASSERT(src.block);
-
-	size_t moveSize{ min(src.size, dst->size) };
-	memMov(dst->block, src.block, moveSize);
-}
-
-Allocation pstd::coalesce(const Allocation& a, const Allocation& b) {
-	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
-	ASSERT(~(a.isStackAllocated ^ b.isStackAllocated));
-
-	uint8_t* aEnd{ a.block + a.size };
-	uint8_t* bEnd{ b.block + b.size };
-	size_t size{ a.size + b.size };
-	if (aEnd == b.block) {
-		ASSERT(a.block + size == b.block + b.size);
-		return Allocation{ .block = a.block,
-						   .size = size,
-						   .ownsMemory = a.ownsMemory,
-						   .isStackAllocated = a.isStackAllocated };
-	}
-	ASSERT(bEnd == a.block);
-
-	ASSERT(a.block + size == a.block + a.size);
-	return Allocation{ .block = b.block,
-					   .size = size,
-					   .ownsMemory = b.ownsMemory,
-					   .isStackAllocated = b.isStackAllocated };
-}
-
 AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {
 	AllocationRegistry registry{ .firstPool = createMemoryPool(initialSize) };
 	return registry;
 }
 
-Allocation
-	pstd::internal::heapAlloc(AllocationRegistry* registry, size_t size) {
+Allocation pstd::heapAlloc(AllocationRegistry* registry, size_t size) {
 	ASSERT(registry);
 	size = alignUpToPageBoundary(size + sizeof(FreelistBlock));
 
@@ -197,10 +109,128 @@ Allocation
 					   .ownsMemory = true };
 }
 
-void pstd::internal::heapFree(
+void pstd::heapFree(
 	AllocationRegistry* registry, const Allocation* allocation
 ) {
 	// TODO: implement
+}
+
+void pstd::memSet(void* dst, int val, size_t size) {
+	memset(dst, val, size);
+}
+void pstd::memZero(void* dst, size_t size) {
+	memset(dst, 0, size);
+}
+void pstd::memCpy(void* dst, const void* src, size_t size) {
+	memcpy(dst, src, size);
+}
+
+void pstd::memMov(void* dst, const void* src, size_t size) {
+	ASSERT(dst);
+	ASSERT(src);
+
+	auto dstBlock{ (char*)dst };
+	auto srcBlock = (const char*)src;
+
+	if (dstBlock < srcBlock) {
+		while (size) {
+			*dstBlock = *srcBlock;
+			dstBlock++;
+			srcBlock++;
+			size--;
+		}
+		return;
+	}
+
+	dstBlock += size - 1;
+	srcBlock += size - 1;
+	while (size) {
+		*dstBlock = *srcBlock;
+		dstBlock--;
+		srcBlock--;
+		size--;
+	}
+}
+
+uint32_t pstd::calcAddressAlignmentPadding(
+	uintptr_t address, const uint32_t alignment
+) {
+	auto bytesUnaligned{ ncast<uint32_t>(address % alignment) };
+	// the last % alignment is to set the bytes required to align to zero if
+	// the address is already aligned
+	return (alignment - bytesUnaligned) % alignment;
+}
+
+void pstd::shallowCopy(Allocation* dst, const Allocation& src) {
+	ASSERT(dst);
+	ASSERT(dst->block);
+	ASSERT(src.block);
+
+	size_t copySize{ min(src.size, dst->size) };
+	memCpy(dst->block, src.block, copySize);
+}
+
+void pstd::shallowMove(Allocation* dst, const Allocation& src) {
+	ASSERT(dst);
+	ASSERT(dst->block);
+	ASSERT(src.block);
+
+	size_t moveSize{ min(src.size, dst->size) };
+	memMov(dst->block, src.block, moveSize);
+}
+
+bool pstd::coalesce(Allocation* a, const Allocation& b) {
+	ASSERT(a);
+	*a = makeCoalesced(*a, b);
+	if (a->block) {
+		return false;
+	}
+	return true;
+}
+
+Allocation pstd::makeCoalesced(const Allocation& a, const Allocation& b) {
+	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
+	ASSERT(~(a.isStackAllocated ^ b.isStackAllocated));
+
+	uint8_t* aEnd{ a.block + a.size };
+	uint8_t* bEnd{ b.block + b.size };
+	size_t size{ a.size + b.size };
+	if (aEnd == b.block) {
+		ASSERT(a.block + size == b.block + b.size);
+		return Allocation{ .block = a.block,
+						   .size = size,
+						   .ownsMemory = a.ownsMemory,
+						   .isStackAllocated = a.isStackAllocated };
+	}
+	ASSERT(bEnd == a.block);
+
+	ASSERT(a.block + size == a.block + a.size);
+	return Allocation{ .block = b.block,
+					   .size = size,
+					   .ownsMemory = b.ownsMemory,
+					   .isStackAllocated = b.isStackAllocated };
+}
+
+pstd::Allocation pstd::makeConcatted(
+	Arena* pArena, const Allocation& a, const Allocation& b, uint32_t alignment
+) {
+	ASSERT(a.block);
+	ASSERT(b.block);
+	size_t allocSize{ a.size + b.size };
+
+	ASSERT(allocSize >= a.size);  // overflow check
+
+	Allocation allocation{ pstd::alloc(pArena, allocSize, alignment) };
+
+	pstd::shallowMove(&allocation, a);
+
+	Allocation headAllocation{ allocation };
+	headAllocation.block = headAllocation.block + a.size;
+	headAllocation.size -= a.size;
+
+	shallowMove(&headAllocation, b);
+
+	return allocation;
 }
 
 namespace {

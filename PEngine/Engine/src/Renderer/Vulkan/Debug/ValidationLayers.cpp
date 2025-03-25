@@ -11,12 +11,12 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-pstd::Array<const char*> findValidationLayers(pstd::ArenaFrame&& arenaFrame) {
+pstd::Array<const char*> findValidationLayers(pstd::Arena* pPersistArena) {
 	uint32_t layerCount{};
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
 	pstd::Array<VkLayerProperties> layerProps{
-		.allocation = pstd::alloc<VkLayerProperties>(&arenaFrame, layerCount),
+		.allocation = pstd::alloc<VkLayerProperties>(pPersistArena, layerCount),
 	};
 	vkEnumerateInstanceLayerProperties(
 		&layerCount, (VkLayerProperties*)layerProps.allocation.block
@@ -27,7 +27,7 @@ pstd::Array<const char*> findValidationLayers(pstd::ArenaFrame&& arenaFrame) {
 	};
 
 	pstd::BoundedArray<const char*> foundLayers{
-		.allocation = pstd::alloc<const char*>(&arenaFrame, 1)
+		.allocation = pstd::alloc<const char*>(pPersistArena, 1)
 	};
 
 	for (int i{}; i < layerCount; i++) {

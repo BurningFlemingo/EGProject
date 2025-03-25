@@ -4,36 +4,41 @@
 
 #include "PArena.h"
 #include "PArray.h"
+#include "PMemory.h"
 #include "PContainer.h"
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 namespace {
-	pstd::Array<const char*> takeMatchedExtensions(
-		pstd::ArenaFrame&& frame,
+	pstd::Array<const char*> takeFoundExtensions(
+		pstd::Arena* pPersistArena,
+		pstd::LinkedArenaPair scratchArenas,
 		pstd::BoundedArray<const char*>* extensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	);
 }
 
-pstd::Array<const char*> takeMatchedExtensions(
-	pstd::ArenaFrame&& arenaFrame,
+pstd::Array<const char*> takeFoundExtensions(
+	pstd::Arena* pPersistArena,
+	pstd::LinkedArenaPair scratchArenas,
 	const pstd::Array<VkExtensionProperties>& availableExtensionProps,
 	pstd::BoundedArray<const char*>* pRequiredExtensions,
 	pstd::BoundedArray<const char*>* pOptionalExtensions
 ) {
 	pstd::Array<const char*> foundOptionalExtensions{};
 	if (pOptionalExtensions != nullptr) {
-		foundOptionalExtensions = takeMatchedExtensions(
-			pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+		foundOptionalExtensions = takeFoundExtensions(
+			pPersistArena,
+			pstd::getSwapped(&scratchArenas),
 			pOptionalExtensions,
 			availableExtensionProps
 		);
 	}
 
-	pstd::Array<const char*> foundRequiredExtensions{ takeMatchedExtensions(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+	pstd::Array<const char*> foundRequiredExtensions{ takeFoundExtensions(
+		pPersistArena,
+		pstd::getSwapped(&scratchArenas),
 		pRequiredExtensions,
 		availableExtensionProps
 	) };
@@ -56,8 +61,8 @@ pstd::Array<const char*> takeMatchedExtensions(
 
 	if (pstd::getLength(foundOptionalExtensions) > 0) {
 		return pstd::Array<const char*>{
-			.allocation = pstd::concat<const char*>(
-				pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
+			.allocation = pstd::makeConcatted<const char*>(
+				pPersistArena,
 				foundRequiredExtensions.allocation,
 				foundOptionalExtensions.allocation
 			)
@@ -68,8 +73,9 @@ pstd::Array<const char*> takeMatchedExtensions(
 }
 
 namespace {
-	pstd::Array<const char*> takeMatchedExtensions(
-		pstd::ArenaFrame&& frame,
+	pstd::Array<const char*> takeFoundExtensions(
+		pstd::Arena* pPersistArena,
+		pstd::LinkedArenaPair scratchArenas,
 		pstd::BoundedArray<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	) {
@@ -82,8 +88,9 @@ namespace {
 				pstd::getCapacity(availableExtensions))
 		};
 		pstd::BoundedArray<const char*> matchedNames{
-			.allocation =
-				pstd::scratchAlloc<const char*>(&frame, largestArrayCount)
+			.allocation = pstd::alloc<const char*>(
+				&scratchArenas.current, largestArrayCount
+			)
 		};
 
 		for (uint32_t i{}; i < largestArrayCount; i++) {
@@ -113,9 +120,9 @@ namespace {
 		if (matchedNames.count == 0) {
 			return {};
 		}
-		pstd::Array<const char*> res{
-			.allocation = pstd::alloc<const char*>(&frame, matchedNames.count)
-		};
+		pstd::Array<const char*> res{ .allocation = pstd::alloc<const char*>(
+										  pPersistArena, matchedNames.count
+									  ) };
 		for (uint32_t i{}; i < matchedNames.count; i++) {
 			res[i] = matchedNames[i];
 		}

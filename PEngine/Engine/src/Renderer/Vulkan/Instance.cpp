@@ -19,12 +19,12 @@
 // indexWrite. also get rid of constructor-like makeBoundedArray in favor of
 // BoundedArray{}
 
-VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
+VkInstance createInstance(pstd::LinkedArenaPair scratchArenas) {
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 	pstd::Array<VkExtensionProperties> extensionProps{
-		.allocation = pstd::scratchAlloc<VkExtensionProperties>(
-			&arenaFrame, extensionCount
+		.allocation = pstd::alloc<VkExtensionProperties>(
+			&scratchArenas.current, extensionCount
 		),
 	};
 	vkEnumerateInstanceExtensionProperties(
@@ -32,7 +32,7 @@ VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
 	);
 
 	pstd::BoundedArray<const char*> requiredExtensions{
-		.allocation = pstd::scratchAlloc<const char*>(&arenaFrame, 2),
+		.allocation = pstd::alloc<const char*>(&scratchArenas.current, 2),
 		.count = 2
 	};
 	requiredExtensions[0] = Platform::getPlatformSurfaceExtension();
@@ -41,16 +41,17 @@ VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
 	pstd::BoundedArray<const char*> optionalExtensions{
 		pstd::makeBoundedArray<const char*>(getDebugExtensions().allocation)
 	};
-	pstd::Array<const char*> foundExtensions{ takeMatchedExtensions(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
+	pstd::Array<const char*> foundExtensions{ takeFoundExtensions(
+		&scratchArenas.current,
+		scratchArenas,
 		extensionProps,
 		&requiredExtensions,
 		&optionalExtensions
 	) };
 
-	pstd::Array<const char*> foundValidationLayers{ findValidationLayers(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset)
-	) };
+	pstd::Array<const char*> foundValidationLayers{
+		findValidationLayers(&scratchArenas.current)
+	};
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",
@@ -64,7 +65,9 @@ VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
 		getDebugMessengerCreateInfo()
 	};
 
-	pstd::Allocation rawAlloc{ pstd::alloc<const char*>(&arenaFrame, 1) };
+	pstd::Allocation rawAlloc{
+		pstd::alloc<const char*>(&scratchArenas.current, 1)
+	};
 	pstd::shallowMove(&rawAlloc, foundValidationLayers.allocation);
 
 	VkInstanceCreateInfo vkInstanceCI{

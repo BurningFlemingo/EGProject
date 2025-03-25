@@ -2,7 +2,9 @@
 #include "Instance.h"
 
 #include "PContainer.h"
-#include "Renderer/Vulkan/Device.h"
+#include "Device.h"
+#include "PFileIO.h"
+#include "Swapchain.h"
 #include "include/Logging.h"
 
 #include "Platforms/VulkanSurface.h"
@@ -19,134 +21,80 @@
 #include <new>
 
 Renderer::State* Renderer::startup(
-	pstd::ArenaFrame&& arenaFrame, const Platform::State& platformState
+	pstd::Arena* pArena,
+	pstd::LinkedArenaPair scratchArenas,
+	const Platform::State& platformState
 ) {
-	VkInstance instance{
-		createInstance(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
-	};
+	VkInstance instance{ createInstance(scratchArenas) };
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
-	Device device{ createDevice(
-		pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-		instance,
-		surface
+	Device device{ createDevice(pArena, scratchArenas, instance, surface) };
+
+	// Swapchain swapchain{
+	// 	createSwapchain(pArena, scratchArenas, device, surface, platformState)
+	// };
+
+	const VkPipelineShaderStageCreateInfo* pStages;
+	const VkPipelineVertexInputStateCreateInfo* pVertexInputState;
+	const VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState;
+	const VkPipelineTessellationStateCreateInfo* pTessellationState;
+	const VkPipelineViewportStateCreateInfo* pViewportState;
+	const VkPipelineRasterizationStateCreateInfo* pRasterizationState;
+	const VkPipelineMultisampleStateCreateInfo* pMultisampleState;
+	const VkPipelineDepthStencilStateCreateInfo* pDepthStencilState;
+	const VkPipelineColorBlendStateCreateInfo* pColorBlendState;
+	const VkPipelineDynamicStateCreateInfo* pDynamicState;
+
+	pstd::String fragShaderPath{ pstd::createString("/shaders/first.frag") };
+	pstd::String exePath{ pstd::getEXEPath(&scratchArenas.current) };
+	fragShaderPath =
+		pstd::makeConcatted(&scratchArenas.current, exePath, fragShaderPath);
+
+	pstd::FileHandle fragShaderFile{ pstd::openFile(
+		&scratchArenas.current,
+		fragShaderPath,
+		pstd::FileAccess::read,
+		pstd::FileShare::read,
+		pstd::FileCreate::openExisting
 	) };
 
-	uint32_t formatsCount{};
-	vkGetPhysicalDeviceSurfaceFormatsKHR(
-		device.physical, surface, &formatsCount, nullptr
-	);
+	// pstd::Allocation fragShaderAllocation{ pstd::readFile(
+	// 	pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), fragShaderFile
+	// ) };
 
-	pstd::Array<VkSurfaceFormatKHR> formats{
-		.allocation = pstd::scratchAlloc<VkSurfaceFormatKHR>(&arenaFrame)
-	};
-	vkGetPhysicalDeviceSurfaceFormatsKHR(
-		device.physical, surface, &formatsCount, pstd::getData(formats)
-	);
-	VkSurfaceFormatKHR format{};
-	for (uint32_t i{}; i < pstd::getLength(formats); i++) {
-		VkSurfaceFormatKHR availableFormat{ formats[i] };
-		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
-			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-			format = availableFormat;
-			break;
-		}
-	}
-	if (format.format == VK_FORMAT_UNDEFINED) {
-		format = formats[0];
-	}
+	// VkShaderModuleCreateInfo fragmentShaderModuleCI{
+	// 	.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+	// 	.codeSize = fragShaderAllocation.size,
+	// 	.pCode = rcast<uint32_t*>(fragShaderAllocation.block)
+	// };
 
-	uint32_t presentModesCount{};
-	vkGetPhysicalDeviceSurfacePresentModesKHR(
-		device.physical, surface, &presentModesCount, nullptr
-	);
+	VkShaderModule fragShaderModule{};
+	// VkResult res{ vkCreateShaderModule(
+	// 	device.logical, &fragmentShaderModuleCI, nullptr, &fragShaderModule
+	// ) };
+	// ASSERT(res == VK_SUCCESS);
 
-	pstd::Array<VkPresentModeKHR> presentModes{
-		.allocation = pstd::scratchAlloc<VkPresentModeKHR>(&arenaFrame)
-	};
-	vkGetPhysicalDeviceSurfacePresentModesKHR(
-		device.physical,
-		surface,
-		&presentModesCount,
-		pstd::getData(presentModes)
-	);
+	// pstd::closeFile(fragShaderFile);
 
-	VkPresentModeKHR presentMode{ VK_PRESENT_MODE_FIFO_KHR };
-	for (uint32_t i{}; i < pstd::getLength(presentModes); i++) {
-		VkPresentModeKHR availablePresentMode{ presentModes[i] };
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-			presentMode = availablePresentMode;
-			break;
-		}
-	}
-
-	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-		device.physical, surface, &surfaceCapabilities
-	);
-
-	VkExtent2D swapchainImageExtent{};
-	if (surfaceCapabilities.maxImageExtent.width != UINT32_MAX) {
-		VkExtent2D clientWindowExtent{ Platform::calcClientExtent(platformState
-		) };
-
-		swapchainImageExtent.width = pstd::clamp(
-			surfaceCapabilities.minImageExtent.width,
-			surfaceCapabilities.maxImageExtent.width,
-			clientWindowExtent.width
-		);
-
-		swapchainImageExtent.height = pstd::clamp(
-			surfaceCapabilities.minImageExtent.height,
-			surfaceCapabilities.maxImageExtent.height,
-			clientWindowExtent.height
-		);
-
-	} else {
-		swapchainImageExtent = surfaceCapabilities.currentExtent;
-	}
-
-	uint32_t imageCount{
-		min(surfaceCapabilities.minImageCount + 1,
-			surfaceCapabilities.maxImageCount - 1
-		)  // underflow on purpose for maxImageCount == 0
+	VkGraphicsPipelineCreateInfo gPipeCI{
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 	};
 
-	VkSwapchainCreateInfoKHR swapchainCI{
-		.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-		.surface = surface,
-		.minImageCount = imageCount,
-		.imageFormat = format.format,
-		.imageColorSpace = format.colorSpace,
-		.imageExtent = swapchainImageExtent,
-		.imageArrayLayers = 1,
-		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-		.preTransform = surfaceCapabilities.currentTransform,
-		.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-		.presentMode = presentMode,
-		.clipped = VK_TRUE,
-	};
-	VkSwapchainKHR swapchain{};
-	VkResult res{
-		vkCreateSwapchainKHR(device.logical, &swapchainCI, nullptr, &swapchain)
-	};
-	ASSERT(res == VK_SUCCESS);
+	// vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 
-	pstd::Allocation stateAllocation{ pstd::alloc<State>(&arenaFrame) };
-	return new (stateAllocation.block)
-		State{ .swapchain = swapchain,
-			   .device = device,
-			   .surface = surface,
-			   .instance = instance,
-			   .debugMessenger = debugMessenger };
+	pstd::Allocation stateAllocation{ pstd::alloc<State>(pArena) };
+	return new (stateAllocation.block) State{ // .swapchain = swapchain,
+											  .device = device,
+											  .surface = surface,
+											  .instance = instance,
+											  .debugMessenger = debugMessenger
+	};
 }
 
 void Renderer::shutdown(State* state) {
-	vkDestroySwapchainKHR(state->device.logical, state->swapchain, nullptr);
-
+	destroySwapchain(&state->swapchain, state->device.logical);
 	vkDestroyDevice(state->device.logical, nullptr);
 	vkDestroySurfaceKHR(state->instance, state->surface, nullptr);
 	destroyDebugMessenger(state->instance, state->debugMessenger);

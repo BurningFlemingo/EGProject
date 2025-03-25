@@ -3,9 +3,11 @@
 #include "PArray.h"
 #include "Device.h"
 
+#include "Swapchain.h"
+
 namespace Renderer {
 	struct State {
-		VkSwapchainKHR swapchain;
+		Swapchain swapchain;
 		Device device;
 		VkSurfaceKHR surface;
 		VkInstance instance;
