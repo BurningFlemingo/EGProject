@@ -13,24 +13,27 @@
 namespace {
 	pstd::Array<const char*> takeFoundExtensions(
 		pstd::Arena* pPersistArena,
-		pstd::LinkedArenaPair scratchArenas,
-		pstd::BoundedArray<const char*>* extensionNamesToQuery,
+		pstd::ArenaPair scratchArenas,
+		pstd::BoundedArray<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	);
 }
 
 pstd::Array<const char*> takeFoundExtensions(
 	pstd::Arena* pPersistArena,
-	pstd::LinkedArenaPair scratchArenas,
+	pstd::ArenaPair scratchArenas,
 	const pstd::Array<VkExtensionProperties>& availableExtensionProps,
 	pstd::BoundedArray<const char*>* pRequiredExtensions,
 	pstd::BoundedArray<const char*>* pOptionalExtensions
 ) {
+	ASSERT(pPersistArena);
+	ASSERT(pRequiredExtensions);
+
 	pstd::Array<const char*> foundOptionalExtensions{};
 	if (pOptionalExtensions != nullptr) {
 		foundOptionalExtensions = takeFoundExtensions(
 			pPersistArena,
-			pstd::getSwapped(&scratchArenas),
+			scratchArenas,
 			pOptionalExtensions,
 			availableExtensionProps
 		);
@@ -38,35 +41,35 @@ pstd::Array<const char*> takeFoundExtensions(
 
 	pstd::Array<const char*> foundRequiredExtensions{ takeFoundExtensions(
 		pPersistArena,
-		pstd::getSwapped(&scratchArenas),
+		scratchArenas,
 		pRequiredExtensions,
 		availableExtensionProps
 	) };
 
-	for (int i{}; i < pstd::getLength(*pRequiredExtensions); i++) {
+	for (int i{}; i < pRequiredExtensions->count; i++) {
 		LOG_ERROR("could not find %m\n", (*pRequiredExtensions)[i]);
 	}
 	if (pOptionalExtensions) {
-		for (int i{}; i < pstd::getLength(*pOptionalExtensions); i++) {
+		for (int i{}; i < pOptionalExtensions->count; i++) {
 			LOG_WARN("could not find %m\n", (*pOptionalExtensions)[i]);
 		}
 	}
 
-	for (int i{}; i < pstd::getLength(foundRequiredExtensions); i++) {
+	for (int i{}; i < foundRequiredExtensions.count; i++) {
 		LOG_INFO("found %m\n", foundRequiredExtensions[i]);
 	}
-	for (int i{}; i < pstd::getLength(foundOptionalExtensions); i++) {
+	for (int i{}; i < foundOptionalExtensions.count; i++) {
 		LOG_INFO("found %m\n", foundOptionalExtensions[i]);
 	}
 
-	if (pstd::getLength(foundOptionalExtensions) > 0) {
-		return pstd::Array<const char*>{
-			.allocation = pstd::makeConcatted<const char*>(
-				pPersistArena,
-				foundRequiredExtensions.allocation,
-				foundOptionalExtensions.allocation
-			)
-		};
+	if (foundOptionalExtensions.count > 0) {
+		pstd::Allocation allFoundExtensions{ pstd::makeConcatted<const char*>(
+			pPersistArena,
+			pstd::getAllocation(foundRequiredExtensions),
+			pstd::getAllocation(foundOptionalExtensions)
+		) };
+
+		return { pstd::createArray<const char*>(allFoundExtensions) };
 	}
 
 	return foundRequiredExtensions;
@@ -75,25 +78,26 @@ pstd::Array<const char*> takeFoundExtensions(
 namespace {
 	pstd::Array<const char*> takeFoundExtensions(
 		pstd::Arena* pPersistArena,
-		pstd::LinkedArenaPair scratchArenas,
+		pstd::ArenaPair scratchArenas,
 		pstd::BoundedArray<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	) {
-		size_t largestArrayCount{
-			max(pstd::getCapacity(*pExtensionNamesToQuery),
-				pstd::getCapacity(availableExtensions))
-		};
-		size_t smallestArrayCount{
-			min(pstd::getCapacity(*pExtensionNamesToQuery),
-				pstd::getCapacity(availableExtensions))
-		};
-		pstd::BoundedArray<const char*> matchedNames{
-			.allocation = pstd::alloc<const char*>(
-				&scratchArenas.current, largestArrayCount
-			)
+		ASSERT(pPersistArena);
+		pstd::Arena& scratchArena{
+			*pstd::getUnique(&scratchArenas, pPersistArena)
 		};
 
-		for (uint32_t i{}; i < largestArrayCount; i++) {
+		size_t largestArrayViewCount{
+			max(pExtensionNamesToQuery->count, availableExtensions.count)
+		};
+		size_t smallestArrayViewCount{
+			min(pExtensionNamesToQuery->count, availableExtensions.count)
+		};
+		auto matchedNames{ pstd::createBoundedArray<const char*>(
+			pPersistArena, largestArrayViewCount
+		) };
+
+		for (uint32_t i{}; i < largestArrayViewCount; i++) {
 			if (pExtensionNamesToQuery->count == 0) {
 				break;
 			}
@@ -117,15 +121,8 @@ namespace {
 			}
 		}
 
-		if (matchedNames.count == 0) {
-			return {};
-		}
-		pstd::Array<const char*> res{ .allocation = pstd::alloc<const char*>(
-										  pPersistArena, matchedNames.count
-									  ) };
-		for (uint32_t i{}; i < matchedNames.count; i++) {
-			res[i] = matchedNames[i];
-		}
+		pstd::Array<const char*> res{ .data = matchedNames.data,
+									  .count = matchedNames.count };
 		return res;
 	}
 }  // namespace

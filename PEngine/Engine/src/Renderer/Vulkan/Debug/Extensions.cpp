@@ -11,9 +11,6 @@ namespace {
 }  // namespace
 
 pstd::Array<const char*> getDebugExtensions() {
-	return pstd::Array<const char*>{
-		.allocation = { .block = rcast<uint8_t*>(g_DebugExtensions),
-						.size =
-							sizeof(const char*) * NUMBER_OF_DEBUG_EXTENSIONS },
-	};
+	return pstd::Array<const char*>{ .data = g_DebugExtensions,
+									 .count = NUMBER_OF_DEBUG_EXTENSIONS };
 }

@@ -318,9 +318,7 @@ namespace {
 			}
 		}
 
-		pstd::Array<char> letterArray{
-			.allocation = alloc<char>(pArena, count),
-		};
+		auto letterArray{ pstd::createArray<char>(pArena, count) };
 
 		for (uint32_t i{}; i < count; i++) {
 			uint32_t reverseIndex{ (count - 1) - i };
@@ -329,9 +327,8 @@ namespace {
 			letterArray[reverseIndex] = digitLetter;
 			number /= 10;
 		}
-		String string{ .buffer =
-						   rcast<const char*>(letterArray.allocation.block),
-					   .size = ncast<uint32_t>(letterArray.allocation.size) };
+		String string{ .buffer = rcast<const char*>(letterArray.data),
+					   .size = ncast<uint32_t>(letterArray.count) };
 		return string;
 	}
 
@@ -339,11 +336,12 @@ namespace {
 		if (pstd::getAvailableCount<char>(*pArena) == 0) {
 			return {};
 		}
-		pstd::Array<char> letterArray{ .allocation = alloc<char>(pArena, 1) };
+
+		auto letterArray{ pstd::createArray<char>(pArena, 1) };
+
 		letterArray[0] = letter;
-		String string{ .buffer =
-						   rcast<const char*>(letterArray.allocation.block),
-					   .size = ncast<uint32_t>(letterArray.allocation.size) };
+		String string{ .buffer = rcast<const char*>(letterArray.data),
+					   .size = ncast<uint32_t>(letterArray.count) };
 		return string;
 	}
 

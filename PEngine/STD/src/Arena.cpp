@@ -7,6 +7,8 @@
 using namespace pstd;
 using namespace pstd::internal;
 
+// Arena allocation pattern
+
 Arena pstd::allocateArena(AllocationRegistry* pAllocRegistry, size_t size) {
 	Allocation allocation{ heapAlloc(pAllocRegistry, size) };
 	return Arena{ .allocation = allocation };

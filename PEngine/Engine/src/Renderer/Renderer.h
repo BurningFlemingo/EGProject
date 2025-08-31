@@ -1,6 +1,7 @@
 #pragma once
 #include "PTypes.h"
 #include "PArena.h"
+#include "PMemory.h"
 #include "Platforms/Window.h"
 
 namespace Renderer {
@@ -10,8 +11,9 @@ namespace Renderer {
 
 	State* startup(
 		pstd::Arena* pPersistArena,
-		pstd::LinkedArenaPair scratchArenas,
-		const Platform::State& platformState
+		pstd::ArenaPair scratchArenas,
+		const Platform::State& platformState,
+		pstd::AllocationRegistry* pAllocRegistry
 	);
 
 	void shutdown(State* state);

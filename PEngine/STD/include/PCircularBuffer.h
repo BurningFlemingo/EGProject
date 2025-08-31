@@ -16,6 +16,11 @@ namespace pstd {
 	};
 
 	template<typename T>
+	size_t getCapacity(const CircularBuffer<T>& buffer) {
+		return buffer.allocation.size / sizeof(T);
+	}
+
+	template<typename T>
 	size_t getCount(const CircularBuffer<T>& buffer) {
 		size_t res{};
 		if (buffer.headIndex >= buffer.tailIndex) {

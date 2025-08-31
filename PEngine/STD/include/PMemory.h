@@ -11,11 +11,19 @@ namespace pstd {
 
 namespace pstd {
 
+	enum AllocationType : uint32_t {
+		ALLOC_INVALID = 0b0,
+		ALLOC_COMMITTED = 0b1,
+		ALLOC_RESERVED = 0b10
+	};
+
+	using AllocationTypeBits = uint32_t;
+
 	struct Allocation {
 		uint8_t* block;
 		size_t size;  // always in bytes
 		bool ownsMemory;  // if true, memory was allocated from the system
-		bool isStackAllocated;
+		bool isCommitted;
 	};
 
 	struct AllocationLimits {
@@ -30,7 +38,15 @@ namespace pstd {
 	AllocationRegistry
 		createAllocationRegistry(size_t initialSize = 1024 * 1024);
 
-	Allocation heapAlloc(AllocationRegistry* state, size_t size);
+	Allocation heapAlloc(
+		AllocationRegistry* state,
+		size_t size,
+		uint32_t alignment = 16,
+		AllocationTypeBits allocType = ALLOC_COMMITTED | ALLOC_RESERVED
+	);
+
+	Allocation heapCommit(void* block, size_t size);
+
 	void heapFree(AllocationRegistry* state, const Allocation* allocation);
 
 	void memSet(void* dst, int val, size_t size);
@@ -40,8 +56,8 @@ namespace pstd {
 
 	AllocationLimits getSystemAllocationLimits();
 
-	size_t alignUpToPageBoundary(size_t size);
-	size_t alignDownToPageBoundary(size_t size);
+	size_t roundUpToPageBoundary(size_t size);
+	size_t roundDownToPageBoundary(size_t size);
 
 	uint32_t calcAddressAlignmentPadding(
 		uintptr_t address, const uint32_t alignment
@@ -89,6 +105,20 @@ namespace pstd {
 		makeConcatted(Arena* pArena, const Allocation& a, const Allocation& b) {
 		size_t alignment{ alignof(T) };
 		return makeConcatted(pArena, a, b, alignment);
+	}
+
+	inline bool isAliasing(const Allocation& a, const Allocation& b) {
+		ASSERT(a.block);
+		ASSERT(b.block);
+
+		bool isColliding{ false };
+		if (a.block <= b.block) {
+			isColliding = a.block + a.size > b.block;
+		} else {
+			isColliding = b.block + b.size > a.block;
+		}
+
+		return isColliding;
 	}
 
 }  // namespace pstd

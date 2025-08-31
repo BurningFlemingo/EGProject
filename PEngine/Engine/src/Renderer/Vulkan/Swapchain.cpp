@@ -19,21 +19,23 @@ namespace {
 
 Swapchain createSwapchain(
 	pstd::Arena* pPersistArena,
-	pstd::LinkedArenaPair scratchArenas,
+	pstd::ArenaPair scratchArenas,
 	const Device& device,
 	VkSurfaceKHR surface,
 	const Platform::State& platformState
 ) {
+	pstd::Arena& scratchArena{
+		*pstd::getUnique(&scratchArenas, pPersistArena)
+	};
+
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 		device.physical, surface, &surfaceCapabilities
 	);
 
-	VkSurfaceFormatKHR format{
-		findBestFormat(scratchArenas.current, device, surface)
-	};
+	VkSurfaceFormatKHR format{ findBestFormat(scratchArena, device, surface) };
 	VkPresentModeKHR presentMode{
-		findBestPresentMode(scratchArenas.current, device, surface)
+		findBestPresentMode(scratchArena, device, surface)
 	};
 	VkExtent2D surfaceExtent{
 		calcSurfaceExtent(surfaceCapabilities, platformState)
@@ -70,12 +72,10 @@ Swapchain createSwapchain(
 	uint32_t imageCount{};
 	vkGetSwapchainImagesKHR(device.logical, swapchain, &imageCount, nullptr);
 
-	pstd::Array<VkImage> images{
-		.allocation = pstd::alloc<VkImage>(pPersistArena, imageCount)
-	};
+	auto images(pstd::createArray<VkImage>(pPersistArena, imageCount));
 
 	vkGetSwapchainImagesKHR(
-		device.logical, swapchain, &imageCount, pstd::getData(images)
+		device.logical, swapchain, &imageCount, images.data
 	);
 
 	VkImageViewCreateInfo
@@ -88,9 +88,8 @@ Swapchain createSwapchain(
 						 .layerCount = 1,
 					 } };
 
-	pstd::Array<VkImageView> imageViews{
-		.allocation = pstd::alloc<VkImageView>(pPersistArena, imageCount)
-	};
+	auto imageViews(pstd::createArray<VkImageView>(pPersistArena, imageCount));
+
 	for (uint32_t i{}; i < imageCount; i++) {
 		imageViewCI.image = images[i];
 		vkCreateImageView(
@@ -106,7 +105,7 @@ Swapchain createSwapchain(
 
 void destroySwapchain(Swapchain* swapchain, VkDevice device) {
 	ASSERT(swapchain);
-	for (uint32_t i{}; i < pstd::getLength(swapchain->imageViews); i++) {
+	for (uint32_t i{}; i < swapchain->imageViews.count; i++) {
 		vkDestroyImageView(device, swapchain->imageViews[i], nullptr);
 	}
 
@@ -122,14 +121,16 @@ namespace {
 			device.physical, surface, &formatsCount, nullptr
 		);
 
-		pstd::Array<VkSurfaceFormatKHR> formats{
-			.allocation = pstd::alloc<VkSurfaceFormatKHR>(&scratchArena)
-		};
-		vkGetPhysicalDeviceSurfaceFormatsKHR(
-			device.physical, surface, &formatsCount, pstd::getData(formats)
+		auto formats(
+			pstd::createArray<VkSurfaceFormatKHR>(&scratchArena, formatsCount)
 		);
+
+		vkGetPhysicalDeviceSurfaceFormatsKHR(
+			device.physical, surface, &formatsCount, formats.data
+		);
+
 		VkSurfaceFormatKHR format{};
-		for (uint32_t i{}; i < pstd::getLength(formats); i++) {
+		for (uint32_t i{}; i < formats.count; i++) {
 			VkSurfaceFormatKHR availableFormat{ formats[i] };
 			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
 				availableFormat.colorSpace ==
@@ -152,18 +153,16 @@ namespace {
 			device.physical, surface, &presentModesCount, nullptr
 		);
 
-		pstd::Array<VkPresentModeKHR> presentModes{
-			.allocation = pstd::alloc<VkPresentModeKHR>(&scratchArena)
-		};
+		auto presentModes(pstd::createArray<VkPresentModeKHR>(
+			&scratchArena, presentModesCount
+		));
+
 		vkGetPhysicalDeviceSurfacePresentModesKHR(
-			device.physical,
-			surface,
-			&presentModesCount,
-			pstd::getData(presentModes)
+			device.physical, surface, &presentModesCount, presentModes.data
 		);
 
 		VkPresentModeKHR presentMode{ VK_PRESENT_MODE_FIFO_KHR };
-		for (uint32_t i{}; i < pstd::getLength(presentModes); i++) {
+		for (uint32_t i{}; i < presentModes.count; i++) {
 			VkPresentModeKHR availablePresentMode{ presentModes[i] };
 			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
 				presentMode = availablePresentMode;

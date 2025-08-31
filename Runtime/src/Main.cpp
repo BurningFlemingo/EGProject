@@ -10,7 +10,6 @@
 #include <Windows.h>
 
 namespace {
-
 	struct GameDll {
 		pstd::DllHandle handle;
 		Game::API api;
@@ -32,12 +31,11 @@ int main() {
 	pstd::AllocationRegistry allocationRegistry{ pstd::createAllocationRegistry(
 	) };
 	constexpr size_t scratchSize{ 1024 * 1024 };
-	constexpr size_t gameSize{ 1024 * 1024 };
 
 	pstd::Arena scratchArena{
 		pstd::allocateArena(&allocationRegistry, scratchSize)
 	};
-	pstd::Arena secondaryScratchArena{
+	pstd::Arena relayScratchArena{
 		pstd::allocateArena(&allocationRegistry, scratchSize)
 	};
 
@@ -45,14 +43,8 @@ int main() {
 		&allocationRegistry, peng::internal::getSizeofState()
 	) };
 
-	pstd::Arena gameArena{ pstd::allocateArena(&allocationRegistry, gameSize) };
-
-	pstd::Arena runtimeArena{ pstd::allocateArena(&allocationRegistry, 1024) };
-
 	engineState = peng::internal::startup(
-		&allocationRegistry,
-		&engineArena,
-		pstd::makeLinked(scratchArena, &secondaryScratchArena)
+		&allocationRegistry, &engineArena, { scratchArena, relayScratchArena }
 	);
 
 	GameDll gameDll{ loadGameDll(scratchArena) };
@@ -73,7 +65,7 @@ int main() {
 		if (pstd::getLastFileWriteTime(originalDllPathCString) !=
 			gameDll.lastWriteTime) {
 			unloadGameDll(gameDll);
-			gameDll = loadGameDll({ runtimeArena });
+			gameDll = loadGameDll(scratchArena);
 		}
 
 		isRunning &= peng::internal::update(engineState);

@@ -1,3 +1,4 @@
+#include "include/PTypes.h"
 #include <Windows.h>
 
 #include "include/PMemory.h"
@@ -8,7 +9,11 @@
 using namespace pstd;
 using namespace pstd::internal;
 
-size_t pstd::alignUpToPageBoundary(size_t size) {
+namespace {
+	pstd::AllocationLimits g_CachedSysAllocLimits{};
+}
+
+size_t pstd::roundUpToPageBoundary(size_t size) {
 	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
 	size_t alignedSize{ ((size + allocLimits.pageSize - 1) /
@@ -17,7 +22,7 @@ size_t pstd::alignUpToPageBoundary(size_t size) {
 	return alignedSize;
 }
 
-size_t pstd::alignDownToPageBoundary(size_t size) {
+size_t pstd::roundDownToPageBoundary(size_t size) {
 	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
 	size_t alignedSize{ (size / allocLimits.pageSize) * allocLimits.pageSize };
@@ -25,6 +30,10 @@ size_t pstd::alignDownToPageBoundary(size_t size) {
 }
 
 pstd::AllocationLimits pstd::getSystemAllocationLimits() {
+	if (g_CachedSysAllocLimits.pageSize != 0) {
+		return g_CachedSysAllocLimits;
+	}
+
 	SYSTEM_INFO sysInfo{};
 	GetSystemInfo(&sysInfo);
 
@@ -35,55 +44,64 @@ pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 }
 
 pstd::Allocation pstd::internal::allocPages(
-	const size_t size, AllocationTypeFlagBits allocTypeFlags, void* baseAddress
+	const size_t size, AllocationTypeBits allocType, void* baseAddress
 ) {
-	ASSERT(~allocTypeFlags & (ALLOC_TYPE_DECOMMIT | ALLOC_TYPE_RELEASE));
+	ASSERT(allocType != ALLOC_INVALID);
 
 	AllocationLimits allocLimits{ getSystemAllocationLimits() };
 
 	uint32_t win32AllocFlags{};
 	uint32_t win32SecurityFlags{ PAGE_NOACCESS };
-	if (allocTypeFlags & ALLOC_TYPE_RESERVE) {
+	bool isCommitted{};
+
+	if (allocType & ALLOC_RESERVED) {
 		win32AllocFlags |= MEM_RESERVE;
 	}
-	if (allocTypeFlags & ALLOC_TYPE_COMMIT) {
+
+	if (allocType & ALLOC_COMMITTED) {
 		win32AllocFlags |= MEM_COMMIT;
 		win32SecurityFlags = PAGE_READWRITE;
-	}
-	if (win32AllocFlags == 0) {
-		return {};
+		isCommitted = true;
 	}
 
-	size_t alignedSize{ alignUpToPageBoundary(size) };
+	uint8_t* alignedBaseAddress{
+		rcast<uint8_t*>(roundDownToPageBoundary(rcast<size_t>(baseAddress)))
+	};
+
+	auto addressPadding{
+		ncast<size_t>(ncast<uint8_t*>(baseAddress) - alignedBaseAddress)
+	};
+
+	size_t alignedSize{ roundUpToPageBoundary(size + addressPadding) };
+
 	if (alignedSize < allocLimits.minAllocSize &&
 		win32AllocFlags & MEM_RESERVE) {
 		alignedSize = allocLimits.minAllocSize;
 	}
+
 	auto block{ ncast<uint8_t*>(VirtualAlloc(
-		baseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
+		alignedBaseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
 	)) };
 
 	return Allocation{ .block = block,
 					   .size = alignedSize,
-					   .ownsMemory = true };
+					   .ownsMemory = true,
+					   .isCommitted = isCommitted };
 	;
 }
 
 bool pstd::internal::freePages(
-	const Allocation& allocation, AllocationTypeFlagBits allocTypeFlags
+	const Allocation& allocation, AllocationTypeBits allocType
 ) {
-	ASSERT(~allocTypeFlags & (ALLOC_TYPE_COMMIT | ALLOC_TYPE_RESERVE));
-
 	ASSERT(allocation.ownsMemory);
 
 	uint32_t win32AllocFlags{};
 	size_t alignedSize{};
 	size_t freeSize{ allocation.size };
-	if (allocTypeFlags & ALLOC_TYPE_DECOMMIT) {
+	if (allocType == ALLOC_COMMITTED) {
 		win32AllocFlags |= MEM_DECOMMIT;
-		freeSize = alignUpToPageBoundary(freeSize);
-	}
-	if (allocTypeFlags & ALLOC_TYPE_RELEASE) {
+		freeSize = roundUpToPageBoundary(freeSize);
+	} else if (allocType == ALLOC_RESERVED) {
 		win32AllocFlags |= MEM_RELEASE;
 		freeSize = 0;
 	}

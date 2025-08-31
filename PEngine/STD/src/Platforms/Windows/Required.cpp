@@ -1,4 +1,5 @@
 #include "include/PAssert.h"
+#include <Windows.h>
 
 extern "C" {
 int _fltused{};
@@ -74,4 +75,8 @@ int _wcsicmp(const wchar_t *buf1, const wchar_t *buf2) {
 	}
 	return 0;
 }
+}
+
+extern "C" int __cdecl _purecall() {
+	ExitProcess(1);
 }

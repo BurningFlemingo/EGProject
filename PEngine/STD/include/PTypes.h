@@ -21,6 +21,10 @@ using uintptr_t = size_t;
 
 #define UINT32_MAX static_cast<uint32_t>(-1)
 
+#define KIB 1024ll
+#define MIB (KIB * KIB)
+#define GIB (MIB * KIB)
+
 namespace pstd {
 
 	template<typename T>

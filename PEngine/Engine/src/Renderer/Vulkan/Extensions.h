@@ -8,7 +8,7 @@ pstd::Array<const char*> getDebugExtensions();
 
 pstd::Array<const char*> takeFoundExtensions(
 	pstd::Arena* pPersistArena,
-	pstd::LinkedArenaPair scratchArenas,
+	pstd::ArenaPair scratchArenas,
 	const pstd::Array<VkExtensionProperties>& availableExtensionProps,
 	pstd::BoundedArray<const char*>* pRequiredExtensions,
 	pstd::BoundedArray<const char*>* pOptionalExtensions = nullptr

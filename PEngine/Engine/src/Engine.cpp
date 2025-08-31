@@ -14,8 +14,11 @@
 #include "PString.h"
 #include "PVector.h"
 #include "PMath.h"
+#include "PArray.h"
 #include "STD/internal/PMemory.h"
 #include "STD/internal/PConsole.h"
+
+#include "PFunction.h"
 
 #include <new>
 
@@ -55,19 +58,21 @@ size_t peng::internal::getSizeofState() {
 peng::internal::State* peng::internal::startup(
 	pstd::AllocationRegistry* pRegistry,
 	pstd::Arena* pPersistArena,
-	pstd::LinkedArenaPair scratchArenas
+	pstd::ArenaPair scratchArenas
 ) {
 	pstd::Arena subsystemArena{
-		.allocation = pstd::heapAlloc(pRegistry, getSizeofSubsystems())
+		pstd::allocateArena(pRegistry, getSizeofSubsystems())
 	};
+
+	pstd::DArray<int> arr{ pstd::createDArray<int>(pRegistry, 1024) };
 
 	Platform::State* platformState{
 		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
 
-	Renderer::State* rendererState{
-		Renderer::startup(&subsystemArena, scratchArenas, *platformState)
-	};
+	Renderer::State* rendererState{ Renderer::startup(
+		&subsystemArena, scratchArenas, *platformState, pRegistry
+	) };
 
 	pstd::Allocation arenaAllocation{ pstd::alloc<State>(pPersistArena) };
 

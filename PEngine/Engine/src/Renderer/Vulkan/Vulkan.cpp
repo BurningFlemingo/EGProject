@@ -21,44 +21,41 @@
 #include <new>
 
 Renderer::State* Renderer::startup(
-	pstd::Arena* pArena,
-	pstd::LinkedArenaPair scratchArenas,
-	const Platform::State& platformState
+	pstd::Arena* pPersistArena,
+	pstd::ArenaPair scratchArenas,
+	const Platform::State& platformState,
+	pstd::AllocationRegistry* pAllocRegistry
 ) {
+	pstd::Arena& scratchArena{
+		*pstd::getUnique(&scratchArenas, pPersistArena)
+	};
+
 	VkInstance instance{ createInstance(scratchArenas) };
+
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
-	Device device{ createDevice(pArena, scratchArenas, instance, surface) };
+	Device device{
+		createDevice(pPersistArena, scratchArenas, instance, surface)
+	};
 
-	// Swapchain swapchain{
-	// 	createSwapchain(pArena, scratchArenas, device, surface, platformState)
-	// };
-
-	const VkPipelineShaderStageCreateInfo* pStages;
-	const VkPipelineVertexInputStateCreateInfo* pVertexInputState;
-	const VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState;
-	const VkPipelineTessellationStateCreateInfo* pTessellationState;
-	const VkPipelineViewportStateCreateInfo* pViewportState;
-	const VkPipelineRasterizationStateCreateInfo* pRasterizationState;
-	const VkPipelineMultisampleStateCreateInfo* pMultisampleState;
-	const VkPipelineDepthStencilStateCreateInfo* pDepthStencilState;
-	const VkPipelineColorBlendStateCreateInfo* pColorBlendState;
-	const VkPipelineDynamicStateCreateInfo* pDynamicState;
-
-	pstd::String fragShaderPath{ pstd::createString("/shaders/first.frag") };
-	pstd::String exePath{ pstd::getEXEPath(&scratchArenas.current) };
-	fragShaderPath =
-		pstd::makeConcatted(&scratchArenas.current, exePath, fragShaderPath);
-
-	pstd::FileHandle fragShaderFile{ pstd::openFile(
-		&scratchArenas.current,
-		fragShaderPath,
-		pstd::FileAccess::read,
-		pstd::FileShare::read,
-		pstd::FileCreate::openExisting
+	Swapchain swapchain{ createSwapchain(
+		pPersistArena, scratchArenas, device, surface, platformState
 	) };
+
+	// pstd::String fragShaderPath{ pstd::createString("/shaders/first.frag") };
+	// pstd::String exePath{ pstd::getEXEPath(&scratchArena) };
+	// fragShaderPath =
+	// 	pstd::makeConcatted(&scratchArena, exePath, fragShaderPath);
+
+	// pstd::FileHandle fragShaderFile{ pstd::openFile(
+	// 	&scratchArena,
+	// 	fragShaderPath,
+	// 	pstd::FileAccess::read,
+	// 	pstd::FileShare::read,
+	// 	pstd::FileCreate::openExisting
+	// ) };
 
 	// pstd::Allocation fragShaderAllocation{ pstd::readFile(
 	// 	pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), fragShaderFile
@@ -78,22 +75,28 @@ Renderer::State* Renderer::startup(
 
 	// pstd::closeFile(fragShaderFile);
 
-	VkGraphicsPipelineCreateInfo gPipeCI{
-		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-	};
+	// VkGraphicsPipelineCreateInfo gPipeCI{
+	// 	.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+	// };
 
 	// vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 
-	pstd::Allocation stateAllocation{ pstd::alloc<State>(pArena) };
-	return new (stateAllocation.block) State{ // .swapchain = swapchain,
-											  .device = device,
-											  .surface = surface,
-											  .instance = instance,
-											  .debugMessenger = debugMessenger
-	};
+	pstd::Allocation stateAllocation{ pstd::alloc<State>(pPersistArena) };
+	return new (stateAllocation.block)
+		State{ .swapchain = swapchain,
+			   .device = device,
+			   .surface = surface,
+			   .instance = instance,
+			   .debugMessenger = debugMessenger };
 }
 
 void Renderer::shutdown(State* state) {
+	for (int i{}; i < state->swapchain.imageViews.count; i++) {
+		vkDestroyImageView(
+			state->device.logical, state->swapchain.imageViews[i], nullptr
+		);
+	}
+
 	destroySwapchain(&state->swapchain, state->device.logical);
 	vkDestroyDevice(state->device.logical, nullptr);
 	vkDestroySurfaceKHR(state->instance, state->surface, nullptr);

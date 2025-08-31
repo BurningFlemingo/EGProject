@@ -11,7 +11,7 @@ namespace peng {
 		State* startup(
 			pstd::AllocationRegistry* registry,
 			pstd::Arena* pPersistArena,
-			pstd::LinkedArenaPair scratchArenas
+			pstd::ArenaPair scratchArenas
 		);
 		bool update(State* state);
 		void shutdown(State* state);

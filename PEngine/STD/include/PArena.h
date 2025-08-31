@@ -11,36 +11,33 @@ namespace pstd {
 		uint32_t offset;
 	};
 
-	struct LinkedArenaPair {
-		Arena current;
-		const Arena* pNext;
+	struct ArenaPair {
+		Arena first;
+		Arena second;
 	};
+
+	inline Arena* getUnique(ArenaPair* pArenas, Arena* pArena) {
+		ASSERT(pArenas);
+		ASSERT(pArena);
+
+		if (pArena == &pArenas->first) {
+			return &pArenas->second;
+		}
+		return &pArenas->first;
+	}
 
 	template<typename T>
 	constexpr size_t getCount(const Arena& arena) {
 		return arena.offset / sizeof(T);
 	}
 
+	inline bool isAliasing(const Arena& a, const Arena& b) {
+		return isAliasing(a.allocation, b.allocation);
+	}
+
 	Arena allocateArena(AllocationRegistry* pAllocRegistry, size_t size);
 
 	void freeArena(AllocationRegistry* pAllocRegistry, Arena* pArena);
-
-	inline LinkedArenaPair
-		makeLinked(const Arena& arenaSrc, const Arena* pArenaDst) {
-		ASSERT(pArenaDst);
-
-		LinkedArenaPair arenaPair{ .current = arenaSrc, .pNext = pArenaDst };
-		arenaPair.current.allocation.ownsMemory = false;
-
-		return arenaPair;
-	}
-
-	inline LinkedArenaPair getSwapped(const LinkedArenaPair* pArenaPair) {
-		ASSERT(pArenaPair);
-		ASSERT(pArenaPair->pNext);
-
-		return makeLinked(*pArenaPair->pNext, &pArenaPair->current);
-	}
 
 	template<typename T>
 	uint32_t getAvailableCount(const Arena& arena) {

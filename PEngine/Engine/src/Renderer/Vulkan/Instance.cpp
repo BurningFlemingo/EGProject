@@ -14,35 +14,37 @@
 #include "Platforms/VulkanSurface.h"
 #include <vulkan/vulkan_core.h>
 
-// TODO: finish this, then push it to dev
-// after, refactor arrays to not use operator[] and instead indexRead /
-// indexWrite. also get rid of constructor-like makeBoundedArray in favor of
-// BoundedArray{}
+VkInstance createInstance(pstd::ArenaPair scratchArenas) {
+	pstd::Arena& scratchArena{ scratchArenas.first };
 
-VkInstance createInstance(pstd::LinkedArenaPair scratchArenas) {
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	pstd::Array<VkExtensionProperties> extensionProps{
-		.allocation = pstd::alloc<VkExtensionProperties>(
-			&scratchArenas.current, extensionCount
-		),
+	auto extensionProps{
+		pstd::createArray<VkExtensionProperties>(&scratchArena, extensionCount)
 	};
+
 	vkEnumerateInstanceExtensionProperties(
-		nullptr, &extensionCount, pstd::getData(extensionProps)
+		nullptr, &extensionCount, extensionProps.data
 	);
 
-	pstd::BoundedArray<const char*> requiredExtensions{
-		.allocation = pstd::alloc<const char*>(&scratchArenas.current, 2),
-		.count = 2
+	auto requiredExtensions{
+		pstd::createBoundedArray<const char*>(&scratchArena, 2)
 	};
-	requiredExtensions[0] = Platform::getPlatformSurfaceExtension();
-	requiredExtensions[1] = VK_KHR_SURFACE_EXTENSION_NAME;
 
-	pstd::BoundedArray<const char*> optionalExtensions{
-		pstd::makeBoundedArray<const char*>(getDebugExtensions().allocation)
-	};
+	pstd::pushBack(
+		&requiredExtensions, Platform::getPlatformSurfaceExtension()
+	);
+
+	pstd::pushBack(
+		&requiredExtensions, ncast<const char*>(VK_KHR_SURFACE_EXTENSION_NAME)
+	);
+
+	auto optionalExtensions{ pstd::createBoundedArray<const char*>(
+		pstd::getAllocation(getDebugExtensions())
+	) };
+
 	pstd::Array<const char*> foundExtensions{ takeFoundExtensions(
-		&scratchArenas.current,
+		&scratchArena,
 		scratchArenas,
 		extensionProps,
 		&requiredExtensions,
@@ -50,7 +52,7 @@ VkInstance createInstance(pstd::LinkedArenaPair scratchArenas) {
 	) };
 
 	pstd::Array<const char*> foundValidationLayers{
-		findValidationLayers(&scratchArenas.current)
+		findValidationLayers(&scratchArena)
 	};
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -65,21 +67,14 @@ VkInstance createInstance(pstd::LinkedArenaPair scratchArenas) {
 		getDebugMessengerCreateInfo()
 	};
 
-	pstd::Allocation rawAlloc{
-		pstd::alloc<const char*>(&scratchArenas.current, 1)
-	};
-	pstd::shallowMove(&rawAlloc, foundValidationLayers.allocation);
-
 	VkInstanceCreateInfo vkInstanceCI{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.pNext = debugMessengerCI,
 		.pApplicationInfo = &appInfo,
-		.enabledLayerCount =
-			static_cast<uint32_t>(pstd::getCapacity(foundValidationLayers)),
-		.ppEnabledLayerNames = pstd::getData(foundValidationLayers),
-		.enabledExtensionCount =
-			static_cast<uint32_t>(pstd::getCapacity(foundExtensions)),
-		.ppEnabledExtensionNames = pstd::getData(foundExtensions),
+		.enabledLayerCount = static_cast<uint32_t>(foundValidationLayers.count),
+		.ppEnabledLayerNames = foundValidationLayers.data,
+		.enabledExtensionCount = static_cast<uint32_t>(foundExtensions.count),
+		.ppEnabledExtensionNames = foundExtensions.data,
 	};
 
 	VkInstance instance{};
