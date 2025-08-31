@@ -25,17 +25,14 @@ namespace pstd {
 	);
 
 	inline FileHandle openFile(
-		ArenaFrame&& frame,
+		Arena* pArena,
 		const String& filepath,
 		const FileAccess& accessFlags,
 		const FileShare& shareFlags,
 		const FileCreate& createFlags
 	) {
 		return pstd::openFile(
-			pstd::makeNullTerminated(
-				pstd::makeFrame(frame, frame.pPersistOffset), filepath
-			)
-				.buffer,
+			pstd::makeNullTerminated(pArena, filepath).buffer,
 			accessFlags,
 			shareFlags,
 			createFlags
@@ -44,7 +41,8 @@ namespace pstd {
 
 	bool copyFile(const char* dstName, const char* srcName, bool replace);
 
-	String getEXEPath(ArenaFrame&& frame);	// includes the exe name
+	// includes the exe name
+	String getEXEPath(Arena* pArena);
 
 	// returned string is cstring
 	String getDllExtensionName();
@@ -57,5 +55,5 @@ namespace pstd {
 	uint32_t getFileSize(FileHandle handle);
 	size_t getLastFileWriteTime(const char*);
 
-	Allocation readFile(ArenaFrame&& frame, FileHandle handle);
+	Allocation readFile(Arena* pArena, FileHandle handle);
 }  // namespace pstd

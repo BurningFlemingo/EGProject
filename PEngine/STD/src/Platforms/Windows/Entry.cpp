@@ -33,6 +33,11 @@ extern "C" int mainCRTStartup() {
 	return 0;
 }
 extern "C" int WinMainCRTStartup() {
+	pstd::internal::startupConsole();
+
+	int exitCode{ main() };
+
+	ExitProcess(exitCode);
 	return 0;
 }
 

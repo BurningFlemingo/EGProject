@@ -4,27 +4,19 @@
 
 namespace pstd {
 	namespace internal {
-		enum AllocationType : uint32_t {
-			ALLOC_TYPE_COMMIT = 1,
-			ALLOC_TYPE_RESERVE = 2,
-			ALLOC_TYPE_DECOMMIT = 4,
-			ALLOC_TYPE_RELEASE = 8,
-		};
-		using AllocationTypeFlagBits = uint32_t;
 
+		// returns page aligned block and size, i.e., allocation.block may not
+		// equal baseAddress, and allocation.size may not equal size
 		Allocation allocPages(
 			const size_t size,
-			const AllocationTypeFlagBits allocTypeFlags,
+			const AllocationTypeBits allocFlags,
 			void* baseAddress = nullptr
 		);
 
 		// returns true on success and false on failure
 		bool freePages(
-			const Allocation& allocation,
-			const AllocationTypeFlagBits allocTypeFlags
+			const Allocation& allocation, const AllocationTypeBits allocType
 		);
 
-		Allocation heapAlloc(AllocationRegistry* state, size_t size);
-		void heapFree(AllocationRegistry* state, const Allocation* allocation);
 	}  // namespace internal
 }  // namespace pstd

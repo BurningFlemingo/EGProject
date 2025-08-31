@@ -18,5 +18,8 @@ struct Device {
 };
 
 Device createDevice(
-	pstd::ArenaFrame&& arenaFrame, VkInstance instance, VkSurfaceKHR surface
+	pstd::Arena* pPersistArena,
+	pstd::ArenaPair scratchArenas,
+	VkInstance instance,
+	VkSurfaceKHR surface
 );

@@ -19,14 +19,14 @@ namespace {
 }  // namespace
 
 void Console::startup() {
-	g_LogArena =
-		pstd::Arena{ .allocation = { .block = rcast<uint8_t*>(g_RawLogArray),
-									 .size = LOG_ARENA_SIZE },
-					 .isAllocated = true };
+	g_LogArena = pstd::Arena{
+		.allocation = { .block = rcast<uint8_t*>(g_RawLogArray),
+						.size = LOG_ARENA_SIZE },
+	};
 }
 
 pstd::Arena Console::getLogArena() {
-	if (!g_LogArena.isAllocated || g_LogArena.allocation.block == nullptr) {
+	if (g_LogArena.allocation.block == nullptr) {
 		Console::startup();
 	}
 	return g_LogArena;
@@ -34,7 +34,7 @@ pstd::Arena Console::getLogArena() {
 
 void Console::log(const Console::LogLevel logLevel, const pstd::String& msg) {
 	ASSERT(logLevel <= LogLevel::error);
-	if (!g_LogArena.isAllocated || g_LogArena.allocation.block == nullptr) {
+	if (g_LogArena.allocation.block == nullptr) {
 		Console::startup();
 	}
 

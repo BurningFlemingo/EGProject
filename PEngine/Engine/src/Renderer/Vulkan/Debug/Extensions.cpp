@@ -10,11 +10,7 @@ namespace {
 
 }  // namespace
 
-pstd::BoundedArray<const char*> getDebugExtensions() {
-	return pstd::BoundedArray<const char*>{
-		.allocation = { .block = rcast<uint8_t*>(g_DebugExtensions),
-						.size =
-							sizeof(const char*) * NUMBER_OF_DEBUG_EXTENSIONS },
-		.count = NUMBER_OF_DEBUG_EXTENSIONS
-	};
+pstd::Array<const char*> getDebugExtensions() {
+	return pstd::Array<const char*>{ .data = g_DebugExtensions,
+									 .count = NUMBER_OF_DEBUG_EXTENSIONS };
 }

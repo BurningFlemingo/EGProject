@@ -14,24 +14,115 @@ using namespace pstd::internal;
 
 namespace {
 	struct FreelistBlock {
-		Allocation usable;
-		FreelistBlock* next;
+		FreelistBlock* pNext;
+		size_t size;
 	};
 
 	struct MemoryPool {
 		Allocation allocation;
-		FreelistBlock* firstFreeBlock;
-		MemoryPool* next;
+		FreelistBlock* pFirstFreeBlock;
+		MemoryPool* pNext;
 	};
 
 	MemoryPool* createMemoryPool(size_t size);
-	void findFreeBlock(
-		const MemoryPool* pool,
+	void findSuitableFreeBlock(
+		const MemoryPool* pPoolHeader,
 		size_t requiredSize,
-		FreelistBlock** outPrevFreeBlock,
-		FreelistBlock** outFreeBlock
+		FreelistBlock** pOutPrevFreeBlock = nullptr,
+		FreelistBlock** pOutFreeBlock = nullptr
 	);
 }  // namespace
+
+AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {
+	AllocationRegistry registry{ .firstPool = createMemoryPool(initialSize) };
+	return registry;
+}
+
+Allocation pstd::heapAlloc(
+	AllocationRegistry* registry,
+	size_t size,
+	uint32_t alignment,
+	AllocationTypeBits allocType
+) {
+	ASSERT(registry);
+	ASSERT(allocType != ALLOC_INVALID);
+
+	if (!registry->firstPool) {
+		registry->firstPool = createMemoryPool(size);
+	}
+
+	FreelistBlock* pPrevFreeBlock{};
+	FreelistBlock* pSuitableFreeBlock{};
+
+	MemoryPool* pPool{ registry->firstPool };
+
+	findSuitableFreeBlock(pPool, size, &pPrevFreeBlock, &pSuitableFreeBlock);
+
+	MemoryPool* prevPool{};
+	while (!pSuitableFreeBlock) {
+		prevPool = pPool;
+		if (pPool->pNext == nullptr) {
+			pPool = createMemoryPool(size);
+			prevPool->pNext = pPool;
+		} else {
+			pPool = pPool->pNext;
+		}
+
+		findSuitableFreeBlock(
+			pPool, size, &pPrevFreeBlock, &pSuitableFreeBlock
+		);
+	}
+	size_t sizeFree{ pSuitableFreeBlock->size };
+
+	bool isCommitted{};
+	if (allocType & ALLOC_COMMITTED) {
+		Allocation pageAlloc{
+			allocPages(size, ALLOC_COMMITTED, pSuitableFreeBlock)
+		};
+
+		ASSERT(pageAlloc.block != nullptr);
+		isCommitted = true;
+	}
+
+	uint8_t* pUpdatedFreeBlock{};
+	size_t newFreeBlockUsableOffset{ size + sizeof(FreelistBlock) };
+
+	if (newFreeBlockUsableOffset < sizeFree) {
+		pUpdatedFreeBlock = rcast<uint8_t*>(pSuitableFreeBlock) + size;
+
+		size_t updatedFreeSize{ sizeFree - newFreeBlockUsableOffset };
+
+		allocPages(
+			sizeof(FreelistBlock), pstd::ALLOC_COMMITTED, pUpdatedFreeBlock
+		);
+
+		new (pUpdatedFreeBlock)
+			FreelistBlock{ .pNext = pSuitableFreeBlock->pNext,
+						   .size = updatedFreeSize };
+	} else {
+		pUpdatedFreeBlock = rcast<uint8_t*>(pSuitableFreeBlock->pNext);
+	}
+
+	if (pPrevFreeBlock) {
+		pPrevFreeBlock->pNext = rcast<FreelistBlock*>(pUpdatedFreeBlock);
+	} else {
+		pPool->pFirstFreeBlock = rcast<FreelistBlock*>(pUpdatedFreeBlock);
+	}
+
+	return Allocation{ .block = rcast<uint8_t*>(pSuitableFreeBlock),
+					   .size = size,
+					   .ownsMemory = true,
+					   .isCommitted = isCommitted };
+}
+
+Allocation pstd::heapCommit(void* block, size_t size) {
+	Allocation committedAllocation{ allocPages(size, ALLOC_COMMITTED, block) };
+	return committedAllocation;
+}
+
+void pstd::heapFree(
+	AllocationRegistry* registry, const Allocation* allocation
+) {}
 
 void pstd::memSet(void* dst, int val, size_t size) {
 	memset(dst, val, size);
@@ -97,11 +188,39 @@ void pstd::shallowMove(Allocation* dst, const Allocation& src) {
 	memMov(dst->block, src.block, moveSize);
 }
 
-pstd::Allocation pstd::concat(
-	ArenaFrame&& frame,
-	const Allocation& a,
-	const Allocation& b,
-	uint32_t alignment
+bool pstd::coalesce(Allocation* a, const Allocation& b) {
+	ASSERT(a);
+	*a = makeCoalesced(*a, b);
+	if (a->block) {
+		return false;
+	}
+	return true;
+}
+
+Allocation pstd::makeCoalesced(const Allocation& a, const Allocation& b) {
+	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
+
+	uint8_t* aEnd{ a.block + a.size };
+	uint8_t* bEnd{ b.block + b.size };
+	size_t size{ a.size + b.size };
+	if (aEnd == b.block) {
+		ASSERT(a.block + size == b.block + b.size);
+		return Allocation{ .block = a.block,
+						   .size = size,
+						   .ownsMemory = a.ownsMemory };
+	}
+	ASSERT(bEnd == a.block);
+
+	ASSERT(a.block + size == a.block + a.size);
+	return Allocation{
+		.block = b.block,
+		.size = size,
+		.ownsMemory = b.ownsMemory,
+	};
+}
+
+pstd::Allocation pstd::makeConcatted(
+	Arena* pArena, const Allocation& a, const Allocation& b, uint32_t alignment
 ) {
 	ASSERT(a.block);
 	ASSERT(b.block);
@@ -109,7 +228,7 @@ pstd::Allocation pstd::concat(
 
 	ASSERT(allocSize >= a.size);  // overflow check
 
-	Allocation allocation{ pstd::alloc(&frame, allocSize, alignment) };
+	Allocation allocation{ pstd::alloc(pArena, allocSize, alignment) };
 
 	pstd::shallowMove(&allocation, a);
 
@@ -122,158 +241,53 @@ pstd::Allocation pstd::concat(
 	return allocation;
 }
 
-Allocation pstd::coalesce(const Allocation& a, const Allocation& b) {
-	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
-	ASSERT(~(a.isStackAllocated ^ b.isStackAllocated));
-
-	uint8_t* aEnd{ a.block + a.size };
-	uint8_t* bEnd{ b.block + b.size };
-	size_t size{ a.size + b.size };
-	if (aEnd == b.block) {
-		ASSERT(a.block + size == b.block + b.size);
-		return Allocation{ .block = a.block,
-						   .size = size,
-						   .ownsMemory = a.ownsMemory,
-						   .isStackAllocated = a.isStackAllocated };
-	}
-	ASSERT(bEnd == a.block);
-
-	ASSERT(a.block + size == a.block + a.size);
-	return Allocation{ .block = b.block,
-					   .size = size,
-					   .ownsMemory = b.ownsMemory,
-					   .isStackAllocated = b.isStackAllocated };
-}
-
-AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {
-	AllocationRegistry registry{ .firstPool = createMemoryPool(initialSize) };
-	return registry;
-}
-
-Allocation
-	pstd::internal::heapAlloc(AllocationRegistry* registry, size_t size) {
-	ASSERT(registry);
-	size = alignUpToPageBoundary(size + sizeof(FreelistBlock));
-
-	AllocationLimits allocLimits{ getSystemAllocationLimits() };
-
-	if (!registry->firstPool) {
-		registry->firstPool = createMemoryPool(size);
-	}
-	FreelistBlock* prevFreeBlock{};
-	FreelistBlock* freeBlock{};
-
-	MemoryPool* pool{ registry->firstPool };
-	findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
-
-	MemoryPool* prevPool{};
-	while (!freeBlock && pool->next) {
-		prevPool = pool;
-		pool = pool->next;
-		findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
-	}
-	if (!freeBlock) {
-		MemoryPool* newPool{ createMemoryPool(size) };
-		if (prevPool) {
-			prevPool->next = newPool;
-		} else {
-			pool->next = newPool;
-		}
-		pool = newPool;
-		findFreeBlock(pool, size, &prevFreeBlock, &freeBlock);
-	}
-
-	auto* commitAddr{ rcast<uint8_t*>(
-		alignDownToPageBoundary(rcast<size_t>(freeBlock->usable.block))
-	) };
-
-	size_t commitSize{
-		alignUpToPageBoundary(size + freeBlock->usable.block - commitAddr)
-	};
-
-	uint8_t* commitHeadPtr{ commitAddr + commitSize };
-	uint8_t* freeBlockHeadPtr{ freeBlock->usable.block +
-							   freeBlock->usable.size };
-	ASSERT(commitHeadPtr <= freeBlockHeadPtr);
-
-	allocPages(
-		commitSize, ALLOC_TYPE_COMMIT, commitAddr
-	);	// TODO: handle tracking, this will overcommit
-
-	uint8_t* newFreeBlockAddr{ freeBlock->usable.block + size };
-	uint8_t* poolHeadAddr{ pool->allocation.block + pool->allocation.size };
-	if ((newFreeBlockAddr + sizeof(FreelistBlock) + 1) < poolHeadAddr) {
-		new (newFreeBlockAddr) FreelistBlock{
-			.usable = { .block = newFreeBlockAddr + sizeof(FreelistBlock),
-						.size = freeBlock->usable.size - size -
-							sizeof(FreelistBlock) },
-			.next = freeBlock->next
-		};
-	}
-
-	if (prevFreeBlock) {
-		prevFreeBlock->next = (FreelistBlock*)newFreeBlockAddr;
-	} else {
-		pool->firstFreeBlock = (FreelistBlock*)newFreeBlockAddr;
-	}
-
-	return Allocation{ .block = freeBlock->usable.block,
-					   .size = size,
-					   .ownsMemory = true };
-}
-
-void pstd::internal::heapFree(
-	AllocationRegistry* registry, const Allocation* allocation
-) {
-	// TODO: implement
-}
-
 namespace {
 	MemoryPool* createMemoryPool(size_t size) {
-		AllocationLimits allocLimits{ pstd::getSystemAllocationLimits() };
-		size += sizeof(FreelistBlock);
+		ASSERT(size > 0);
 
-		size_t allocSize{ ((size + allocLimits.pageSize) / allocLimits.pageSize
-						  ) *
-						  allocLimits.pageSize };
-		allocSize = max(allocSize, allocLimits.minAllocSize);
+		size += sizeof(MemoryPool) + sizeof(FreelistBlock);
 
 		const Allocation poolAllocation{
-			allocPages(allocSize, ALLOC_TYPE_RESERVE)
+			allocPages(size, pstd::ALLOC_RESERVED)
 		};
-		allocPages(sizeof(MemoryPool), ALLOC_TYPE_COMMIT, poolAllocation.block);
 
-		MemoryPool* pool{ new (poolAllocation.block) MemoryPool{
+		allocPages(
+			sizeof(MemoryPool), pstd::ALLOC_COMMITTED, poolAllocation.block
+		);
+
+		MemoryPool* pPoolHeader{ new (poolAllocation.block) MemoryPool{
 			.allocation = poolAllocation,
 		} };
-		uint8_t* freelistHeaderHead{ poolAllocation.block +
-									 sizeof(MemoryPool) };
 
-		pool->firstFreeBlock = new (freelistHeaderHead) FreelistBlock{ .usable{
-			.block = freelistHeaderHead + sizeof(FreelistBlock),
-			.size = poolAllocation.size - sizeof(FreelistBlock) -
-				sizeof(MemoryPool) } };
+		uint8_t* pFreelistBlockHeader{ poolAllocation.block +
+									   sizeof(MemoryPool) };
 
-		return pool;
+		size_t freeSize{ poolAllocation.size - sizeof(MemoryPool) };
+
+		pPoolHeader->pFirstFreeBlock =
+			new (pFreelistBlockHeader) FreelistBlock{ .size = freeSize };
+
+		return pPoolHeader;
 	}
 
-	void findFreeBlock(
-		const MemoryPool* pool,
+	void findSuitableFreeBlock(
+		const MemoryPool* pPoolHeader,
 		size_t requiredSize,
-		FreelistBlock** outPrevFreeBlock,
-		FreelistBlock** outFreeBlock
+		FreelistBlock** pOutPrevFreeBlock,
+		FreelistBlock** pOutFreeBlock
 	) {
-		FreelistBlock* prevFreeBlock{ nullptr };
-		FreelistBlock* freeBlock{ pool->firstFreeBlock };
-		while (freeBlock) {
-			if (freeBlock->usable.size >= requiredSize) {
+		FreelistBlock* pPrevFreeBlock{};
+		FreelistBlock* pFreeBlock{ pPoolHeader->pFirstFreeBlock };
+
+		while (pFreeBlock) {
+			if (pFreeBlock->size >= requiredSize) {
 				break;
 			}
-			prevFreeBlock = freeBlock;
-			freeBlock = freeBlock->next;
+			pPrevFreeBlock = pFreeBlock;
+			pFreeBlock = pFreeBlock->pNext;
 		}
 
-		*outPrevFreeBlock = prevFreeBlock;
-		*outFreeBlock = freeBlock;
+		*pOutPrevFreeBlock = pPrevFreeBlock;
+		*pOutFreeBlock = pFreeBlock;
 	}
 }  // namespace

@@ -11,14 +11,49 @@
 #include "PContainer.h"
 #include "PMemory.h"
 
-VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
-	pstd::Array<const char*> foundExtensions{
-		findExtensions(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
+#include "Platforms/VulkanSurface.h"
+#include <vulkan/vulkan_core.h>
+
+VkInstance createInstance(pstd::ArenaPair scratchArenas) {
+	pstd::Arena& scratchArena{ scratchArenas.first };
+
+	uint32_t extensionCount{};
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	auto extensionProps{
+		pstd::createArray<VkExtensionProperties>(&scratchArena, extensionCount)
 	};
 
-	pstd::Array<const char*> foundValidationLayers{ findValidationLayers(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset)
+	vkEnumerateInstanceExtensionProperties(
+		nullptr, &extensionCount, extensionProps.data
+	);
+
+	auto requiredExtensions{
+		pstd::createBoundedArray<const char*>(&scratchArena, 2)
+	};
+
+	pstd::pushBack(
+		&requiredExtensions, Platform::getPlatformSurfaceExtension()
+	);
+
+	pstd::pushBack(
+		&requiredExtensions, ncast<const char*>(VK_KHR_SURFACE_EXTENSION_NAME)
+	);
+
+	auto optionalExtensions{ pstd::createBoundedArray<const char*>(
+		pstd::getAllocation(getDebugExtensions())
 	) };
+
+	pstd::Array<const char*> foundExtensions{ takeFoundExtensions(
+		&scratchArena,
+		scratchArenas,
+		extensionProps,
+		&requiredExtensions,
+		&optionalExtensions
+	) };
+
+	pstd::Array<const char*> foundValidationLayers{
+		findValidationLayers(&scratchArena)
+	};
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",
@@ -32,19 +67,14 @@ VkInstance createInstance(pstd::ArenaFrame&& arenaFrame) {
 		getDebugMessengerCreateInfo()
 	};
 
-	pstd::Allocation rawAlloc{ pstd::alloc<const char*>(&arenaFrame, 1) };
-	pstd::shallowMove(&rawAlloc, foundValidationLayers.allocation);
-
 	VkInstanceCreateInfo vkInstanceCI{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.pNext = debugMessengerCI,
 		.pApplicationInfo = &appInfo,
-		.enabledLayerCount =
-			static_cast<uint32_t>(pstd::getCapacity(foundValidationLayers)),
-		.ppEnabledLayerNames = pstd::getData(foundValidationLayers),
-		.enabledExtensionCount =
-			static_cast<uint32_t>(pstd::getCapacity(foundExtensions)),
-		.ppEnabledExtensionNames = pstd::getData(foundExtensions),
+		.enabledLayerCount = static_cast<uint32_t>(foundValidationLayers.count),
+		.ppEnabledLayerNames = foundValidationLayers.data,
+		.enabledExtensionCount = static_cast<uint32_t>(foundExtensions.count),
+		.ppEnabledExtensionNames = foundExtensions.data,
 	};
 
 	VkInstance instance{};

@@ -1,6 +1,7 @@
 #pragma once
 #include "PTypes.h"
 #include "PArena.h"
+#include "PMemory.h"
 #include "Platforms/Window.h"
 
 namespace Renderer {
@@ -9,7 +10,10 @@ namespace Renderer {
 	size_t getSizeofState();
 
 	State* startup(
-		pstd::ArenaFrame&& arenaFrame, const Platform::State& platformState
+		pstd::Arena* pPersistArena,
+		pstd::ArenaPair scratchArenas,
+		const Platform::State& platformState,
+		pstd::AllocationRegistry* pAllocRegistry
 	);
 
 	void shutdown(State* state);

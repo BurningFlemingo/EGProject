@@ -1,5 +1,5 @@
 #include "Renderer/Vulkan/Extensions.h"
 
-pstd::BoundedArray<const char*> getDebugExtensions() {
+pstd::Array<const char*> getDebugExtensions() {
 	return {};
 }

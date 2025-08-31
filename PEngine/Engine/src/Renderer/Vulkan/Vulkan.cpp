@@ -2,6 +2,9 @@
 #include "Instance.h"
 
 #include "PContainer.h"
+#include "Device.h"
+#include "PFileIO.h"
+#include "Swapchain.h"
 #include "include/Logging.h"
 
 #include "Platforms/VulkanSurface.h"
@@ -17,36 +20,84 @@
 #include <vulkan/vulkan_core.h>
 #include <new>
 
-namespace {
-	enum class QueueFamily : uint32_t { graphics = 0, presentation = 1, count };
-}  // namespace
-
 Renderer::State* Renderer::startup(
-	pstd::ArenaFrame&& arenaFrame, const Platform::State& platformState
+	pstd::Arena* pPersistArena,
+	pstd::ArenaPair scratchArenas,
+	const Platform::State& platformState,
+	pstd::AllocationRegistry* pAllocRegistry
 ) {
-	VkInstance instance{
-		createInstance(pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset))
+	pstd::Arena& scratchArena{
+		*pstd::getUnique(&scratchArenas, pPersistArena)
 	};
+
+	VkInstance instance{ createInstance(scratchArenas) };
+
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
-	Device device{ createDevice(
-		pstd::makeFrame(arenaFrame, &arenaFrame.scratchOffset),
-		instance,
-		surface
+	Device device{
+		createDevice(pPersistArena, scratchArenas, instance, surface)
+	};
+
+	Swapchain swapchain{ createSwapchain(
+		pPersistArena, scratchArenas, device, surface, platformState
 	) };
 
-	pstd::Allocation stateAllocation{ pstd::alloc<State>(&arenaFrame) };
+	// pstd::String fragShaderPath{ pstd::createString("/shaders/first.frag") };
+	// pstd::String exePath{ pstd::getEXEPath(&scratchArena) };
+	// fragShaderPath =
+	// 	pstd::makeConcatted(&scratchArena, exePath, fragShaderPath);
 
+	// pstd::FileHandle fragShaderFile{ pstd::openFile(
+	// 	&scratchArena,
+	// 	fragShaderPath,
+	// 	pstd::FileAccess::read,
+	// 	pstd::FileShare::read,
+	// 	pstd::FileCreate::openExisting
+	// ) };
+
+	// pstd::Allocation fragShaderAllocation{ pstd::readFile(
+	// 	pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), fragShaderFile
+	// ) };
+
+	// VkShaderModuleCreateInfo fragmentShaderModuleCI{
+	// 	.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+	// 	.codeSize = fragShaderAllocation.size,
+	// 	.pCode = rcast<uint32_t*>(fragShaderAllocation.block)
+	// };
+
+	VkShaderModule fragShaderModule{};
+	// VkResult res{ vkCreateShaderModule(
+	// 	device.logical, &fragmentShaderModuleCI, nullptr, &fragShaderModule
+	// ) };
+	// ASSERT(res == VK_SUCCESS);
+
+	// pstd::closeFile(fragShaderFile);
+
+	// VkGraphicsPipelineCreateInfo gPipeCI{
+	// 	.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+	// };
+
+	// vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
+
+	pstd::Allocation stateAllocation{ pstd::alloc<State>(pPersistArena) };
 	return new (stateAllocation.block)
-		State{ .device = device,
+		State{ .swapchain = swapchain,
+			   .device = device,
 			   .surface = surface,
 			   .instance = instance,
 			   .debugMessenger = debugMessenger };
 }
 
 void Renderer::shutdown(State* state) {
+	for (int i{}; i < state->swapchain.imageViews.count; i++) {
+		vkDestroyImageView(
+			state->device.logical, state->swapchain.imageViews[i], nullptr
+		);
+	}
+
+	destroySwapchain(&state->swapchain, state->device.logical);
 	vkDestroyDevice(state->device.logical, nullptr);
 	vkDestroySurfaceKHR(state->instance, state->surface, nullptr);
 	destroyDebugMessenger(state->instance, state->debugMessenger);

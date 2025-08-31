@@ -19,6 +19,12 @@ using int64_t = long long;
 using size_t = uint64_t;
 using uintptr_t = size_t;
 
+#define UINT32_MAX static_cast<uint32_t>(-1)
+
+#define KIB 1024ll
+#define MIB (KIB * KIB)
+#define GIB (MIB * KIB)
+
 namespace pstd {
 
 	template<typename T>
@@ -91,9 +97,10 @@ namespace pstd {
 	}
 
 	template<typename T>
-	constexpr T&& move(T num) {
+	constexpr T&& move(T& num) {
 		return static_cast<T&&>(num);
 	}
+
 }  // namespace pstd
 
 using pstd::cast;

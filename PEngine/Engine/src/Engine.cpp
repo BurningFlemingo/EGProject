@@ -14,15 +14,18 @@
 #include "PString.h"
 #include "PVector.h"
 #include "PMath.h"
+#include "PArray.h"
 #include "STD/internal/PMemory.h"
 #include "STD/internal/PConsole.h"
+
+#include "PFunction.h"
 
 #include <new>
 
 namespace peng {
 	namespace internal {
 		struct State {
-			pstd::Arena applicationArena;
+			pstd::Arena engineArena;
 
 			Platform::State* platformState;
 			Renderer::State* rendererState;
@@ -53,25 +56,28 @@ size_t peng::internal::getSizeofState() {
 }
 
 peng::internal::State* peng::internal::startup(
-	pstd::AllocationRegistry* registry, pstd::ArenaFrame&& arenaFrame
+	pstd::AllocationRegistry* pRegistry,
+	pstd::Arena* pPersistArena,
+	pstd::ArenaPair scratchArenas
 ) {
-	size_t scratchSize{ 1024 * 1024 };
 	pstd::Arena subsystemArena{
-		pstd::allocateArena(registry, getSizeofSubsystems() + scratchSize)
+		pstd::allocateArena(pRegistry, getSizeofSubsystems())
 	};
+
+	pstd::DArray<int> arr{ pstd::createDArray<int>(pRegistry, 1024) };
 
 	Platform::State* platformState{
-		Platform::startup({ &subsystemArena }, "window", 1920 / 2, 1080 / 2)
+		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
 
-	Renderer::State* rendererState{
-		Renderer::startup(pstd::ArenaFrame{ &subsystemArena }, *platformState)
-	};
+	Renderer::State* rendererState{ Renderer::startup(
+		&subsystemArena, scratchArenas, *platformState, pRegistry
+	) };
 
-	pstd::Allocation arenaAllocation{ pstd::alloc<State>(&arenaFrame) };
+	pstd::Allocation arenaAllocation{ pstd::alloc<State>(pPersistArena) };
 
 	State* arenaPtr{ new (arenaAllocation.block)
-						 State{ .applicationArena = subsystemArena,
+						 State{ .engineArena = subsystemArena,
 								.platformState = platformState,
 								.rendererState = rendererState,
 								.isRunning = true } };

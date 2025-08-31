@@ -35,31 +35,23 @@ namespace pstd {
 		return string;
 	}
 
-	String createString(ArenaFrame&& arenaFrame, const String& string);
-	inline String createString(ArenaFrame&& arenaFrame, const char* string) {
-		return createString(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-			createString(string)
-		);
+	String createString(Arena* pArena, const String& string);
+	inline String createString(Arena* pArena, const char* string) {
+		return createString(pArena, createString(string));
 	}
 
 	bool stringsMatch(const String& a, const String& b);
 
-	String makeNullTerminated(ArenaFrame&& arenaFrame, String string);
+	String makeNullTerminated(Arena* pArena, String string);
 
-	inline const char*
-		createCString(ArenaFrame&& arenaFrame, const String& string) {
-		return makeNullTerminated(
-				   pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-				   string
-		)
-			.buffer;
+	inline const char* createCString(Arena* pArena, const String& string) {
+		return makeNullTerminated(pArena, string).buffer;
 	}
 
 	// strings must be right next to eachother in memory
 	bool concat(String* a, String&& b);
 
-	String makeConcatted(pstd::ArenaFrame&& buffer, String a, String b);
+	String makeConcatted(pstd::Arena* pArena, String a, String b);
 
 	bool substringMatchForward(
 		const String& a, const String& b, uint32_t* outIndex = nullptr
@@ -83,26 +75,18 @@ namespace pstd {
 		);
 	}
 
-	String formatString(pstd::ArenaFrame&& arenaFrame, const String& format);
+	String formatString(pstd::Arena* pArena, const String& format);
 
 	template<typename T>
-	String formatString(
-		pstd::ArenaFrame&& arenaFrame, const String& format, T val
-	);
+	String formatString(pstd::Arena* pArena, const String& format, T val);
 
 	template<typename T, typename... Args>
 	String formatString(
-		pstd::ArenaFrame&& arenaFrame, const String& format, T val, Args... args
+		pstd::Arena* pArena, const String& format, T val, Args... args
 	) {
-		String newFormat{ formatString(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset), format, val
-		) };
+		String newFormat{ formatString(pArena, format, val) };
 
-		String res{ formatString(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-			newFormat,
-			args...
-		) };
+		String res{ formatString(pArena, newFormat, args...) };
 
 		return res;
 	}
@@ -115,33 +99,19 @@ namespace pstd {
 		return stringsMatch(createString(a), createString(b));
 	}
 
-	inline String
-		formatString(pstd::ArenaFrame&& arenaFrame, const char* format) {
-		return formatString(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-			createString(format)
-		);
+	inline String formatString(pstd::Arena* pArena, const char* format) {
+		return formatString(pArena, createString(format));
 	}
 
 	template<typename T>
-	String
-		formatString(pstd::ArenaFrame&& arenaFrame, const char* format, T val) {
-		return formatString(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-			createString(format),
-			val
-		);
+	String formatString(pstd::Arena* pArena, const char* format, T val) {
+		return formatString(pArena, createString(format), val);
 	}
 
 	template<typename T, typename... Args>
 	String formatString(
-		pstd::ArenaFrame&& arenaFrame, const char* format, T val, Args... args
+		pstd::Arena* pArena, const char* format, T val, Args... args
 	) {
-		return formatString(
-			pstd::makeFrame(arenaFrame, arenaFrame.pPersistOffset),
-			createString(format),
-			val,
-			args...
-		);
+		return formatString(pArena, createString(format), val, args...);
 	}
 }  // namespace pstd

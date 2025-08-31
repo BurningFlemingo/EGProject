@@ -83,27 +83,6 @@ float pstd::asinf(const float ratio) {
 }
 
 namespace Soft {
-	float sqrtfNewton(const float num) {
-		ASSERT(num >= 0);
-		if (num == 0) {
-			return 0;
-		}
-
-		float guess{ num / 2.f };
-		float prevGuess{};
-		constexpr int maxItterations{ 10 };
-		constexpr float tolerance{ 0.00001f };
-		float epsilon{ tolerance * num };
-		for (int i{}; i < maxItterations; i++) {
-			prevGuess = guess;
-			guess = (guess + (num / guess)) * 0.5f;
-
-			if (absf(guess - prevGuess) <= epsilon) {
-				break;
-			}
-		}
-		return guess;
-	}
 
 	float sinfTaylor(float radians) {
 		// makes x in between -TAU and TAU
@@ -162,7 +141,7 @@ namespace Soft {
 		}
 
 		// for |x| > 1, the approximation becomes extremely innacurate, so
-		// the identity atan(x) = -atan(x) +- pi/2 is used instead
+		// the identity atan(x) = atan(-1/x) +- pi/2 is used instead
 		float rangeAdjustment{};
 		if (x >= 1.f) {
 			rangeAdjustment = HALF_PI;
@@ -177,6 +156,43 @@ namespace Soft {
 		float denominator{ 15.f + 9.f * x2 };
 
 		return (numerator / denominator) + rangeAdjustment;
+	}
+
+	float sqrtfNewton(const float num) {
+		ASSERT(num >= 0);
+
+		if (num == 0) {
+			return 0;
+		}
+
+		constexpr int maxIterations{ 6 };
+
+		// used to account for floating point imprecision and its accumulated
+		// error
+		//
+		// the value is equal to 32bit float mantissa (machine epsilon: 2^-23)
+		// times 8 (heuristically generated to account for real-world
+		// accumulated error with 6 itterations of Newton-Raphson)
+		constexpr float tolarance{ 8.f * 1.1920929e-7f };
+
+		float guess{ 1.f };
+		if (num > 1.f) {
+			guess = num / 2.f;
+		}
+
+		float prevGuess{};
+
+		for (int i{}; i < maxIterations; i++) {
+			prevGuess = guess;
+			guess = (guess + (num / guess)) * 0.5f;
+
+			float relativeApproximationError{ absf(guess - prevGuess) / guess };
+			if (relativeApproximationError <= tolarance) {
+				break;
+			}
+		}
+
+		return guess;
 	}
 
 }  // namespace Soft
