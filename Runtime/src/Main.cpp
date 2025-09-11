@@ -1,12 +1,12 @@
-#include "Engine/internal/Engine.h"
-#include "Engine/internal/Logging.h"
-#include "Engine/include/Game.h"
-#include "Engine/include/Logging.h"
-#include "PArena.h"
-#include "PMemory.h"
-#include "PFileIO.h"
-#include "PString.h"
-#include "STD/internal/PMemory.h"
+#include "Engine/Engine.h"
+#include "Engine/Logging.h"
+#include "Engine/LoggingSetup.h"
+#include "Engine/Game.h"
+#include "Core/PArena.h"
+#include "Core/PMemory.h"
+#include "Core/PFileIO.h"
+#include "Core/PString.h"
+#include "Core/Memory.h"
 #include <Windows.h>
 
 namespace {
@@ -17,12 +17,10 @@ namespace {
 		size_t lastWriteTime;
 	};
 
-	pstd::String makeExeDirectoryPath(pstd::Arena* pPersistArena);
-
 	GameDll loadGameDll(pstd::Arena scratchArena);
 	void unloadGameDll(GameDll dll);
 
-	peng::internal::State* engineState;
+	PE::State* engineState;
 }  // namespace
 
 int main() {
@@ -39,11 +37,11 @@ int main() {
 		pstd::allocateArena(&allocationRegistry, scratchSize)
 	};
 
-	pstd::Arena engineArena{ pstd::allocateArena(
-		&allocationRegistry, peng::internal::getSizeofState()
-	) };
+	pstd::Arena engineArena{
+		pstd::allocateArena(&allocationRegistry, PE::getSizeofState())
+	};
 
-	engineState = peng::internal::startup(
+	engineState = PE::startup(
 		&allocationRegistry, &engineArena, { scratchArena, relayScratchArena }
 	);
 
@@ -68,30 +66,15 @@ int main() {
 			gameDll = loadGameDll(scratchArena);
 		}
 
-		isRunning &= peng::internal::update(engineState);
+		isRunning &= PE::update(engineState);
 		isRunning &= gameDll.api.update(gameState);
 	}
 
 	gameDll.api.shutdown(gameState);
-	peng::internal::shutdown(engineState);
+	PE::shutdown(engineState);
 }
 
 namespace {
-	pstd::String makeExeDirectoryPath(pstd::Arena* pPersistArena) {
-		pstd::String exeString{ pstd::getEXEPath(pPersistArena) };
-
-		uint32_t seperatorIndex{};
-		bool seperatorFound{ pstd::substringMatchBackward(
-			exeString, pstd::createString("/"), &seperatorIndex
-		) };
-		if (!seperatorFound) {
-			pstd::substringMatchBackward(
-				exeString, pstd::createString("\\"), &seperatorIndex
-			);
-		}
-		exeString.size = seperatorIndex + 1;
-		return exeString;
-	}
 
 	GameDll loadGameDll(pstd::Arena scratchArena) {
 		static uint32_t loadedDllSlot{};
