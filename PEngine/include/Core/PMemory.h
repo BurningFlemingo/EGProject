@@ -19,13 +19,6 @@ namespace pstd {
 
 	using AllocationTypeBits = uint32_t;
 
-	struct Allocation {
-		uint8_t* block;
-		size_t size;  // always in bytes
-		bool ownsMemory;  // if true, memory was allocated from the system
-		bool isCommitted;
-	};
-
 	struct AllocationLimits {
 		uint32_t minAllocSize;
 		uint32_t pageSize;
@@ -38,16 +31,16 @@ namespace pstd {
 	AllocationRegistry
 		createAllocationRegistry(size_t initialSize = 1024 * 1024);
 
-	Allocation heapAlloc(
+	void* heapAlloc(
 		AllocationRegistry* state,
 		size_t size,
 		uint32_t alignment = 16,
 		AllocationTypeBits allocType = ALLOC_COMMITTED | ALLOC_RESERVED
 	);
 
-	Allocation heapCommit(void* block, size_t size);
+	void* heapCommit(void* block, size_t size);
 
-	void heapFree(AllocationRegistry* state, const Allocation* allocation);
+	void heapFree(AllocationRegistry* state, const void* block);
 
 	void memSet(void* dst, int val, size_t size);
 	void memZero(void* dst, size_t size);

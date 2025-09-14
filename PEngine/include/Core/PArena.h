@@ -7,7 +7,8 @@
 
 namespace pstd {
 	struct Arena {
-		Allocation allocation;
+		void* block;
+		size_t size;
 		uint32_t offset;
 	};
 
@@ -32,7 +33,7 @@ namespace pstd {
 	}
 
 	inline bool isAliasing(const Arena& a, const Arena& b) {
-		return isAliasing(a.allocation, b.allocation);
+		return isAliasing(a.block, b.block);
 	}
 
 	Arena allocateArena(AllocationRegistry* pAllocRegistry, size_t size);
@@ -41,7 +42,8 @@ namespace pstd {
 
 	template<typename T>
 	uint32_t getAvailableCount(const Arena& arena) {
-		uintptr_t baseAddress{ (size_t)arena.allocation.block };
+		// TODO: change this for cast
+		uintptr_t baseAddress{ vcast<uintptr_t>(arena.block) };
 		uint32_t alignment{ alignof(T) };
 
 		uint32_t alignmentPadding{
@@ -52,19 +54,18 @@ namespace pstd {
 
 		uint32_t alignedOffset{ arena.offset + alignmentPadding };
 
-		uint32_t availableBytes{ ncast<uint32_t>(arena.allocation.size) -
-								 alignedOffset };
+		uint32_t availableBytes{ ncast<uint32_t>(arena.size) - alignedOffset };
 		return availableBytes / sizeof(T);
 	}
 
-	Allocation alloc(Arena* pArena, size_t size, uint32_t alignment);
+	void* alloc(Arena* pArena, size_t size, uint32_t alignment);
 
 	template<typename T>
-	Allocation alloc(Arena* pArena, size_t count = 1) {
+	T* alloc(Arena* pArena, size_t count = 1) {
 		ASSERT(pArena);
 
 		size_t allocSize{ count * sizeof(T) };
-		return Allocation{ alloc(pArena, allocSize, alignof(T)) };
+		return rcast<T*>(alloc(pArena, allocSize, alignof(T)));
 	}
 
 	inline Allocation makeShallowCopy(

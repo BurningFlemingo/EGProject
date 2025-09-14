@@ -42,7 +42,7 @@ pstd::AllocationLimits pstd::getSystemAllocationLimits() {
 	};
 }
 
-pstd::Allocation pstd::allocPages(
+void* pstd::allocPages(
 	const size_t size, AllocationTypeBits allocType, void* baseAddress
 ) {
 	ASSERT(allocType != ALLOC_INVALID);
@@ -78,15 +78,11 @@ pstd::Allocation pstd::allocPages(
 		alignedSize = allocLimits.minAllocSize;
 	}
 
-	auto block{ ncast<uint8_t*>(VirtualAlloc(
+	void* block{ VirtualAlloc(
 		alignedBaseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
-	)) };
+	) };
 
-	return Allocation{ .block = block,
-					   .size = alignedSize,
-					   .ownsMemory = true,
-					   .isCommitted = isCommitted };
-	;
+	return = block;
 }
 
 bool pstd::freePages(

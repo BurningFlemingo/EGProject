@@ -12,6 +12,13 @@
 using namespace pstd;
 
 namespace {
+	struct Allocation {
+		uint8_t* block;
+		size_t size;  // always in bytes
+		bool ownsMemory;  // if true, memory was allocated from the system
+		bool isCommitted;
+	};
+
 	struct FreelistBlock {
 		FreelistBlock* pNext;
 		size_t size;
@@ -37,7 +44,7 @@ AllocationRegistry pstd::createAllocationRegistry(size_t initialSize) {
 	return registry;
 }
 
-Allocation pstd::heapAlloc(
+void* pstd::heapAlloc(
 	AllocationRegistry* registry,
 	size_t size,
 	uint32_t alignment,
@@ -108,20 +115,14 @@ Allocation pstd::heapAlloc(
 		pPool->pFirstFreeBlock = rcast<FreelistBlock*>(pUpdatedFreeBlock);
 	}
 
-	return Allocation{ .block = rcast<uint8_t*>(pSuitableFreeBlock),
-					   .size = size,
-					   .ownsMemory = true,
-					   .isCommitted = isCommitted };
+	return rcast<void*>(pSuitableFreeBlock)
 }
 
-Allocation pstd::heapCommit(void* block, size_t size) {
-	Allocation committedAllocation{ allocPages(size, ALLOC_COMMITTED, block) };
-	return committedAllocation;
+void* pstd::heapCommit(void* block, size_t size) {
+	return allocPages(size, ALLOC_COMMITTED, block);
 }
 
-void pstd::heapFree(
-	AllocationRegistry* registry, const Allocation* allocation
-) {}
+void pstd::heapFree(AllocationRegistry* registry, const void* block) {}
 
 void pstd::memSet(void* dst, int val, size_t size) {
 	memset(dst, val, size);
