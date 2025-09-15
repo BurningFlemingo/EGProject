@@ -39,14 +39,11 @@ namespace {
 String pstd::createString(pstd::Arena* pArena, const String& string) {
 	ASSERT(pArena);
 
-	Allocation newStringAllocation{ pstd::alloc<char>(pArena, string.size) };
+	String newString{ .buffer = pstd::alloc<char>(pArena, string.size),
+					  .size = string.size };
 
-	size_t copySize{ min(string.size, newStringAllocation.size) };
-	memCpy(newStringAllocation.block, string.buffer, copySize);
-
-	String res{ .buffer = rcast<const char*>(newStringAllocation.block),
-				.size = ncast<uint32_t>(newStringAllocation.size) };
-	return res;
+	memCpy(newString.buffer, string.buffer, newString.size);
+	return newString;
 }
 
 String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {

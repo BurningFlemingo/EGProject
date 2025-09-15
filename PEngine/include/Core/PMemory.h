@@ -100,15 +100,17 @@ namespace pstd {
 		return makeConcatted(pArena, a, b, alignment);
 	}
 
-	inline bool isAliasing(const Allocation& a, const Allocation& b) {
-		ASSERT(a.block);
-		ASSERT(b.block);
+	inline bool isAliasing(
+		const void* aBlock, size_t aSize, const void* bBlock, size_t bSize
+	) {
+		ASSERT(aBlock);
+		ASSERT(bBlock);
 
 		bool isColliding{ false };
-		if (a.block <= b.block) {
-			isColliding = a.block + a.size > b.block;
+		if (aBlock <= bBlock) {
+			isColliding = (aBlock + aSize) > bBlock;
 		} else {
-			isColliding = b.block + b.size > a.block;
+			isColliding = (bBlock + bBize) > aBlock;
 		}
 
 		return isColliding;

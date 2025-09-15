@@ -8,7 +8,9 @@
 			"binaryDir": "${sourceDir}/build/${presetName}",
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "1",
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vendor/vcpkg/scripts/buildsystems/vcpkg.cmake"
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vendor/vcpkg/scripts/buildsystems/vcpkg.cmake", 
+				"CMAKE_C_COMPILER_WORKS": "1", 
+				"CMAKE_CXX_COMPILER_WORKS": "1"
             }
 		},
         {
@@ -28,7 +30,6 @@
 				"CMAKE_STATIC_LINKER_FLAGS": "/NODEFAULTLIB", 
 				"CMAKE_SHARED_LINKER_FLAGS": "/NODEFAULTLIB", 
 				"CMAKE_CXX_STANDARD_LIBRARIES": "", 
-				"CMAKE_CXX_COMPILER_FORCED": "TRUE", 
 				"CMAKE_CXX_STANDARD": "23"
 
             },

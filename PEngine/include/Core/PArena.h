@@ -33,7 +33,7 @@ namespace pstd {
 	}
 
 	inline bool isAliasing(const Arena& a, const Arena& b) {
-		return isAliasing(a.block, b.block);
+		return isAliasing(a.block, a.size, b.block, b.size);
 	}
 
 	Arena allocateArena(AllocationRegistry* pAllocRegistry, size_t size);
@@ -68,13 +68,13 @@ namespace pstd {
 		return rcast<T*>(alloc(pArena, allocSize, alignof(T)));
 	}
 
-	inline Allocation makeShallowCopy(
-		Arena* pArena, const Allocation& b, uint32_t alignment
-	) {
-		Allocation newAllocation{ pstd::alloc(pArena, b.size, alignment) };
-		pstd::shallowCopy(&newAllocation, b);
-		return newAllocation;
-	}
+	// inline Allocation makeShallowCopy(
+	// 	Arena* pArena, const Allocation& b, uint32_t alignment
+	// ) {
+	// Allocation newAllocation{ pstd::alloc(pArena, b.size, alignment) };
+	// pstd::shallowCopy(&newAllocation, b);
+	// return newAllocation;
+	// }
 
 	inline void reset(Arena* arena) {
 		ASSERT(arena);
