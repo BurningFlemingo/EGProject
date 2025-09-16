@@ -13,19 +13,9 @@ namespace pstd {
 	};
 
 	struct ArenaPair {
-		Arena first;
-		Arena second;
+		Arena primary;
+		Arena secondary;
 	};
-
-	inline Arena* getUnique(ArenaPair* pArenas, Arena* pArena) {
-		ASSERT(pArenas);
-		ASSERT(pArena);
-
-		if (pArena == &pArenas->first) {
-			return &pArenas->second;
-		}
-		return &pArenas->first;
-	}
 
 	template<typename T>
 	constexpr size_t getCount(const Arena& arena) {
@@ -45,7 +35,7 @@ namespace pstd {
 	template<typename T>
 	uint32_t getAvailableCount(const Arena& arena) {
 		// TODO: change this for cast
-		uintptr_t baseAddress{ vcast<uintptr_t>(arena.block) };
+		uintptr_t baseAddress{ rcast<uintptr_t>(arena.block) };
 		uint32_t alignment{ alignof(T) };
 
 		uint32_t alignmentPadding{

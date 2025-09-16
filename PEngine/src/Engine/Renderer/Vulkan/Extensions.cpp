@@ -13,7 +13,7 @@
 namespace {
 	pstd::Array<const char*> takeFoundExtensions(
 		pstd::Arena* pPersistArena,
-		pstd::ArenaPair scratchArenas,
+		pstd::Arena scratchArena,
 		pstd::Array<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	);
@@ -21,7 +21,7 @@ namespace {
 
 pstd::Array<const char*> takeFoundExtensions(
 	pstd::Arena* pPersistArena,
-	pstd::ArenaPair scratchArenas,
+	pstd::Arena scratchArena,
 	const pstd::Array<VkExtensionProperties>& availableExtensionProps,
 	pstd::Array<const char*>* pRequiredExtensions,
 	pstd::Array<const char*>* pOptionalExtensions
@@ -33,7 +33,7 @@ pstd::Array<const char*> takeFoundExtensions(
 	if (pOptionalExtensions != nullptr) {
 		foundOptionalExtensions = takeFoundExtensions(
 			pPersistArena,
-			scratchArenas,
+			scratchArena,
 			pOptionalExtensions,
 			availableExtensionProps
 		);
@@ -41,7 +41,7 @@ pstd::Array<const char*> takeFoundExtensions(
 
 	pstd::Array<const char*> foundRequiredExtensions{ takeFoundExtensions(
 		pPersistArena,
-		scratchArenas,
+		scratchArena,
 		pRequiredExtensions,
 		availableExtensionProps
 	) };
@@ -64,7 +64,7 @@ pstd::Array<const char*> takeFoundExtensions(
 
 	if (foundOptionalExtensions.count > 0) {
 		return pstd::makeConcatted<const char*>(
-			pPersistArena, foundRequiredExtensions, foundOptionalExensions
+			pPersistArena, foundRequiredExtensions, foundOptionalExtensions
 		);
 	}
 
@@ -74,14 +74,11 @@ pstd::Array<const char*> takeFoundExtensions(
 namespace {
 	pstd::Array<const char*> takeFoundExtensions(
 		pstd::Arena* pPersistArena,
-		pstd::ArenaPair scratchArenas,
+		pstd::Arena scratchArena,
 		pstd::Array<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	) {
 		ASSERT(pPersistArena);
-		pstd::Arena& scratchArena{
-			*pstd::getUnique(&scratchArenas, pPersistArena)
-		};
 
 		size_t largestArrayViewCount{
 			max(pExtensionNamesToQuery->count, availableExtensions.count)

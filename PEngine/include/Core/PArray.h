@@ -128,16 +128,18 @@ namespace pstd {
 
 	template<typename T, typename I>
 	Array<T, I> makeConcatted(
-		Arena* pArena, Array<T, I>* pLeftArray, Array<T, I>* pRightArray
+		Arena* pArena,
+		const Array<T, I>& leftArray,
+		const Array<T, I>& rightArray
 	) {
-		size_t newArrayCount{ pLeftArray->count + pRightArray->count };
+		size_t newArrayCount{ leftArray.count + rightArray.count };
 		auto newArray{ createArray<T, I>(pArena, newArrayCount) };
 
-		for (int i{}; i < pLeftArray->count; i++) {
-			newArray[i] = pLeftArray[i];
+		for (int i{}; i < leftArray.count; i++) {
+			newArray[i] = leftArray[i];
 		}
-		for (int i{}; i < pRightArray->count; i++) {
-			newArray[pLeftArray->count + i] = pRightArray[i];
+		for (int i{}; i < rightArray.count; i++) {
+			newArray[leftArray.count + i] = rightArray[i];
 		}
 
 		return newArray;

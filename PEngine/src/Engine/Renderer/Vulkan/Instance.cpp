@@ -13,7 +13,7 @@
 #include <vulkan/vulkan_core.h>
 
 VkInstance createInstance(pstd::ArenaPair scratchArenas) {
-	pstd::Arena& scratchArena{ scratchArenas.first };
+	pstd::Arena& scratchArena{ scratchArenas.primary };
 
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -25,7 +25,9 @@ VkInstance createInstance(pstd::ArenaPair scratchArenas) {
 		nullptr, &extensionCount, extensionProps.data
 	);
 
-	auto requiredExtensions{ pstd::createArray<const char*>(&scratchArena, 2) };
+	auto requiredExtensions{
+		pstd::createArray<const char*>(&scratchArena, 2, 0)
+	};
 
 	pstd::pushBack(
 		&requiredExtensions, Platform::getPlatformSurfaceExtension()
@@ -39,7 +41,7 @@ VkInstance createInstance(pstd::ArenaPair scratchArenas) {
 
 	pstd::Array<const char*> foundExtensions{ takeFoundExtensions(
 		&scratchArena,
-		scratchArenas,
+		scratchArenas.secondary,
 		extensionProps,
 		&requiredExtensions,
 		&optionalExtensions

@@ -17,6 +17,6 @@ namespace pstd {
 	);
 
 	// returns true on success and false on failure
-	bool freePages(const void* block, const AllocationTypeBits allocType);
+	bool freePages(void* block, const AllocationTypeBits allocType);
 
 }  // namespace pstd

@@ -39,15 +39,11 @@ namespace {
 String pstd::createString(pstd::Arena* pArena, const String& string) {
 	ASSERT(pArena);
 
-	String newString{ .buffer = pstd::alloc<char>(pArena, string.size),
-					  .size = string.size };
+	char* newStringBuffer{ pstd::alloc<char>(pArena, string.size) };
 
-	memCpy(
-		rcast<void*>(newString.buffer),
-		rcast<void*>(string.buffer),
-		newString.size
-	);
-	return newString;
+	memCpy(newStringBuffer, string.buffer, string.size);
+
+	return String{ .buffer = newStringBuffer, .size = string.size };
 }
 
 String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
@@ -62,17 +58,15 @@ String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 		return string;
 	}
 
-	size_t lettersToCopy{
+	uint32_t lettersToCopy{
 		min(pstd::getAvailableCount<char>(*pArena), string.size)
 	};
 
-	String newString{ .buffer = pstd::alloc<char>(pArena, lettersToCopy),
-					  .size = lettersToCopy };
+	char* newStringBuffer{ pstd::alloc<char>(pArena, lettersToCopy) };
 
-	pstd::memCpy(rcast<void*>(newString.buffer), string.buffer, lettersToCopy);
+	pstd::memCpy(newStringBuffer, string.buffer, lettersToCopy);
 	pushLetter(pArena, '\0');
-
-	return string;
+	return String{ .buffer = newStringBuffer, .size = lettersToCopy };
 }
 
 bool pstd::stringsMatch(const String& a, const String& b) {
@@ -349,16 +343,10 @@ namespace {
 		if (string.size == 0) {
 			return {};
 		}
-		String newString{ .buffer = pstd::alloc<char>(pArena, string.size),
-						  .size = string.size };
+		char* newStringBuffer{ pstd::alloc<char>(pArena, string.size) };
 
-		memcpy(
-			rcast<void*>(newString.block),
-			rcast<void*>(string.buffer),
-			newString.size
-		);
-
-		return newString;
+		memcpy(newStringBuffer, string.buffer, string.size);
+		return String{ .buffer = newStringBuffer, .size = string.size };
 	}
 
 	String pushStringUntilControlCharacter(

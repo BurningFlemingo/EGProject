@@ -22,15 +22,11 @@ namespace {
 
 Swapchain createSwapchain(
 	pstd::Arena* pPersistArena,
-	pstd::ArenaPair scratchArenas,
+	pstd::Arena scratchArena,
 	const Device& device,
 	VkSurfaceKHR surface,
 	const Platform::State& platformState
 ) {
-	pstd::Arena& scratchArena{
-		*pstd::getUnique(&scratchArenas, pPersistArena)
-	};
-
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 		device.physical, surface, &surfaceCapabilities

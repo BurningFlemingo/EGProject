@@ -8,11 +8,7 @@ namespace PE {
 
 	size_t getSizeofState();
 
-	State* startup(
-		pstd::AllocationRegistry* registry,
-		pstd::Arena* pPersistArena,
-		pstd::ArenaPair scratchArenas
-	);
+	State* startup(pstd::Arena* pPersistArena, pstd::Arena scratchArena);
 	bool update(State* state);
 	void shutdown(State* state);
 

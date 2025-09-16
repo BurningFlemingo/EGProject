@@ -11,9 +11,8 @@ namespace Renderer {
 
 	State* startup(
 		pstd::Arena* pPersistArena,
-		pstd::ArenaPair scratchArenas,
-		const Platform::State& platformState,
-		pstd::AllocationRegistry* pAllocRegistry
+		pstd::Arena scratchArena,
+		const Platform::State& platformState
 	);
 
 	void shutdown(State* state);

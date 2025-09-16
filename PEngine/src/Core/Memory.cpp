@@ -18,7 +18,8 @@ namespace {
 	};
 
 	struct MemoryPool {
-		Allocation allocation;
+		void* block;
+		size_t size;
 		FreelistBlock* pFirstFreeBlock;
 		MemoryPool* pNext;
 	};
@@ -238,16 +239,16 @@ namespace {
 
 		size += sizeof(MemoryPool) + sizeof(FreelistBlock);
 
-		const void* poolBlock{ allocPages(size, pstd::ALLOC_RESERVED) };
+		void* poolBlock{ allocPages(size, pstd::ALLOC_RESERVED) };
 
 		allocPages(sizeof(MemoryPool), pstd::ALLOC_COMMITTED, poolBlock);
 
-		MemoryPool* pPoolHeader{ new (poolBlock) MemoryPool{
-			.allocation = { .block = poolBlock, .size = size },
-		} };
+		MemoryPool* pPoolHeader{ new (poolBlock) MemoryPool{ .block = poolBlock,
+															 .size = size } };
 
-		uint8_t* pFreelistBlockHeader{ poolAllocation.block +
-									   sizeof(MemoryPool) };
+		void* pFreelistBlockHeader{
+			rcast<void*>((rcast<uintptr_t>(poolBlock) + sizeof(MemoryPool)))
+		};
 
 		size_t freeSize{ size - sizeof(MemoryPool) };
 

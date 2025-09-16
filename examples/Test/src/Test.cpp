@@ -21,7 +21,7 @@ GAME_API Game::State* Game::startup() {
 	pstd::Arena gameArena{ pstd::allocateArena(&allocRegistry, 1024) };
 
 	Game::State* gameState{ pstd::alloc<Game::State>(&gameArena) };
-	Game::State* statePtr{ new (gameSate
+	Game::State* statePtr{ new (gameState
 	) Game::State{ .allocRegistry = allocRegistry, .gameArena = gameArena } };
 	return statePtr;
 }

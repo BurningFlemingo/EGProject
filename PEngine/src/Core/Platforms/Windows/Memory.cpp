@@ -86,7 +86,7 @@ void* pstd::allocPages(
 }
 
 // TODO: make this more versitile for sizing
-bool pstd::freePages(const void* block, AllocationTypeBits allocType) {
+bool pstd::freePages(void* block, AllocationTypeBits allocType) {
 	ASSERT(block);
 
 	uint32_t win32AllocFlags{};
@@ -97,7 +97,7 @@ bool pstd::freePages(const void* block, AllocationTypeBits allocType) {
 		// freeSize = roundUpToPageBoundary(freeSize);
 	} else if (allocType == ALLOC_RESERVED) {
 		win32AllocFlags |= MEM_RELEASE;
-		freeSize = 0;
+		// freeSize = 0;
 	}
 	if (win32AllocFlags == 0) {
 		return false;

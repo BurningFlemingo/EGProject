@@ -33,17 +33,12 @@ int main() {
 	pstd::Arena scratchArena{
 		pstd::allocateArena(&allocationRegistry, scratchSize)
 	};
-	pstd::Arena relayScratchArena{
-		pstd::allocateArena(&allocationRegistry, scratchSize)
-	};
 
-	pstd::Arena engineArena{
-		pstd::allocateArena(&allocationRegistry, PE::getSizeofState())
-	};
+	pstd::Arena engineArena{ pstd::allocateArena(
+		&allocationRegistry, PE::getSizeofState() + scratchSize
+	) };
 
-	engineState = PE::startup(
-		&allocationRegistry, &engineArena, { scratchArena, relayScratchArena }
-	);
+	engineState = PE::startup(&engineArena, scratchArena);
 
 	GameDll gameDll{ loadGameDll(scratchArena) };
 	Game::State* gameState{ gameDll.api.startup() };

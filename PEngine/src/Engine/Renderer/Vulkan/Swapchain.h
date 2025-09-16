@@ -17,7 +17,7 @@ struct Swapchain {
 
 Swapchain createSwapchain(
 	pstd::Arena* pPersistArena,
-	pstd::ArenaPair scratchArenas,
+	pstd::Arena scratchArena,
 	const Device& device,
 	VkSurfaceKHR surface,
 	const Platform::State& platformState

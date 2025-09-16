@@ -20,26 +20,21 @@
 
 Renderer::State* Renderer::startup(
 	pstd::Arena* pPersistArena,
-	pstd::ArenaPair scratchArenas,
-	const Platform::State& platformState,
-	pstd::AllocationRegistry* pAllocRegistry
+	pstd::Arena scratchArena,
+	const Platform::State& platformState
 ) {
-	pstd::Arena& scratchArena{
-		*pstd::getUnique(&scratchArenas, pPersistArena)
-	};
-
-	VkInstance instance{ createInstance(scratchArenas) };
+	VkInstance instance{ createInstance({ *pPersistArena, scratchArena }) };
 
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
 	Device device{
-		createDevice(pPersistArena, scratchArenas, instance, surface)
+		createDevice(pPersistArena, scratchArena, instance, surface)
 	};
 
 	Swapchain swapchain{ createSwapchain(
-		pPersistArena, scratchArenas, device, surface, platformState
+		pPersistArena, scratchArena, device, surface, platformState
 	) };
 
 	pstd::String fragShaderPath{ pstd::createString("\\shaders\\first.frag.spv"
@@ -65,7 +60,7 @@ Renderer::State* Renderer::startup(
 	VkShaderModuleCreateInfo fragmentShaderModuleCI{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 		.codeSize = fragShaderString.size,
-		.pCode = fragShaderString.buffer
+		.pCode = rcast<const uint32_t*>(fragShaderString.buffer)
 	};
 
 	VkShaderModule fragShaderModule{};

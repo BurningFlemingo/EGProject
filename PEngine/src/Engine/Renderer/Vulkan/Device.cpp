@@ -26,14 +26,10 @@ namespace {
 
 Device createDevice(
 	pstd::Arena* pPersistArena,
-	pstd::ArenaPair scratchArenas,
+	pstd::Arena scratchArena,
 	VkInstance instance,
 	VkSurfaceKHR surface
 ) {
-	pstd::Arena& scratchArena{
-		*pstd::getUnique(&scratchArenas, pPersistArena)
-	};
-
 	VkPhysicalDevice physicalDevice{
 		createPhysicalDevice(scratchArena, instance)
 	};
