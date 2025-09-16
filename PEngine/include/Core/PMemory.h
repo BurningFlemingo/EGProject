@@ -19,13 +19,6 @@ namespace pstd {
 
 	using AllocationTypeBits = uint32_t;
 
-	struct Allocation {
-		uint8_t* block;
-		size_t size;  // always in bytes
-		bool ownsMemory;  // if true, memory was allocated from the system
-		bool isCommitted;
-	};
-
 	struct AllocationLimits {
 		uint32_t minAllocSize;
 		uint32_t pageSize;
@@ -38,16 +31,16 @@ namespace pstd {
 	AllocationRegistry
 		createAllocationRegistry(size_t initialSize = 1024 * 1024);
 
-	Allocation heapAlloc(
+	void* heapAlloc(
 		AllocationRegistry* state,
 		size_t size,
 		uint32_t alignment = 16,
 		AllocationTypeBits allocType = ALLOC_COMMITTED | ALLOC_RESERVED
 	);
 
-	Allocation heapCommit(void* block, size_t size);
+	void* heapCommit(void* block, size_t size);
 
-	void heapFree(AllocationRegistry* state, const Allocation* allocation);
+	void heapFree(AllocationRegistry* state, const void* block);
 
 	void memSet(void* dst, int val, size_t size);
 	void memZero(void* dst, size_t size);
@@ -69,53 +62,58 @@ namespace pstd {
 		return calcAddressAlignmentPadding(address, alignment);
 	}
 
-	template<typename T>
-	size_t getCapacity(const Allocation& allocation) {
-		size_t res{ allocation.size / sizeof(T) };
-		return res;
-	}
+	// template<typename T>
+	// size_t getCapacity(const Allocation& allocation) {
+	// 	size_t res{ allocation.size / sizeof(T) };
+	// 	return res;
+	// }
 
-	void shallowCopy(Allocation* dst, const Allocation& src);
-	void shallowMove(Allocation* dst, const Allocation& src);
+	// void shallowCopy(Allocation* dst, const Allocation& src);
+	// void shallowMove(Allocation* dst, const Allocation& src);
 
-	inline Allocation makeTrunced(Allocation allocation, size_t newSize) {
-		ASSERT(newSize <= allocation.size);
-		allocation.size = newSize;
-		return allocation;
-	}
+	// inline Allocation makeTrunced(Allocation allocation, size_t newSize) {
+	// 	ASSERT(newSize <= allocation.size);
+	// 	allocation.size = newSize;
+	// 	return allocation;
+	// }
 
-	template<typename T>
-	Allocation makeTrunced(const Allocation& allocation, size_t newCount) {
-		size_t newSize{ newCount * sizeof(T) };
-		return makeTrunced(allocation, newSize);
-	}
+	// template<typename T>
+	// Allocation makeTrunced(const Allocation& allocation, size_t newCount) {
+	// 	size_t newSize{ newCount * sizeof(T) };
+	// 	return makeTrunced(allocation, newSize);
+	// }
 
-	Allocation makeCoalesced(const Allocation& a, const Allocation& b);
-	bool coalesce(Allocation* a, const Allocation& b);
+	// Allocation makeCoalesced(const Allocation& a, const Allocation& b);
+	// bool coalesce(Allocation* a, const Allocation& b);
 
-	Allocation makeConcatted(
-		pstd::Arena* pArena,
-		const Allocation& a,
-		const Allocation& b,
-		uint32_t alignment
-	);
+	// Allocation makeConcatted(
+	// 	pstd::Arena* pArena,
+	// 	const Allocation& a,
+	// 	const Allocation& b,
+	// 	uint32_t alignment
+	// );
 
-	template<typename T>
-	Allocation
-		makeConcatted(Arena* pArena, const Allocation& a, const Allocation& b) {
-		size_t alignment{ alignof(T) };
-		return makeConcatted(pArena, a, b, alignment);
-	}
+	// template<typename T>
+	// Allocation
+	// 	makeConcatted(Arena* pArena, const Allocation& a, const Allocation& b) {
+	// 	size_t alignment{ alignof(T) };
+	// 	return makeConcatted(pArena, a, b, alignment);
+	// }
 
-	inline bool isAliasing(const Allocation& a, const Allocation& b) {
-		ASSERT(a.block);
-		ASSERT(b.block);
+	inline bool isAliasing(
+		const uintptr_t aBlock,
+		size_t aSize,
+		const uintptr_t bBlock,
+		size_t bSize
+	) {
+		ASSERT(aBlock);
+		ASSERT(bBlock);
 
 		bool isColliding{ false };
-		if (a.block <= b.block) {
-			isColliding = a.block + a.size > b.block;
+		if (aBlock <= bBlock) {
+			isColliding = (aBlock + aSize) > bBlock;
 		} else {
-			isColliding = b.block + b.size > a.block;
+			isColliding = (bBlock + bSize) > aBlock;
 		}
 
 		return isColliding;

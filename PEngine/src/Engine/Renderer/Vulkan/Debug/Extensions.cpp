@@ -12,5 +12,6 @@ namespace {
 
 pstd::Array<const char*> getDebugExtensions() {
 	return pstd::Array<const char*>{ .data = g_DebugExtensions,
+									 .capacity = NUMBER_OF_DEBUG_EXTENSIONS,
 									 .count = NUMBER_OF_DEBUG_EXTENSIONS };
 }

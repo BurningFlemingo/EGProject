@@ -35,8 +35,8 @@ Platform::State* Platform::startup(
 	const int windowWidth,
 	const int windowHeight
 ) {
-	pstd::Allocation stateAllocation{ pstd::alloc<State>(pPersistArena) };
-	pstd::Allocation eventBufferAllocation{
+	State* state{ pstd::alloc<State>(pPersistArena) };
+	Event* eventBufferBlock{
 		pstd::alloc<Event>(pPersistArena, WindowData::eventBufferCapacity)
 	};
 
@@ -90,7 +90,7 @@ Platform::State* Platform::startup(
 		0,
 		0,
 		hInstance,
-		&((State*)stateAllocation.block)->windowData
+		&state->windowData
 	) };
 
 	if (hwnd == 0) {
@@ -100,10 +100,11 @@ Platform::State* Platform::startup(
 	ShowWindow(hwnd, SW_SHOW);
 
 	WindowData windowData{ .isRunning = true,
-						   .eventBuffer = { .allocation =
-												eventBufferAllocation } };
+						   .eventBuffer = {
+							   .block = eventBufferBlock,
+							   .size = WindowData::eventBufferCapacity } };
 
-	return new (stateAllocation.block)
+	return new (state)
 		State{ .windowData = windowData, .hwnd = hwnd, .hInstance = hInstance };
 }
 

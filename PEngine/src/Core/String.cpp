@@ -39,14 +39,11 @@ namespace {
 String pstd::createString(pstd::Arena* pArena, const String& string) {
 	ASSERT(pArena);
 
-	Allocation newStringAllocation{ pstd::alloc<char>(pArena, string.size) };
+	char* newStringBuffer{ pstd::alloc<char>(pArena, string.size) };
 
-	size_t copySize{ min(string.size, newStringAllocation.size) };
-	memCpy(newStringAllocation.block, string.buffer, copySize);
+	memCpy(newStringBuffer, string.buffer, string.size);
 
-	String res{ .buffer = rcast<const char*>(newStringAllocation.block),
-				.size = ncast<uint32_t>(newStringAllocation.size) };
-	return res;
+	return String{ .buffer = newStringBuffer, .size = string.size };
 }
 
 String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
@@ -56,23 +53,20 @@ String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 		return string;
 	}
 
-	size_t lastLetterIndex{ string.size - 1 };
+	uint32_t lastLetterIndex{ string.size - 1 };
 	if (string.buffer[lastLetterIndex] == '\0') {
 		return string;
 	}
 
-	size_t lettersToCopy{
+	uint32_t lettersToCopy{
 		min(pstd::getAvailableCount<char>(*pArena), string.size)
 	};
-	Allocation stringAllocation{ pstd::alloc<char>(pArena, lettersToCopy) };
-	pstd::memCpy(
-		rcast<void*>(stringAllocation.block), string.buffer, lettersToCopy
-	);
-	pushLetter(pArena, '\0');
 
-	string = String{ .buffer = rcast<const char*>(stringAllocation.block),
-					 .size = ncast<uint32_t>(stringAllocation.size) };
-	return string;
+	char* newStringBuffer{ pstd::alloc<char>(pArena, lettersToCopy) };
+
+	pstd::memCpy(newStringBuffer, string.buffer, lettersToCopy);
+	pushLetter(pArena, '\0');
+	return String{ .buffer = newStringBuffer, .size = lettersToCopy };
 }
 
 bool pstd::stringsMatch(const String& a, const String& b) {
@@ -349,12 +343,10 @@ namespace {
 		if (string.size == 0) {
 			return {};
 		}
-		pstd::Allocation allocation{ pstd::alloc<char>(pArena, string.size) };
+		char* newStringBuffer{ pstd::alloc<char>(pArena, string.size) };
 
-		memcpy(rcast<void*>(allocation.block), string.buffer, allocation.size);
-		String res{ .buffer = rcast<const char*>(allocation.block),
-					.size = ncast<uint32_t>(allocation.size) };
-		return res;
+		memcpy(newStringBuffer, string.buffer, string.size);
+		return String{ .buffer = newStringBuffer, .size = string.size };
 	}
 
 	String pushStringUntilControlCharacter(

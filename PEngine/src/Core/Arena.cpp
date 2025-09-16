@@ -9,22 +9,21 @@ using namespace pstd;
 // Arena allocation pattern
 
 Arena pstd::allocateArena(AllocationRegistry* pAllocRegistry, size_t size) {
-	Allocation allocation{ heapAlloc(pAllocRegistry, size) };
-	return Arena{ .allocation = allocation };
+	return Arena{ .block = heapAlloc(pAllocRegistry, size), .size = size };
 }
 
 void pstd::freeArena(AllocationRegistry* pAllocRegistry, Arena* pArena) {
-	heapFree(pAllocRegistry, &pArena->allocation);
+	heapFree(pAllocRegistry, &pArena->block);
 	pArena = {};
 }
 
-Allocation pstd::alloc(Arena* pArena, size_t size, uint32_t alignment) {
+void* pstd::alloc(Arena* pArena, size_t size, uint32_t alignment) {
 	ASSERT(pArena);
-	ASSERT(pArena->allocation.block != nullptr);
+	ASSERT(pArena->block != nullptr);
 	ASSERT(size != 0);
 	ASSERT(alignment != 0);
 
-	uintptr_t baseAddress{ (size_t)pArena->allocation.block };
+	auto baseAddress{ rcast<uintptr_t>(pArena->block) };
 
 	uint32_t alignmentPadding{
 		(alignment - vcast<uint32_t>((baseAddress + pArena->offset) % alignment)
@@ -34,11 +33,10 @@ Allocation pstd::alloc(Arena* pArena, size_t size, uint32_t alignment) {
 
 	uint32_t alignedOffset{ pArena->offset + alignmentPadding };
 
-	ASSERT((size + alignedOffset) <= pArena->allocation.size);
+	ASSERT((size + alignedOffset) <= pArena->size);
 
 	uintptr_t alignedOffsetAddress{ baseAddress + alignedOffset };
 	pArena->offset = alignedOffset + size;
 
-	return Allocation{ .block = rcast<uint8_t*>(alignedOffsetAddress),
-					   .size = size };
+	return rcast<void*>(alignedOffsetAddress);
 }

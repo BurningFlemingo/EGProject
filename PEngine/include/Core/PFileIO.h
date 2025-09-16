@@ -56,5 +56,5 @@ namespace pstd {
 	uint32_t getFileSize(FileHandle handle);
 	size_t getLastFileWriteTime(const char*);
 
-	Allocation readFile(Arena* pArena, FileHandle handle);
+	String readFile(Arena* pArena, FileHandle handle);
 }  // namespace pstd

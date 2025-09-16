@@ -20,26 +20,21 @@
 
 Renderer::State* Renderer::startup(
 	pstd::Arena* pPersistArena,
-	pstd::ArenaPair scratchArenas,
-	const Platform::State& platformState,
-	pstd::AllocationRegistry* pAllocRegistry
+	pstd::Arena scratchArena,
+	const Platform::State& platformState
 ) {
-	pstd::Arena& scratchArena{
-		*pstd::getUnique(&scratchArenas, pPersistArena)
-	};
-
-	VkInstance instance{ createInstance(scratchArenas) };
+	VkInstance instance{ createInstance({ *pPersistArena, scratchArena }) };
 
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
 	VkSurfaceKHR surface{ Platform::createSurface(instance, platformState) };
 
 	Device device{
-		createDevice(pPersistArena, scratchArenas, instance, surface)
+		createDevice(pPersistArena, scratchArena, instance, surface)
 	};
 
 	Swapchain swapchain{ createSwapchain(
-		pPersistArena, scratchArenas, device, surface, platformState
+		pPersistArena, scratchArena, device, surface, platformState
 	) };
 
 	pstd::String fragShaderPath{ pstd::createString("\\shaders\\first.frag.spv"
@@ -58,14 +53,14 @@ Renderer::State* Renderer::startup(
 		pstd::FileCreate::openExisting
 	) };
 
-	pstd::Allocation fragShaderAllocation{
+	pstd::String fragShaderString{
 		pstd::readFile(pPersistArena, fragShaderFile)
 	};
 
 	VkShaderModuleCreateInfo fragmentShaderModuleCI{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-		.codeSize = fragShaderAllocation.size,
-		.pCode = rcast<uint32_t*>(fragShaderAllocation.block)
+		.codeSize = fragShaderString.size,
+		.pCode = rcast<const uint32_t*>(fragShaderString.buffer)
 	};
 
 	VkShaderModule fragShaderModule{};
@@ -82,13 +77,12 @@ Renderer::State* Renderer::startup(
 
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 
-	pstd::Allocation stateAllocation{ pstd::alloc<State>(pPersistArena) };
-	return new (stateAllocation.block)
-		State{ .swapchain = swapchain,
-			   .device = device,
-			   .surface = surface,
-			   .instance = instance,
-			   .debugMessenger = debugMessenger };
+	State* state{ pstd::alloc<State>(pPersistArena) };
+	return new (state) State{ .swapchain = swapchain,
+							  .device = device,
+							  .surface = surface,
+							  .instance = instance,
+							  .debugMessenger = debugMessenger };
 }
 
 void Renderer::shutdown(State* state) {

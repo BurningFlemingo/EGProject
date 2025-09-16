@@ -19,15 +19,13 @@ pstd::Array<const char*> findValidationLayers(pstd::Arena* pPersistArena) {
 		pstd::createArray<VkLayerProperties>(pPersistArena, layerCount)
 	};
 
-	vkEnumerateInstanceLayerProperties(
-		&layerCount, rcast<VkLayerProperties*>(layerProps.data)
-	);
+	vkEnumerateInstanceLayerProperties(&layerCount, layerProps.data);
 
-	pstd::BoundedStaticArray<const char*, 1> requiredLayers{
-		.data = { "VK_LAYER_KHRONOS_validation" }, .count = 1
+	pstd::StaticArray<const char*, 1> requiredLayers{
+		.data = { "VK_LAYER_KHRONOS_validation" }
 	};
 
-	auto foundLayers{ pstd::createBoundedArray<const char*>(pPersistArena, 1) };
+	auto foundLayers{ pstd::createArray<const char*>(pPersistArena, 1, 0) };
 
 	for (int i{}; i < layerCount; i++) {
 		if (requiredLayers.count == 0) {
@@ -54,7 +52,5 @@ pstd::Array<const char*> findValidationLayers(pstd::Arena* pPersistArena) {
 		LOG_INFO("found %m\n", foundLayers[i]);
 	}
 
-	pstd::Array<const char*> res{ .data = foundLayers.data,
-								  .count = foundLayers.count };
-	return res;
+	return foundLayers;
 }

@@ -7,24 +7,15 @@
 
 namespace pstd {
 	struct Arena {
-		Allocation allocation;
+		void* block;
+		size_t size;
 		uint32_t offset;
 	};
 
 	struct ArenaPair {
-		Arena first;
-		Arena second;
+		Arena primary;
+		Arena secondary;
 	};
-
-	inline Arena* getUnique(ArenaPair* pArenas, Arena* pArena) {
-		ASSERT(pArenas);
-		ASSERT(pArena);
-
-		if (pArena == &pArenas->first) {
-			return &pArenas->second;
-		}
-		return &pArenas->first;
-	}
 
 	template<typename T>
 	constexpr size_t getCount(const Arena& arena) {
@@ -32,7 +23,9 @@ namespace pstd {
 	}
 
 	inline bool isAliasing(const Arena& a, const Arena& b) {
-		return isAliasing(a.allocation, b.allocation);
+		return isAliasing(
+			rcast<uintptr_t>(a.block), a.size, rcast<uintptr_t>(b.block), b.size
+		);
 	}
 
 	Arena allocateArena(AllocationRegistry* pAllocRegistry, size_t size);
@@ -41,7 +34,8 @@ namespace pstd {
 
 	template<typename T>
 	uint32_t getAvailableCount(const Arena& arena) {
-		uintptr_t baseAddress{ (size_t)arena.allocation.block };
+		// TODO: change this for cast
+		uintptr_t baseAddress{ rcast<uintptr_t>(arena.block) };
 		uint32_t alignment{ alignof(T) };
 
 		uint32_t alignmentPadding{
@@ -52,28 +46,27 @@ namespace pstd {
 
 		uint32_t alignedOffset{ arena.offset + alignmentPadding };
 
-		uint32_t availableBytes{ ncast<uint32_t>(arena.allocation.size) -
-								 alignedOffset };
+		uint32_t availableBytes{ ncast<uint32_t>(arena.size) - alignedOffset };
 		return availableBytes / sizeof(T);
 	}
 
-	Allocation alloc(Arena* pArena, size_t size, uint32_t alignment);
+	void* alloc(Arena* pArena, size_t size, uint32_t alignment);
 
 	template<typename T>
-	Allocation alloc(Arena* pArena, size_t count = 1) {
+	T* alloc(Arena* pArena, size_t count = 1) {
 		ASSERT(pArena);
 
 		size_t allocSize{ count * sizeof(T) };
-		return Allocation{ alloc(pArena, allocSize, alignof(T)) };
+		return rcast<T*>(alloc(pArena, allocSize, alignof(T)));
 	}
 
-	inline Allocation makeShallowCopy(
-		Arena* pArena, const Allocation& b, uint32_t alignment
-	) {
-		Allocation newAllocation{ pstd::alloc(pArena, b.size, alignment) };
-		pstd::shallowCopy(&newAllocation, b);
-		return newAllocation;
-	}
+	// inline Allocation makeShallowCopy(
+	// 	Arena* pArena, const Allocation& b, uint32_t alignment
+	// ) {
+	// Allocation newAllocation{ pstd::alloc(pArena, b.size, alignment) };
+	// pstd::shallowCopy(&newAllocation, b);
+	// return newAllocation;
+	// }
 
 	inline void reset(Arena* arena) {
 		ASSERT(arena);

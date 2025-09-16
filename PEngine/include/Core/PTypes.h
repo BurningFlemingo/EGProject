@@ -73,7 +73,7 @@ namespace pstd {
 	}
 
 	template<typename R, typename T>
-	constexpr R cast(T num) {  // types dont narrow
+	constexpr R cast(T num) {
 		static_assert(
 			!getCanNarrow<R, T>(), "types should not narrow on this cast"
 		);

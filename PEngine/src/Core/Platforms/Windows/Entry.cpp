@@ -24,7 +24,7 @@ extern "C" BOOL WINAPI stubDllMain(
 #pragma comment(linker, "/alternatename:DllMain=stubDllMain")
 
 extern "C" int mainCRTStartup() {
-	pstd::internal::startupConsole();
+	pstd::startupConsole();
 
 	int exitCode{ main() };
 
@@ -34,7 +34,7 @@ extern "C" int mainCRTStartup() {
 }
 
 extern "C" int WinMainCRTStartup() {
-	pstd::internal::startupConsole();
+	pstd::startupConsole();
 
 	int exitCode{ main() };
 

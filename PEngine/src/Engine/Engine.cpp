@@ -52,33 +52,21 @@ size_t PE::getSizeofState() {
 	return totalSize;
 }
 
-PE::State* PE::startup(
-	pstd::AllocationRegistry* pRegistry,
-	pstd::Arena* pPersistArena,
-	pstd::ArenaPair scratchArenas
-) {
-	pstd::Arena subsystemArena{
-		pstd::allocateArena(pRegistry, getSizeofSubsystems())
-	};
-
-	pstd::DArray<int> arr{ pstd::createDArray<int>(pRegistry, 1024) };
-
+PE::State* PE::startup(pstd::Arena* pPersistArena, pstd::Arena scratchArena) {
 	Platform::State* platformState{
-		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
+		Platform::startup(pPersistArena, "window", 1920 / 2, 1080 / 2)
 	};
 
-	Renderer::State* rendererState{ Renderer::startup(
-		&subsystemArena, scratchArenas, *platformState, pRegistry
-	) };
+	Renderer::State* rendererState{
+		Renderer::startup(pPersistArena, scratchArena, *platformState)
+	};
 
-	pstd::Allocation arenaAllocation{ pstd::alloc<State>(pPersistArena) };
-
-	State* arenaPtr{ new (arenaAllocation.block)
-						 State{ .engineArena = subsystemArena,
-								.platformState = platformState,
-								.rendererState = rendererState,
-								.isRunning = true } };
-	return arenaPtr;
+	State* pState{ pstd::alloc<State>(pPersistArena) };
+	new (pState) State{ .engineArena = pPersistArena,
+						.platformState = platformState,
+						.rendererState = rendererState,
+						.isRunning = true };
+	return pState;
 }
 bool PE::update(State* state) {
 	if (state->isRunning && Platform::isRunning(state->platformState)) {
