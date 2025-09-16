@@ -1,5 +1,5 @@
-#include "Engine/Game.h"
-#include "Engine/Logging.h"
+#include "Game.h"
+#include "Logging.h"
 #include "Core/PArena.h"
 #include "Core/PMemory.h"
 #include "Core/PCircularBuffer.h"

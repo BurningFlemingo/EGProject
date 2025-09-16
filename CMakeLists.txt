@@ -8,5 +8,4 @@ set (CMAKE_CXX_STANDARD 20)
 set(CMAKE_SUPPRESS_REGENERATION true)
 
 add_subdirectory(PEngine)
-add_subdirectory(Runtime)
 add_subdirectory(examples)
