@@ -11,6 +11,6 @@ pstd::Array<const char*> takeFoundExtensions(
 	pstd::Arena* pPersistArena,
 	pstd::ArenaPair scratchArenas,
 	const pstd::Array<VkExtensionProperties>& availableExtensionProps,
-	pstd::BoundedArray<const char*>* pRequiredExtensions,
-	pstd::BoundedArray<const char*>* pOptionalExtensions = nullptr
+	pstd::Array<const char*>* pRequiredExtensions,
+	pstd::Array<const char*>* pOptionalExtensions = nullptr
 );

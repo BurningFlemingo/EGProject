@@ -45,7 +45,7 @@ Device createDevice(
 	VkDevice device{ createLogicalDevice(instance, physicalDevice, qfi) };
 
 	auto queues{ pstd::createArray<VkQueue, QueueFamily>(
-		pstd::alloc<VkQueue>(pPersistArena, qfi.uniqueIndices.count)
+		pPersistArena, qfi.uniqueIndices.count
 	) };
 
 	for (uint32_t i{}; i < queues.count; i++) {
@@ -70,7 +70,7 @@ namespace {
 		vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
 
 		auto physicalDevices{ pstd::createArray<VkPhysicalDevice>(
-			pstd::alloc<VkPhysicalDevice>(&scratchArena, physicalDeviceCount)
+			&scratchArena, physicalDeviceCount
 		) };
 
 		vkEnumeratePhysicalDevices(
@@ -137,8 +137,8 @@ namespace {
 
 		pstd::fill(&indices, invalidIndex);
 
-		auto uniqueIndices(pstd::createBoundedArray<uint32_t>(
-			pPersistArena, ncast<size_t>(QueueFamily::count)
+		auto uniqueIndices(pstd::createArray<uint32_t>(
+			pPersistArena, ncast<size_t>(QueueFamily::count), 0
 		));
 
 		for (uint32_t i{}; i < queueFamilyPropCount; i++) {
@@ -178,12 +178,8 @@ namespace {
 			}
 		}
 
-		pstd::Array<uint32_t> uniqueIndicesArray(
-			uniqueIndices.data, uniqueIndices.count
-		);
-
 		return DeviceQueueFamilyIndices{ .indices = indices,
-										 .uniqueIndices = uniqueIndicesArray };
+										 .uniqueIndices = uniqueIndices };
 	}
 
 	VkDevice createLogicalDevice(
@@ -193,10 +189,10 @@ namespace {
 	) {
 		const float priorities[1]{ 1.f };
 
-		pstd::BoundedStaticArray<
+		pstd::StaticArray<
 			VkDeviceQueueCreateInfo,
 			cast<size_t>(QueueFamily::count)>
-			deviceQueueCreateInfos{};
+			deviceQueueCreateInfos{ .count = 0 };
 
 		for (uint32_t i{}; i < qfi.uniqueIndices.count; i++) {
 			VkDeviceQueueCreateInfo deviceQueueCI{

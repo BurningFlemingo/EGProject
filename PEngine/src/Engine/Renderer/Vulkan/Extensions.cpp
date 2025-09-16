@@ -14,7 +14,7 @@ namespace {
 	pstd::Array<const char*> takeFoundExtensions(
 		pstd::Arena* pPersistArena,
 		pstd::ArenaPair scratchArenas,
-		pstd::BoundedArray<const char*>* pExtensionNamesToQuery,
+		pstd::Array<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	);
 }
@@ -23,8 +23,8 @@ pstd::Array<const char*> takeFoundExtensions(
 	pstd::Arena* pPersistArena,
 	pstd::ArenaPair scratchArenas,
 	const pstd::Array<VkExtensionProperties>& availableExtensionProps,
-	pstd::BoundedArray<const char*>* pRequiredExtensions,
-	pstd::BoundedArray<const char*>* pOptionalExtensions
+	pstd::Array<const char*>* pRequiredExtensions,
+	pstd::Array<const char*>* pOptionalExtensions
 ) {
 	ASSERT(pPersistArena);
 	ASSERT(pRequiredExtensions);
@@ -63,13 +63,9 @@ pstd::Array<const char*> takeFoundExtensions(
 	}
 
 	if (foundOptionalExtensions.count > 0) {
-		pstd::Allocation allFoundExtensions{ pstd::makeConcatted<const char*>(
-			pPersistArena,
-			pstd::getAllocation(foundRequiredExtensions),
-			pstd::getAllocation(foundOptionalExtensions)
-		) };
-
-		return { pstd::createArray<const char*>(allFoundExtensions) };
+		return pstd::makeConcatted<const char*>(
+			pPersistArena, foundRequiredExtensions, foundOptionalExensions
+		);
 	}
 
 	return foundRequiredExtensions;
@@ -79,7 +75,7 @@ namespace {
 	pstd::Array<const char*> takeFoundExtensions(
 		pstd::Arena* pPersistArena,
 		pstd::ArenaPair scratchArenas,
-		pstd::BoundedArray<const char*>* pExtensionNamesToQuery,
+		pstd::Array<const char*>* pExtensionNamesToQuery,
 		const pstd::Array<VkExtensionProperties>& availableExtensions
 	) {
 		ASSERT(pPersistArena);
@@ -93,8 +89,8 @@ namespace {
 		size_t smallestArrayViewCount{
 			min(pExtensionNamesToQuery->count, availableExtensions.count)
 		};
-		auto matchedNames{ pstd::createBoundedArray<const char*>(
-			pPersistArena, largestArrayViewCount
+		auto matchedNames{ pstd::createArray<const char*>(
+			pPersistArena, largestArrayViewCount, 0
 		) };
 
 		for (uint32_t i{}; i < largestArrayViewCount; i++) {
@@ -121,8 +117,6 @@ namespace {
 			}
 		}
 
-		pstd::Array<const char*> res{ .data = matchedNames.data,
-									  .count = matchedNames.count };
-		return res;
+		return matchedNames;
 	}
 }  // namespace

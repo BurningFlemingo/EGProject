@@ -62,46 +62,49 @@ namespace pstd {
 		return calcAddressAlignmentPadding(address, alignment);
 	}
 
-	template<typename T>
-	size_t getCapacity(const Allocation& allocation) {
-		size_t res{ allocation.size / sizeof(T) };
-		return res;
-	}
+	// template<typename T>
+	// size_t getCapacity(const Allocation& allocation) {
+	// 	size_t res{ allocation.size / sizeof(T) };
+	// 	return res;
+	// }
 
-	void shallowCopy(Allocation* dst, const Allocation& src);
-	void shallowMove(Allocation* dst, const Allocation& src);
+	// void shallowCopy(Allocation* dst, const Allocation& src);
+	// void shallowMove(Allocation* dst, const Allocation& src);
 
-	inline Allocation makeTrunced(Allocation allocation, size_t newSize) {
-		ASSERT(newSize <= allocation.size);
-		allocation.size = newSize;
-		return allocation;
-	}
+	// inline Allocation makeTrunced(Allocation allocation, size_t newSize) {
+	// 	ASSERT(newSize <= allocation.size);
+	// 	allocation.size = newSize;
+	// 	return allocation;
+	// }
 
-	template<typename T>
-	Allocation makeTrunced(const Allocation& allocation, size_t newCount) {
-		size_t newSize{ newCount * sizeof(T) };
-		return makeTrunced(allocation, newSize);
-	}
+	// template<typename T>
+	// Allocation makeTrunced(const Allocation& allocation, size_t newCount) {
+	// 	size_t newSize{ newCount * sizeof(T) };
+	// 	return makeTrunced(allocation, newSize);
+	// }
 
-	Allocation makeCoalesced(const Allocation& a, const Allocation& b);
-	bool coalesce(Allocation* a, const Allocation& b);
+	// Allocation makeCoalesced(const Allocation& a, const Allocation& b);
+	// bool coalesce(Allocation* a, const Allocation& b);
 
-	Allocation makeConcatted(
-		pstd::Arena* pArena,
-		const Allocation& a,
-		const Allocation& b,
-		uint32_t alignment
-	);
+	// Allocation makeConcatted(
+	// 	pstd::Arena* pArena,
+	// 	const Allocation& a,
+	// 	const Allocation& b,
+	// 	uint32_t alignment
+	// );
 
-	template<typename T>
-	Allocation
-		makeConcatted(Arena* pArena, const Allocation& a, const Allocation& b) {
-		size_t alignment{ alignof(T) };
-		return makeConcatted(pArena, a, b, alignment);
-	}
+	// template<typename T>
+	// Allocation
+	// 	makeConcatted(Arena* pArena, const Allocation& a, const Allocation& b) {
+	// 	size_t alignment{ alignof(T) };
+	// 	return makeConcatted(pArena, a, b, alignment);
+	// }
 
 	inline bool isAliasing(
-		const void* aBlock, size_t aSize, const void* bBlock, size_t bSize
+		const uintptr_t aBlock,
+		size_t aSize,
+		const uintptr_t bBlock,
+		size_t bSize
 	) {
 		ASSERT(aBlock);
 		ASSERT(bBlock);
@@ -110,7 +113,7 @@ namespace pstd {
 		if (aBlock <= bBlock) {
 			isColliding = (aBlock + aSize) > bBlock;
 		} else {
-			isColliding = (bBlock + bBize) > aBlock;
+			isColliding = (bBlock + bSize) > aBlock;
 		}
 
 		return isColliding;

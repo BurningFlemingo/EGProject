@@ -42,7 +42,11 @@ String pstd::createString(pstd::Arena* pArena, const String& string) {
 	String newString{ .buffer = pstd::alloc<char>(pArena, string.size),
 					  .size = string.size };
 
-	memCpy(newString.buffer, string.buffer, newString.size);
+	memCpy(
+		rcast<void*>(newString.buffer),
+		rcast<void*>(string.buffer),
+		newString.size
+	);
 	return newString;
 }
 
@@ -53,7 +57,7 @@ String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 		return string;
 	}
 
-	size_t lastLetterIndex{ string.size - 1 };
+	uint32_t lastLetterIndex{ string.size - 1 };
 	if (string.buffer[lastLetterIndex] == '\0') {
 		return string;
 	}
@@ -61,14 +65,13 @@ String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 	size_t lettersToCopy{
 		min(pstd::getAvailableCount<char>(*pArena), string.size)
 	};
-	Allocation stringAllocation{ pstd::alloc<char>(pArena, lettersToCopy) };
-	pstd::memCpy(
-		rcast<void*>(stringAllocation.block), string.buffer, lettersToCopy
-	);
+
+	String newString{ .buffer = pstd::alloc<char>(pArena, lettersToCopy),
+					  .size = lettersToCopy };
+
+	pstd::memCpy(rcast<void*>(newString.buffer), string.buffer, lettersToCopy);
 	pushLetter(pArena, '\0');
 
-	string = String{ .buffer = rcast<const char*>(stringAllocation.block),
-					 .size = ncast<uint32_t>(stringAllocation.size) };
 	return string;
 }
 
@@ -346,12 +349,16 @@ namespace {
 		if (string.size == 0) {
 			return {};
 		}
-		pstd::Allocation allocation{ pstd::alloc<char>(pArena, string.size) };
+		String newString{ .buffer = pstd::alloc<char>(pArena, string.size),
+						  .size = string.size };
 
-		memcpy(rcast<void*>(allocation.block), string.buffer, allocation.size);
-		String res{ .buffer = rcast<const char*>(allocation.block),
-					.size = ncast<uint32_t>(allocation.size) };
-		return res;
+		memcpy(
+			rcast<void*>(newString.block),
+			rcast<void*>(string.buffer),
+			newString.size
+		);
+
+		return newString;
 	}
 
 	String pushStringUntilControlCharacter(

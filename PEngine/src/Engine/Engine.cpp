@@ -71,13 +71,12 @@ PE::State* PE::startup(
 		&subsystemArena, scratchArenas, *platformState, pRegistry
 	) };
 
-	pstd::Allocation arenaAllocation{ pstd::alloc<State>(pPersistArena) };
+	State* stateBlock{ pstd::alloc<State>(pPersistArena) };
 
-	State* arenaPtr{ new (arenaAllocation.block)
-						 State{ .engineArena = subsystemArena,
-								.platformState = platformState,
-								.rendererState = rendererState,
-								.isRunning = true } };
+	State* arenaPtr{ new (stateBlock) State{ .engineArena = subsystemArena,
+											 .platformState = platformState,
+											 .rendererState = rendererState,
+											 .isRunning = true } };
 	return arenaPtr;
 }
 bool PE::update(State* state) {

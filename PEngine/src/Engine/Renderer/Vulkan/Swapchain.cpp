@@ -91,7 +91,9 @@ Swapchain createSwapchain(
 						 .layerCount = 1,
 					 } };
 
-	auto imageViews(pstd::createArray<VkImageView>(pPersistArena, imageCount));
+	auto imageViews{
+		pstd::createArray<VkImageView>(pPersistArena, imageCount)
+	};
 
 	for (uint32_t i{}; i < imageCount; i++) {
 		imageViewCI.image = images[i];
@@ -124,9 +126,9 @@ namespace {
 			device.physical, surface, &formatsCount, nullptr
 		);
 
-		auto formats(
+		auto formats{
 			pstd::createArray<VkSurfaceFormatKHR>(&scratchArena, formatsCount)
-		);
+		};
 
 		vkGetPhysicalDeviceSurfaceFormatsKHR(
 			device.physical, surface, &formatsCount, formats.data

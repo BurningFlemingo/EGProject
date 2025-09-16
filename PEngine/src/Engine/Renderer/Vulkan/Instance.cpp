@@ -25,9 +25,7 @@ VkInstance createInstance(pstd::ArenaPair scratchArenas) {
 		nullptr, &extensionCount, extensionProps.data
 	);
 
-	auto requiredExtensions{
-		pstd::createBoundedArray<const char*>(&scratchArena, 2)
-	};
+	auto requiredExtensions{ pstd::createArray<const char*>(&scratchArena, 2) };
 
 	pstd::pushBack(
 		&requiredExtensions, Platform::getPlatformSurfaceExtension()
@@ -37,9 +35,7 @@ VkInstance createInstance(pstd::ArenaPair scratchArenas) {
 		&requiredExtensions, ncast<const char*>(VK_KHR_SURFACE_EXTENSION_NAME)
 	);
 
-	auto optionalExtensions{ pstd::createBoundedArray<const char*>(
-		pstd::getAllocation(getDebugExtensions())
-	) };
+	auto optionalExtensions{ getDebugExtensions() };
 
 	pstd::Array<const char*> foundExtensions{ takeFoundExtensions(
 		&scratchArena,

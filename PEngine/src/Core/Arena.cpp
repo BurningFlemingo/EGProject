@@ -9,8 +9,7 @@ using namespace pstd;
 // Arena allocation pattern
 
 Arena pstd::allocateArena(AllocationRegistry* pAllocRegistry, size_t size) {
-	void* block{ heapAlloc(pAllocRegistry, size) };
-	return Arena{ .block = allocation, .size = size };
+	return Arena{ .block = heapAlloc(pAllocRegistry, size), .size = size };
 }
 
 void pstd::freeArena(AllocationRegistry* pAllocRegistry, Arena* pArena) {
@@ -24,7 +23,7 @@ void* pstd::alloc(Arena* pArena, size_t size, uint32_t alignment) {
 	ASSERT(size != 0);
 	ASSERT(alignment != 0);
 
-	auto baseAddress{ rcast<uintptr_t>(pArena->allocation.block) };
+	auto baseAddress{ rcast<uintptr_t>(pArena->block) };
 
 	uint32_t alignmentPadding{
 		(alignment - vcast<uint32_t>((baseAddress + pArena->offset) % alignment)
@@ -34,7 +33,7 @@ void* pstd::alloc(Arena* pArena, size_t size, uint32_t alignment) {
 
 	uint32_t alignedOffset{ pArena->offset + alignmentPadding };
 
-	ASSERT((size + alignedOffset) <= pArena->allocation.size);
+	ASSERT((size + alignedOffset) <= pArena->size);
 
 	uintptr_t alignedOffsetAddress{ baseAddress + alignedOffset };
 	pArena->offset = alignedOffset + size;

@@ -107,13 +107,13 @@ namespace pstd {
 
 		size_t commitSize{ min(capacitySize, countSize) };
 
-		Allocation reservedAlloc{ heapAlloc(
+		void* block{ heapAlloc(
 			pAllocRegistry, capacitySize, alignment, pstd::ALLOC_RESERVED
 		) };
 
-		heapCommit(reservedAlloc.block, commitSize);
+		heapCommit(block, commitSize);
 
-		return DArray<T, I>{ .data = rcast<T*>(reservedAlloc.block),
+		return DArray<T, I>{ .data = rcast<T*>(block),
 							 .count = initialCount,
 							 .capacity = capacity,
 							 .commitSize = commitSize };
@@ -124,6 +124,23 @@ namespace pstd {
 		for (size_t i{}; i < pArray->count; i++) {
 			(*pArray)[ncast<I>(i)] = val;
 		}
+	}
+
+	template<typename T, typename I>
+	Array<T, I> makeConcatted(
+		Arena* pArena, Array<T, I>* pLeftArray, Array<T, I>* pRightArray
+	) {
+		size_t newArrayCount{ pLeftArray->count + pRightArray->count };
+		auto newArray{ createArray<T, I>(pArena, newArrayCount) };
+
+		for (int i{}; i < pLeftArray->count; i++) {
+			newArray[i] = pLeftArray[i];
+		}
+		for (int i{}; i < pRightArray->count; i++) {
+			newArray[pLeftArray->count + i] = pRightArray[i];
+		}
+
+		return newArray;
 	}
 
 	template<typename T, typename I>

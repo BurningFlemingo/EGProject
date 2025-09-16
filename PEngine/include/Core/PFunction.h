@@ -25,9 +25,9 @@ namespace pstd {
 
 	template<typename S, typename T>
 	Delegate<S>* makeDelegate(pstd::Arena* pArena, T functor) {
-		pstd::Allocation allocation{ pstd::alloc<DelegateImpl<T, S>>(pArena) };
+		auto* block{ pstd::alloc<DelegateImpl<T, S>>(pArena) };
 
-		DelegateImpl<T, S>* pDelegateImpl{ new (allocation.block)
+		DelegateImpl<T, S>* pDelegateImpl{ new (block)
 											   DelegateImpl<T, S>(functor) };
 
 		return static_cast<Delegate<S>*>(pDelegateImpl);

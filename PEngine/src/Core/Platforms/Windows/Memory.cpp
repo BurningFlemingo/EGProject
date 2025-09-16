@@ -82,27 +82,26 @@ void* pstd::allocPages(
 		alignedBaseAddress, alignedSize, win32AllocFlags, win32SecurityFlags
 	) };
 
-	return = block;
+	return block;
 }
 
-bool pstd::freePages(
-	const Allocation& allocation, AllocationTypeBits allocType
-) {
-	ASSERT(allocation.ownsMemory);
+// TODO: make this more versitile for sizing
+bool pstd::freePages(const void* block, AllocationTypeBits allocType) {
+	ASSERT(block);
 
 	uint32_t win32AllocFlags{};
 	size_t alignedSize{};
-	size_t freeSize{ allocation.size };
+	// size_t freeSize{ allocation.size };
 	if (allocType == ALLOC_COMMITTED) {
 		win32AllocFlags |= MEM_DECOMMIT;
-		freeSize = roundUpToPageBoundary(freeSize);
+		// freeSize = roundUpToPageBoundary(freeSize);
 	} else if (allocType == ALLOC_RESERVED) {
 		win32AllocFlags |= MEM_RELEASE;
 		freeSize = 0;
 	}
 	if (win32AllocFlags == 0) {
-		return 0;
+		return false;
 	}
 
-	return VirtualFree(allocation.block, freeSize, win32AllocFlags) != 0;
+	return VirtualFree(block, 0, win32AllocFlags) != 0;
 }

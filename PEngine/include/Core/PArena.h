@@ -33,7 +33,9 @@ namespace pstd {
 	}
 
 	inline bool isAliasing(const Arena& a, const Arena& b) {
-		return isAliasing(a.block, a.size, b.block, b.size);
+		return isAliasing(
+			rcast<uintptr_t>(a.block), a.size, rcast<uintptr_t>(b.block), b.size
+		);
 	}
 
 	Arena allocateArena(AllocationRegistry* pAllocRegistry, size_t size);

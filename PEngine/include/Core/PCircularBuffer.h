@@ -10,14 +10,15 @@ namespace pstd {
 	struct CircularBuffer {
 		using ElementType = T;
 
-		Allocation allocation;
+		T* block;
+		size_t size;
 		size_t headIndex;
 		size_t tailIndex;
 	};
 
 	template<typename T>
 	size_t getCapacity(const CircularBuffer<T>& buffer) {
-		return buffer.allocation.size / sizeof(T);
+		return buffer.size / sizeof(T);
 	}
 
 	template<typename T>
@@ -44,23 +45,23 @@ namespace pstd {
 	}
 
 	template<typename T>
-	bool popBack(CircularBuffer<T>* buffer, T* popOut) {
+	bool popBack(CircularBuffer<T>* buffer, T* popOut = nullptr) {
 		ASSERT(buffer);
-		ASSERT(popOut);
 		ASSERT(buffer->headIndex < getCapacity(*buffer));
 
 		if (pstd::isEmpty(*buffer)) {
 			return false;
 		}
 
-		T* const typedBlock{ (T*)buffer->allocation.block };
-
 		if (buffer->headIndex == 0) {
 			buffer->headIndex = getCapacity(*buffer) - 1;
 		} else {
 			buffer->headIndex--;
 		}
-		*popOut = typedBlock[buffer->headIndex];
+
+		if (popOut != nullptr) {
+			*popOut = buffer->block[buffer->headIndex];
+		}
 
 		return true;
 	}
@@ -71,8 +72,7 @@ namespace pstd {
 
 		bool bufferWasFull{ isFull(*buffer) };
 
-		T* const typedBlock{ (T*)buffer->allocation.block };
-		typedBlock[buffer->headIndex] = val;
+		buffer->block[buffer->headIndex] = val;
 
 		buffer->headIndex = (buffer->headIndex + 1) % (getCapacity(*buffer));
 

@@ -12,13 +12,6 @@
 using namespace pstd;
 
 namespace {
-	struct Allocation {
-		uint8_t* block;
-		size_t size;  // always in bytes
-		bool ownsMemory;  // if true, memory was allocated from the system
-		bool isCommitted;
-	};
-
 	struct FreelistBlock {
 		FreelistBlock* pNext;
 		size_t size;
@@ -82,11 +75,9 @@ void* pstd::heapAlloc(
 
 	bool isCommitted{};
 	if (allocType & ALLOC_COMMITTED) {
-		Allocation pageAlloc{
-			allocPages(size, ALLOC_COMMITTED, pSuitableFreeBlock)
-		};
+		void* block{ allocPages(size, ALLOC_COMMITTED, pSuitableFreeBlock) };
 
-		ASSERT(pageAlloc.block != nullptr);
+		ASSERT(block != nullptr);
 		isCommitted = true;
 	}
 
@@ -115,7 +106,7 @@ void* pstd::heapAlloc(
 		pPool->pFirstFreeBlock = rcast<FreelistBlock*>(pUpdatedFreeBlock);
 	}
 
-	return rcast<void*>(pSuitableFreeBlock)
+	return rcast<void*>(pSuitableFreeBlock);
 }
 
 void* pstd::heapCommit(void* block, size_t size) {
@@ -170,76 +161,76 @@ uint32_t pstd::calcAddressAlignmentPadding(
 	return (alignment - bytesUnaligned) % alignment;
 }
 
-void pstd::shallowCopy(Allocation* dst, const Allocation& src) {
-	ASSERT(dst);
-	ASSERT(dst->block);
-	ASSERT(src.block);
-
-	size_t copySize{ min(src.size, dst->size) };
-	memCpy(dst->block, src.block, copySize);
-}
-
-void pstd::shallowMove(Allocation* dst, const Allocation& src) {
-	ASSERT(dst);
-	ASSERT(dst->block);
-	ASSERT(src.block);
-
-	size_t moveSize{ min(src.size, dst->size) };
-	memMov(dst->block, src.block, moveSize);
-}
-
-bool pstd::coalesce(Allocation* a, const Allocation& b) {
-	ASSERT(a);
-	*a = makeCoalesced(*a, b);
-	if (a->block) {
-		return false;
-	}
-	return true;
-}
-
-Allocation pstd::makeCoalesced(const Allocation& a, const Allocation& b) {
-	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
-
-	uint8_t* aEnd{ a.block + a.size };
-	uint8_t* bEnd{ b.block + b.size };
-	size_t size{ a.size + b.size };
-	if (aEnd == b.block) {
-		ASSERT(a.block + size == b.block + b.size);
-		return Allocation{ .block = a.block,
-						   .size = size,
-						   .ownsMemory = a.ownsMemory };
-	}
-	ASSERT(bEnd == a.block);
-
-	ASSERT(a.block + size == a.block + a.size);
-	return Allocation{
-		.block = b.block,
-		.size = size,
-		.ownsMemory = b.ownsMemory,
-	};
-}
-
-pstd::Allocation pstd::makeConcatted(
-	Arena* pArena, const Allocation& a, const Allocation& b, uint32_t alignment
-) {
-	ASSERT(a.block);
-	ASSERT(b.block);
-	size_t allocSize{ a.size + b.size };
-
-	ASSERT(allocSize >= a.size);  // overflow check
-
-	Allocation allocation{ pstd::alloc(pArena, allocSize, alignment) };
-
-	pstd::shallowMove(&allocation, a);
-
-	Allocation headAllocation{ allocation };
-	headAllocation.block = headAllocation.block + a.size;
-	headAllocation.size -= a.size;
-
-	shallowMove(&headAllocation, b);
-
-	return allocation;
-}
+// void pstd::shallowCopy(Allocation* dst, const Allocation& src) {
+// 	ASSERT(dst);
+// 	ASSERT(dst->block);
+// 	ASSERT(src.block);
+//
+// 	size_t copySize{ min(src.size, dst->size) };
+// 	memCpy(dst->block, src.block, copySize);
+// }
+//
+// void pstd::shallowMove(Allocation* dst, const Allocation& src) {
+// 	ASSERT(dst);
+// 	ASSERT(dst->block);
+// 	ASSERT(src.block);
+//
+// 	size_t moveSize{ min(src.size, dst->size) };
+// 	memMov(dst->block, src.block, moveSize);
+// }
+//
+// bool pstd::coalesce(Allocation* a, const Allocation& b) {
+// 	ASSERT(a);
+// 	*a = makeCoalesced(*a, b);
+// 	if (a->block) {
+// 		return false;
+// 	}
+// 	return true;
+// }
+//
+// Allocation pstd::makeCoalesced(const Allocation& a, const Allocation& b) {
+// 	ASSERT(~(a.ownsMemory ^ b.ownsMemory));
+//
+// 	uint8_t* aEnd{ a.block + a.size };
+// 	uint8_t* bEnd{ b.block + b.size };
+// 	size_t size{ a.size + b.size };
+// 	if (aEnd == b.block) {
+// 		ASSERT(a.block + size == b.block + b.size);
+// 		return Allocation{ .block = a.block,
+// 						   .size = size,
+// 						   .ownsMemory = a.ownsMemory };
+// 	}
+// 	ASSERT(bEnd == a.block);
+//
+// 	ASSERT(a.block + size == a.block + a.size);
+// 	return Allocation{
+// 		.block = b.block,
+// 		.size = size,
+// 		.ownsMemory = b.ownsMemory,
+// 	};
+// }
+//
+// pstd::Allocation pstd::makeConcatted(
+// 	Arena* pArena, const Allocation& a, const Allocation& b, uint32_t alignment
+// ) {
+// 	ASSERT(a.block);
+// 	ASSERT(b.block);
+// 	size_t allocSize{ a.size + b.size };
+//
+// 	ASSERT(allocSize >= a.size);  // overflow check
+//
+// 	Allocation allocation{ pstd::alloc(pArena, allocSize, alignment) };
+//
+// 	pstd::shallowMove(&allocation, a);
+//
+// 	Allocation headAllocation{ allocation };
+// 	headAllocation.block = headAllocation.block + a.size;
+// 	headAllocation.size -= a.size;
+//
+// 	shallowMove(&headAllocation, b);
+//
+// 	return allocation;
+// }
 
 namespace {
 	MemoryPool* createMemoryPool(size_t size) {
@@ -247,22 +238,18 @@ namespace {
 
 		size += sizeof(MemoryPool) + sizeof(FreelistBlock);
 
-		const Allocation poolAllocation{
-			allocPages(size, pstd::ALLOC_RESERVED)
-		};
+		const void* poolBlock{ allocPages(size, pstd::ALLOC_RESERVED) };
 
-		allocPages(
-			sizeof(MemoryPool), pstd::ALLOC_COMMITTED, poolAllocation.block
-		);
+		allocPages(sizeof(MemoryPool), pstd::ALLOC_COMMITTED, poolBlock);
 
-		MemoryPool* pPoolHeader{ new (poolAllocation.block) MemoryPool{
-			.allocation = poolAllocation,
+		MemoryPool* pPoolHeader{ new (poolBlock) MemoryPool{
+			.allocation = { .block = poolBlock, .size = size },
 		} };
 
 		uint8_t* pFreelistBlockHeader{ poolAllocation.block +
 									   sizeof(MemoryPool) };
 
-		size_t freeSize{ poolAllocation.size - sizeof(MemoryPool) };
+		size_t freeSize{ size - sizeof(MemoryPool) };
 
 		pPoolHeader->pFirstFreeBlock =
 			new (pFreelistBlockHeader) FreelistBlock{ .size = freeSize };
