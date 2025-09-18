@@ -47,7 +47,7 @@ Vec3 pstd::cross(const Vec3& a, const Vec3 b) {
 }
 
 template<uint32_t n>
-Vec<n> pstd::hadamard(const Vec<n>& a, const Vec<n> b) {
+Vec<n> pstd::hadamard(const Vec<n>& a, const Vec<n>& b) {
 	Vec<n> res{ a };
 	for (uint32_t i{}; i < n; i++) {
 		res[i] *= b[i];
@@ -58,7 +58,7 @@ Vec<n> pstd::hadamard(const Vec<n>& a, const Vec<n> b) {
 template<uint32_t n>
 float pstd::calcMagnitude(const Vec<n>& a) {
 	float res{};
-	for (int i{}; i < n; i++) {
+	for (uint32_t i{}; i < n; i++) {
 		res += a.e[i] * a.e[i];
 	}
 	res = (float)pstd::sqrtf((float)res);
@@ -122,7 +122,9 @@ template<uint32_t n>
 void pstd::normalize(Vec<n>* a) {
 	ASSERT(a);
 
-	*a /= pstd::getFilledVector<n>(pstd::calcMagnitude(*a));
+	float magnitude{ pstd::calcMagnitude(*a) };
+	ASSERT(magnitude != 0);
+	*a /= pstd::getFilledVector<n>(magnitude);
 }
 
 void pstd::rotate(Vec3* vPtr, const Rot3& r) {
@@ -140,7 +142,7 @@ void pstd::rotate(Vec3* vPtr, const Rot3& r) {
 				  .z = sZ * r.scalar + sXYZ * r.xy - sY * r.yz + sX * r.zx };
 }
 
-Rot3 pstd::composeRotor(Rot3& a, Rot3& b) {
+Rot3 pstd::composeRotor(const Rot3& a, const Rot3& b) {
 	Rot3 res{
 		.scalar = a.scalar * b.scalar - a.xy * b.xy - a.yz * b.yz - a.zx * b.zx,
 		.xy = a.scalar * b.xy + a.xy * b.scalar - a.yz * b.zx + a.zx * b.yz,
@@ -159,6 +161,6 @@ Rot3 pstd::composeRotor(Rot3& a, Rot3& b) {
 	template float pstd::calcDistance(const Vec<n>& a, const Vec<n>& b); \
 	template void pstd::scale(Vec<n>* a, const float& factor);           \
 	template void pstd::normalize(Vec<n>* a);                            \
-	template Vec<n> pstd::hadamard(const Vec<n>& a, const Vec<n> b);
+	template Vec<n> pstd::hadamard(const Vec<n>& a, const Vec<n>& b);
 
 INIT_FUNCTIONS(2) INIT_FUNCTIONS(3) INIT_FUNCTIONS(4)

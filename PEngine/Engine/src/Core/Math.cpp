@@ -22,14 +22,11 @@ float pstd::sinf(float radians) {
 }
 
 float pstd::tanf(const float radians) {
-	float res{};
-
 	float cos{ cosf(radians) };
 	if (cos == 0) {
-		return res;
+		return 0;
 	}
-	res = sinf(radians) / cosf(radians);
-	return res;
+	return sinf(radians) / cos;
 }
 
 float pstd::atanf(const float ratio) {
@@ -47,19 +44,15 @@ float pstd::atanf2(const float y, const float x) {
 		return 0;
 	}
 
-	float res{};
 	float atan{ atanf(y / x) };
 	if (x < 0) {
 		if (y < 0) {
-			res = atan - PI;
-		} else {
-			res = atan + PI;
+			return atan - PI;
 		}
-		return res;
+		return atan + PI;
 	}
 
-	res = atan;
-	return res;
+	return atan;
 }
 
 float pstd::asinf(const float ratio) {
@@ -163,6 +156,8 @@ namespace Soft {
 
 		if (num == 0) {
 			return 0;
+		} else if (num == 1) {
+			return 1;
 		}
 
 		constexpr int maxIterations{ 6 };

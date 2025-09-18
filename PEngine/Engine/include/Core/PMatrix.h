@@ -84,20 +84,20 @@ namespace pstd {
 	template<uint32_t n>
 	constexpr Mat<n> getIdentityMatrix() {
 		if constexpr (n == 2) {
-			return Mat2 {
+			return Mat<n> {
 			.col1 = {.x = 1,}, 
 			.col2 = {.y = 1}
 		};
 		}
 		if constexpr (n == 3) {
-			return Mat3{
+			return Mat<n>{
 			.col1 = {.x = 1,}, 
 			.col2 = {.y = 1}, 
 			.col3 = {.z = 1}
 		};
 		}
 		if constexpr (n == 4) {
-			return Mat4 {
+			return Mat<n> {
 			.col1 = {.x = 1,}, 
 			.col2 = {.y = 1}, 
 			.col3 = {.z = 1}, 
@@ -110,9 +110,10 @@ namespace pstd {
 	template<uint32_t n>
 	void scale(Mat<n>* mat, const Vec<n>& factor);
 
+	// non-homogenous
 	template<uint32_t n>
 	void scale(Mat<n>* mat, const float& factor) {
-		Vec<n> scaleVec{ pstd::getFilledVector<n>() };
+		Vec<n> scaleVec{ pstd::getFilledVector<n>(factor) };
 		scale(mat, scaleVec);
 	}
 
@@ -126,19 +127,19 @@ namespace pstd {
 	template<uint32_t n>
 	Mat<n> calcScaled(const Mat<n>& mat, float factor) {
 		Mat<n> res{ mat };
-		Vec<n> scaleVec{ pstd::getFilledVector<n>() };
+		Vec<n> scaleVec{ pstd::getFilledVector<n>(factor) };
 		scale(&res, scaleVec);
 		return res;
 	}
 
 	inline void translate(Mat4* mat, const Vec3& offset) {
 		ASSERT(mat);
-		mat->col1.w += offset.x;
-		mat->col2.x += offset.y;
-		mat->col3.w += offset.z;
+		mat->col4.x += offset.x;
+		mat->col4.y += offset.y;
+		mat->col4.z += offset.z;
 	}
 
-	inline Mat4 calcTranlated(const Mat4& mat, const Vec3& offset) {
+	inline Mat4 calcTranlsated(const Mat4& mat, const Vec3& offset) {
 		Mat4 res{ mat };
 		translate(&res, offset);
 		return res;
@@ -146,16 +147,11 @@ namespace pstd {
 
 	void rotate(Mat4* mat, const Rot3& rotor);
 
-	template<uint32_t n>
-	Mat<n> calcRotated(const Mat<n>& mat, const Rot3& rotor) {
-		Mat<n> res{ mat };
-		rotate(&res, rotor);
-		return res;
-	}
+	Mat4 calcRotated(const Mat4& mat, const Rot3& rotor);
 
 	template<uint32_t n>
-	Mat<n> calcRotateMatrix(const Rot3& rotor) {
-		Mat<n> res{ getIdentityMatrix<4>() };
+	Mat<n> calcRotationMatrix(const Rot3& rotor) {
+		constexpr Mat<n> res{ getIdentityMatrix<4>() };
 		rotate(&res, rotor);
 		return res;
 	}
@@ -174,9 +170,9 @@ namespace pstd {
 	void setDiagonal(Mat<n>* mat, const float& val);
 
 	template<uint32_t n>
-	Mat<n> calcDiagonalMatrix(const Mat<n>& mat, const float& Vecal) {
-		Mat<n> res{ mat };
-		setDiagonal(&res, Vecal);
+	Mat<n> calcDiagonalMatrix(const float& val) {
+		Mat<n> res{ getIdentityMatrix<n>() };
+		setDiagonal(&res, val);
 		return res;
 	}
 
@@ -187,7 +183,7 @@ namespace pstd {
 	);
 
 	Mat4 calcPerspectiveMatrix(
-		float near, float far, float aspectRatio, float foVec
+		float fov, float aspectRatio, float near, float far
 	);
 
 	Mat4 calcLookAtMatrix(const Vec3& from, const Vec3& to, Vec3 up);

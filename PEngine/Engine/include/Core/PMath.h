@@ -11,7 +11,7 @@ namespace pstd {
 	template<typename T>
 	T pow(const T num, const uint32_t power) {
 		T res{ 1 };
-		for (int i{}; i < power; i++) {
+		for (uint32_t i{}; i < power; i++) {
 			res *= num;
 		}
 		return res;
@@ -37,15 +37,15 @@ namespace pstd {
 		return res;
 	}
 
+	// returns 0 if mod is zero
 	template<typename T>
 	constexpr float fmodf(const T num, const uint32_t mod) {
-		int32_t truncFloat{ (int32_t)num };
-		if (num < 0) {
-			truncFloat--;
+		// R = a - (Qb)
+		if (mod == 0) {
+			return 0;
 		}
-		float decimal{ num - truncFloat };
-		float res{ (truncFloat % (int32_t)mod) + decimal };
-		return res;
+		int32_t quotient{ (int32_t)((float)num / (float)mod) };
+		return (float)num - ((float)quotient * (float)mod);
 	}
 
 	template<typename T>

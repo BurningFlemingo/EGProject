@@ -27,9 +27,8 @@ Mat<n> pstd::operator*(const Mat<n>& mat1, const Mat<n>& mat2) {
 
 template<uint32_t n>
 void pstd::scale(Mat<n>* mat, const Vec<n>& factor) {
-	for (uint32_t i{}; i < n; i++) {
-		(*mat)[i] = pstd::hadamard((*mat)[i], factor);
-	}
+	Mat<n> diagonalMatrix{ getIdentityMatrix<n>() * factor };
+	*mat = (*mat) * diagonalMatrix;
 }
 
 void pstd::rotate(Mat4* mat, const Rot3& rotor) {
@@ -42,6 +41,12 @@ void pstd::rotate(Mat4* mat, const Rot3& rotor) {
 					.col3 = { .x = basisZ.x, .y = basisZ.y, .z = basisZ.z },
 					.col4 = { .w = 1 } };
 	*mat = rotMatrix * (*mat);
+}
+
+Mat4 pstd::calcRotated(const Mat4& mat, const Rot3& rotor) {
+	Mat4 res{ mat };
+	rotate(&res, rotor);
+	return res;
 }
 
 template<uint32_t n>
@@ -81,7 +86,7 @@ Mat4 pstd::calcOrthoMatrix(
 }
 
 Mat4 pstd::calcPerspectiveMatrix(
-	float n, float f, float aspectRatio, float fov
+	float fov, float aspectRatio, float n, float f
 ) {
 	float t{ pstd::tanf(fov) * n };
 	float b{ -t };
@@ -102,9 +107,11 @@ Mat4 pstd::calcLookAtMatrix(const Vec3& from, const Vec3& to, Vec3 up) {
 	Vec3 right{ pstd::calcNormalized(pstd::cross(up, forward)) };
 	up = pstd::cross(forward, right);
 	Mat4 res{
-		.col1{ .x = right.x, .y = up.x, .z = forward.x, .w = -from.x },
-		.col2{ .x = right.y, .y = up.y, .z = forward.y, .w = -from.y },
-		.col3{ .x = right.z, .y = up.z, .z = forward.z, .w = -from.z },
+		.col1{
+			.x = right.x, .y = up.x, .z = forward.x, .w = -dot(right, from) },
+		.col2{ .x = right.y, .y = up.y, .z = forward.y, .w = -dot(up, from) },
+		.col3{
+			.x = right.z, .y = up.z, .z = forward.z, .w = -dot(forward, from) },
 		.col4{ .w = 1 },
 	};
 	return res;

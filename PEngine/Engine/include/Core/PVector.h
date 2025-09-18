@@ -128,7 +128,7 @@ namespace pstd {
 	Vec3 cross(const Vec3& a, const Vec3 b);
 
 	template<uint32_t n>
-	Vec<n> hadamard(const Vec<n>& a, const Vec<n> b);
+	Vec<n> hadamard(const Vec<n>& a, const Vec<n>& b);
 
 	template<uint32_t n>
 	float calcMagnitude(const Vec<n>& a);
@@ -168,6 +168,6 @@ namespace pstd {
 		return res;
 	}
 
-	Rot3 composeRotor(Rot3& a, Rot3& b);
+	Rot3 composeRotor(const Rot3& a, const Rot3& b);
 
 }  // namespace pstd
