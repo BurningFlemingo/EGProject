@@ -21,4 +21,8 @@ binDir = buildPathFromRoot("build", buildArgument)
 binPath = buildPathFromRoot(binDir, projectName)
 
 print(binPath)
+os.chdir(binDir)
+
 subprocess.run([binPath])
+
+os.chdir(rootDir)

@@ -37,13 +37,7 @@ Renderer::State* Renderer::startup(
 		pPersistArena, scratchArena, device, surface, platformState
 	) };
 
-	pstd::String fragShaderPath{ pstd::createString("\\shaders\\first.frag.spv"
-	) };
-	pstd::String exePath{ pstd::makeExeDirectoryPath(&scratchArena) };
-	fragShaderPath =
-		pstd::makeConcatted(&scratchArena, exePath, fragShaderPath);
-
-	LOG_INFO(fragShaderPath);
+	auto fragShaderPath{ pstd::createString("shaders\\first.frag.spv") };
 
 	pstd::FileHandle fragShaderFile{ pstd::openFile(
 		&scratchArena,
@@ -57,6 +51,8 @@ Renderer::State* Renderer::startup(
 		pstd::readFile(pPersistArena, fragShaderFile)
 	};
 
+	pstd::closeFile(fragShaderFile);
+
 	VkShaderModuleCreateInfo fragmentShaderModuleCI{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 		.codeSize = fragShaderString.size,
@@ -67,9 +63,12 @@ Renderer::State* Renderer::startup(
 	VkResult res{ vkCreateShaderModule(
 		device.logical, &fragmentShaderModuleCI, nullptr, &fragShaderModule
 	) };
-	ASSERT(res == VK_SUCCESS);
 
-	pstd::closeFile(fragShaderFile);
+	VkGraphicsPipelineCreateInfo pipelineCI{
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+	};
+
+	ASSERT(res == VK_SUCCESS);
 
 	VkGraphicsPipelineCreateInfo gPipeCI{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
