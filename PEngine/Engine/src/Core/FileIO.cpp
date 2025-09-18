@@ -16,3 +16,33 @@ pstd::String pstd::makeExeDirectoryPath(pstd::Arena* pPersistArena) {
 	exeString.size = seperatorIndex + 1;
 	return exeString;
 }
+
+pstd::String pstd::readFile(pstd::Arena* pArena, const char* filePath) {
+	pstd::FileHandle fileHandle{ pstd::openFile(
+		filePath,
+		pstd::FileAccess::read,
+		pstd::FileShare::read,
+		pstd::FileCreate::openExisting
+	) };
+
+	pstd::String fileString{ readFile(pArena, fileHandle) };
+
+	pstd::closeFile(fileHandle);
+
+	return fileString;
+}
+pstd::String pstd::readFile(pstd::Arena* pArena, pstd::String filePath) {
+	pstd::FileHandle fileHandle{ pstd::openFile(
+		pArena,
+		filePath,
+		pstd::FileAccess::read,
+		pstd::FileShare::read,
+		pstd::FileCreate::openExisting
+	) };
+
+	pstd::String fileString{ readFile(pArena, fileHandle) };
+
+	pstd::closeFile(fileHandle);
+
+	return fileString;
+}

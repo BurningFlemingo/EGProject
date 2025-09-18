@@ -57,4 +57,7 @@ namespace pstd {
 	size_t getLastFileWriteTime(const char*);
 
 	String readFile(Arena* pArena, FileHandle handle);
+	String readFile(Arena* pArena, const char* filePath);
+	// slower than String readFile(Arena arena, const char* filePath);
+	String readFile(Arena* pArena, pstd::String filePath);
 }  // namespace pstd

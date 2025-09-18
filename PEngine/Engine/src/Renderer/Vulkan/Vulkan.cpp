@@ -37,21 +37,12 @@ Renderer::State* Renderer::startup(
 		pPersistArena, scratchArena, device, surface, platformState
 	) };
 
-	auto fragShaderPath{ pstd::createString("shaders\\first.frag.spv") };
-
-	pstd::FileHandle fragShaderFile{ pstd::openFile(
-		&scratchArena,
-		fragShaderPath,
-		pstd::FileAccess::read,
-		pstd::FileShare::read,
-		pstd::FileCreate::openExisting
-	) };
-
 	pstd::String fragShaderString{
-		pstd::readFile(pPersistArena, fragShaderFile)
+		pstd::readFile(&scratchArena, "shaders\\first.frag.spv")
 	};
-
-	pstd::closeFile(fragShaderFile);
+	pstd::String vertShaderString{
+		pstd::readFile(&scratchArena, "shaders\\first.vert.spv")
+	};
 
 	VkShaderModuleCreateInfo fragmentShaderModuleCI{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -59,13 +50,40 @@ Renderer::State* Renderer::startup(
 		.pCode = rcast<const uint32_t*>(fragShaderString.buffer)
 	};
 
+	VkShaderModuleCreateInfo vertexShaderModuleCI{
+		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		.codeSize = vertShaderString.size,
+		.pCode = rcast<const uint32_t*>(vertShaderString.buffer)
+	};
+
 	VkShaderModule fragShaderModule{};
+	VkShaderModule vertShaderModule{};
+
 	VkResult res{ vkCreateShaderModule(
 		device.logical, &fragmentShaderModuleCI, nullptr, &fragShaderModule
 	) };
+	res = vkCreateShaderModule(
+		device.logical, &vertexShaderModuleCI, nullptr, &vertShaderModule
+	);
+
+	VkPipelineShaderStageCreateInfo fragPipeCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+		.module = fragShaderModule,
+		.pName = "main",
+	};
+	VkPipelineShaderStageCreateInfo vertPipeCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+		.module = fragShaderModule,
+		.pName = "main",
+	};
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vertPipeCI, fragPipeCI };
 
 	VkGraphicsPipelineCreateInfo pipelineCI{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pStages = shaderStages,
 	};
 
 	ASSERT(res == VK_SUCCESS);
@@ -75,6 +93,7 @@ Renderer::State* Renderer::startup(
 	};
 
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
+	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
 
 	State* state{ pstd::alloc<State>(pPersistArena) };
 	return new (state) State{ .swapchain = swapchain,
