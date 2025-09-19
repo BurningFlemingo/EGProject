@@ -81,15 +81,42 @@ Renderer::State* Renderer::startup(
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertPipeCI, fragPipeCI };
 
+	VkPipelineVertexInputStateCreateInfo vertInputCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.vertexBindingDescriptionCount = 0,
+		.pVertexBindingDescriptions = nullptr,
+		.vertexAttributeDescriptionCount = 0,
+		.pVertexAttributeDescriptions = nullptr,
+	};
+
+	VkDynamicState dynamicStates[]{ VK_DYNAMIC_STATE_SCISSOR,
+									VK_DYNAMIC_STATE_VIEWPORT };
+
+	VkPipelineDynamicStateCreateInfo dynamicCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		.dynamicStateCount = 2,
+		.pDynamicStates = dynamicStates,
+	};
+
+	VkPipelineViewportStateCreateInfo viewportCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		.viewportCount = 1,
+		.scissorCount = 1,
+	};
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.primitiveRestartEnable = false
+	};
+
+	VkAttachmentReference colorAttachmentRef{ .attachment = 0 };
+
+	VkSubpassDescription subpassDescription{};
+
 	VkGraphicsPipelineCreateInfo pipelineCI{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 		.pStages = shaderStages,
-	};
-
-	ASSERT(res == VK_SUCCESS);
-
-	VkGraphicsPipelineCreateInfo gPipeCI{
-		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 	};
 
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
