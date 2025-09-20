@@ -74,8 +74,8 @@ Renderer::State* Renderer::startup(
 	};
 	VkPipelineShaderStageCreateInfo vertPipeCI{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.module = fragShaderModule,
+		.stage = VK_SHADER_STAGE_VERTEX_BIT,
+		.module = vertShaderModule,
 		.pName = "main",
 	};
 
@@ -110,14 +110,100 @@ Renderer::State* Renderer::startup(
 		.primitiveRestartEnable = false
 	};
 
-	VkAttachmentReference colorAttachmentRef{ .attachment = 0 };
+	VkPipelineRasterizationStateCreateInfo rasterizerCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.depthClampEnable = VK_FALSE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.cullMode = VK_CULL_MODE_BACK_BIT,
+		.frontFace = VK_FRONT_FACE_CLOCKWISE,
+		.lineWidth = 1.f,
+	};
 
-	VkSubpassDescription subpassDescription{};
+	VkPipelineMultisampleStateCreateInfo multisampleCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+		.minSampleShading = 1.f
+	};
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachmentState{
+		.blendEnable = VK_TRUE,
+		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+		.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+		.colorBlendOp = VK_BLEND_OP_ADD,
+		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+		.alphaBlendOp = VK_BLEND_OP_ADD,
+	};
+
+	VkPipelineColorBlendStateCreateInfo colorBlendCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.attachmentCount = 1,
+		.pAttachments = &colorBlendAttachmentState,
+	};
+
+	VkPipelineLayoutCreateInfo layoutCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+	};
+
+	VkPipelineLayout pipelineLayout{};
+	vkCreatePipelineLayout(device.logical, &layoutCI, nullptr, &pipelineLayout);
+
+	VkAttachmentDescription colorAttachmentDescription{
+		.format = swapchain.createInfo.imageFormat,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+	};
+
+	VkAttachmentReference colorAttachmentRef{
+		.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	};
+
+	VkSubpassDescription subpassDescription{
+		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+		.colorAttachmentCount = 1,
+		.pColorAttachments = &colorAttachmentRef,
+	};
+
+	VkRenderPassCreateInfo renderPassCI{
+		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		.attachmentCount = 1,
+		.pAttachments = &colorAttachmentDescription,
+		.subpassCount = 1,
+		.pSubpasses = &subpassDescription,
+	};
+
+	VkRenderPass renderPass{};
+	vkCreateRenderPass(device.logical, &renderPassCI, nullptr, &renderPass);
 
 	VkGraphicsPipelineCreateInfo pipelineCI{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.stageCount = 2,
 		.pStages = shaderStages,
+		.pVertexInputState = &vertInputCI,
+		.pInputAssemblyState = &inputAssemblyCI,
+		.pViewportState = &viewportCI,
+		.pRasterizationState = &rasterizerCI,
+		.pMultisampleState = &multisampleCI,
+		.pDepthStencilState = nullptr,
+		.pColorBlendState = &colorBlendCI,
+		.pDynamicState = &dynamicCI,
+		.layout = pipelineLayout,
+		.renderPass = renderPass,
+		.subpass = 0
 	};
+
+	VkPipeline graphicsPipeline{};
+	res = vkCreateGraphicsPipelines(
+		device.logical,
+		VK_NULL_HANDLE,
+		1,
+		&pipelineCI,
+		nullptr,
+		&graphicsPipeline
+	);
 
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
@@ -127,10 +213,19 @@ Renderer::State* Renderer::startup(
 							  .device = device,
 							  .surface = surface,
 							  .instance = instance,
-							  .debugMessenger = debugMessenger };
+							  .debugMessenger = debugMessenger,
+							  .renderPass = renderPass,
+							  .graphicsPipeline = graphicsPipeline,
+							  .graphicsPipelineLayout = pipelineLayout };
 }
 
 void Renderer::shutdown(State* state) {
+	vkDestroyPipeline(state->device.logical, state->graphicsPipeline, nullptr);
+	vkDestroyRenderPass(state->device.logical, state->renderPass, nullptr);
+	vkDestroyPipelineLayout(
+		state->device.logical, state->graphicsPipelineLayout, nullptr
+	);
+
 	destroySwapchain(&state->swapchain, state->device.logical);
 	vkDestroyDevice(state->device.logical, nullptr);
 	vkDestroySurfaceKHR(state->instance, state->surface, nullptr);

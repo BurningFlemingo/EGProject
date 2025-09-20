@@ -15,6 +15,9 @@ namespace Renderer {
 		VkSurfaceKHR surface;
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debugMessenger;
+		VkRenderPass renderPass;
+		VkPipeline graphicsPipeline;
+		VkPipelineLayout graphicsPipelineLayout;
 
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
 	};
