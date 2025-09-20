@@ -18,6 +18,7 @@ namespace Renderer {
 		VkRenderPass renderPass;
 		VkPipeline graphicsPipeline;
 		VkPipelineLayout graphicsPipelineLayout;
+		pstd::Array<VkFramebuffer> framebuffers;
 
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
 	};

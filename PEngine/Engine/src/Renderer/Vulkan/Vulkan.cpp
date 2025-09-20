@@ -208,6 +208,27 @@ Renderer::State* Renderer::startup(
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
 
+	auto framebuffers{
+		pstd::createArray<VkFramebuffer>(pPersistArena, swapchain.images.count)
+	};
+	for (uint32_t i{}; i < framebuffers.count; i++) {
+		VkFramebufferCreateInfo framebufferCI{
+			.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+			.renderPass = renderPass,
+			.attachmentCount = 1,
+			.pAttachments = &swapchain.imageViews[i],
+			.width = swapchain.createInfo.imageExtent.width,
+			.height = swapchain.createInfo.imageExtent.height,
+			.layers = 1,
+		};
+
+		vkCreateFramebuffer(
+			device.logical, &framebufferCI, nullptr, &framebuffers[i]
+		);
+	}
+
+	// device.queueFamilyIndices[QueueFamily::graphics];
+
 	State* state{ pstd::alloc<State>(pPersistArena) };
 	return new (state) State{ .swapchain = swapchain,
 							  .device = device,
@@ -216,10 +237,18 @@ Renderer::State* Renderer::startup(
 							  .debugMessenger = debugMessenger,
 							  .renderPass = renderPass,
 							  .graphicsPipeline = graphicsPipeline,
-							  .graphicsPipelineLayout = pipelineLayout };
+							  .graphicsPipelineLayout = pipelineLayout,
+							  .framebuffers = framebuffers };
 }
 
+void Renderer::render(State* state) {}
+
 void Renderer::shutdown(State* state) {
+	for (uint32_t i{}; i < state->framebuffers.count; i++) {
+		vkDestroyFramebuffer(
+			state->device.logical, state->framebuffers[i], nullptr
+		);
+	}
 	vkDestroyPipeline(state->device.logical, state->graphicsPipeline, nullptr);
 	vkDestroyRenderPass(state->device.logical, state->renderPass, nullptr);
 	vkDestroyPipelineLayout(

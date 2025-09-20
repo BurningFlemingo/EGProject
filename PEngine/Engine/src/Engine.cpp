@@ -86,11 +86,9 @@ bool PE::update(State* state) {
 					break;
 			}
 		}
+		Renderer::render(state->rendererState);
 	}
-	if (state->isRunning) {
-		return true;
-	}
-	return false;
+	return state->isRunning;
 }
 void PE::shutdown(State* state) {
 	Renderer::shutdown(state->rendererState);

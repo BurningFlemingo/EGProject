@@ -15,5 +15,6 @@ namespace Renderer {
 		const Platform::State& platformState
 	);
 
+	void render(State* state);
 	void shutdown(State* state);
 }  // namespace Renderer
