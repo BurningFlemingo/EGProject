@@ -115,7 +115,9 @@ Renderer::State* Renderer::startup(
 		.depthClampEnable = VK_FALSE,
 		.polygonMode = VK_POLYGON_MODE_FILL,
 		.cullMode = VK_CULL_MODE_BACK_BIT,
-		.frontFace = VK_FRONT_FACE_CLOCKWISE,
+		.frontFace =
+			VK_FRONT_FACE_CLOCKWISE,  // viewport is flipped so the frontFace is
+									  // actually counter clockwise
 		.lineWidth = 1.f,
 	};
 
@@ -133,12 +135,15 @@ Renderer::State* Renderer::startup(
 		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
 		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
 		.alphaBlendOp = VK_BLEND_OP_ADD,
+		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+			VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
 	};
 
 	VkPipelineColorBlendStateCreateInfo colorBlendCI{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 		.attachmentCount = 1,
 		.pAttachments = &colorBlendAttachmentState,
+
 	};
 
 	VkPipelineLayoutCreateInfo layoutCI{
@@ -344,9 +349,11 @@ void Renderer::render(State* state) {
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		state->graphicsPipeline
 	);
+
 	VkViewport viewport{
+		.y = ncast<float>(state->swapchain.createInfo.imageExtent.height),
 		.width = ncast<float>(state->swapchain.createInfo.imageExtent.width),
-		.height = ncast<float>(state->swapchain.createInfo.imageExtent.height),
+		.height = -ncast<float>(state->swapchain.createInfo.imageExtent.height),
 		.minDepth = 0.f,
 		.maxDepth = 1.f
 	};
