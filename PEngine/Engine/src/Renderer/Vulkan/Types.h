@@ -19,6 +19,11 @@ namespace Renderer {
 		VkPipeline graphicsPipeline;
 		VkPipelineLayout graphicsPipelineLayout;
 		pstd::Array<VkFramebuffer> framebuffers;
+		VkCommandPool cmdPool;
+		VkCommandBuffer cmdBuffer;
+		VkSemaphore imageAvailableSemaphore;
+		pstd::Array<VkSemaphore> renderFinishedSemaphores;
+		VkFence cmdBufferAvailableFence;
 
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
 	};

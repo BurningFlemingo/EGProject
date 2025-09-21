@@ -167,12 +167,22 @@ Renderer::State* Renderer::startup(
 		.pColorAttachments = &colorAttachmentRef,
 	};
 
+	VkSubpassDependency imageAcquiredDependency{
+		.srcSubpass = VK_SUBPASS_EXTERNAL,
+		.dstSubpass = 0,
+		.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+	};
+
 	VkRenderPassCreateInfo renderPassCI{
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 		.attachmentCount = 1,
 		.pAttachments = &colorAttachmentDescription,
 		.subpassCount = 1,
 		.pSubpasses = &subpassDescription,
+		.dependencyCount = 1,
+		.pDependencies = &imageAcquiredDependency
 	};
 
 	VkRenderPass renderPass{};
@@ -227,23 +237,182 @@ Renderer::State* Renderer::startup(
 		);
 	}
 
-	// device.queueFamilyIndices[QueueFamily::graphics];
+	VkCommandPoolCreateInfo cmdPoolCI{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+		.queueFamilyIndex = device.queueFamilyIndices[QueueFamily::graphics]
+	};
+	VkCommandPool cmdPool{};
+	vkCreateCommandPool(device.logical, &cmdPoolCI, nullptr, &cmdPool);
+
+	VkCommandBufferAllocateInfo cmdBufferAllocInfo{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		.commandPool = cmdPool,
+		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		.commandBufferCount = 1,
+	};
+	VkCommandBuffer cmdBuffer{};
+	vkAllocateCommandBuffers(device.logical, &cmdBufferAllocInfo, &cmdBuffer);
+
+	VkSemaphoreCreateInfo semaphoreCI{
+		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+	};
+	VkFenceCreateInfo fenceCI{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+							   .flags = VK_FENCE_CREATE_SIGNALED_BIT };
+
+	VkSemaphore imageAvailableSemaphore;
+	auto renderFinishedSemaphores{
+		pstd::createArray<VkSemaphore>(pPersistArena, swapchain.images.count)
+	};
+
+	vkCreateSemaphore(
+		device.logical, &semaphoreCI, nullptr, &imageAvailableSemaphore
+	);
+	for (uint32_t i{}; i < swapchain.images.count; i++) {
+		vkCreateSemaphore(
+			device.logical, &semaphoreCI, nullptr, &renderFinishedSemaphores[i]
+		);
+	}
+
+	VkFence cmdBufferAvailableFence;
+	vkCreateFence(device.logical, &fenceCI, nullptr, &cmdBufferAvailableFence);
 
 	State* state{ pstd::alloc<State>(pPersistArena) };
-	return new (state) State{ .swapchain = swapchain,
-							  .device = device,
-							  .surface = surface,
-							  .instance = instance,
-							  .debugMessenger = debugMessenger,
-							  .renderPass = renderPass,
-							  .graphicsPipeline = graphicsPipeline,
-							  .graphicsPipelineLayout = pipelineLayout,
-							  .framebuffers = framebuffers };
+	return new (state)
+		State{ .swapchain = swapchain,
+			   .device = device,
+			   .surface = surface,
+			   .instance = instance,
+			   .debugMessenger = debugMessenger,
+			   .renderPass = renderPass,
+			   .graphicsPipeline = graphicsPipeline,
+			   .graphicsPipelineLayout = pipelineLayout,
+			   .framebuffers = framebuffers,
+			   .cmdPool = cmdPool,
+			   .cmdBuffer = cmdBuffer,
+			   .imageAvailableSemaphore = imageAvailableSemaphore,
+			   .renderFinishedSemaphores = renderFinishedSemaphores,
+			   .cmdBufferAvailableFence = cmdBufferAvailableFence };
 }
 
-void Renderer::render(State* state) {}
+void Renderer::render(State* state) {
+	constexpr uint64_t uint64Max{ ~ncast<uint64_t>(0) };
+
+	vkWaitForFences(
+		state->device.logical,
+		1,
+		&state->cmdBufferAvailableFence,
+		VK_TRUE,
+		uint64Max
+	);
+	vkResetCommandBuffer(state->cmdBuffer, 0);
+	vkResetFences(state->device.logical, 1, &state->cmdBufferAvailableFence);
+
+	uint32_t currentImageIndex{};
+	VkResult res{ vkAcquireNextImageKHR(
+		state->device.logical,
+		state->swapchain.handle,
+		uint64Max,
+		state->imageAvailableSemaphore,
+		VK_NULL_HANDLE,
+		&currentImageIndex
+	) };
+	ASSERT(res == VK_SUCCESS);
+
+	VkCommandBufferBeginInfo cmdBufferBI{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+	};
+	vkBeginCommandBuffer(state->cmdBuffer, &cmdBufferBI);
+
+	VkClearValue clearValue{ .color =
+								 VkClearColorValue{ { 0.f, 0.f, 0.f, 1.f } } };
+
+	VkRenderPassBeginInfo renderPassBI{
+		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+		.renderPass = state->renderPass,
+		.framebuffer = state->framebuffers[currentImageIndex],
+		.renderArea =
+			VkRect2D{ .extent = state->swapchain.createInfo.imageExtent },
+		.clearValueCount = 1,
+		.pClearValues = &clearValue,
+	};
+	vkCmdBeginRenderPass(
+		state->cmdBuffer, &renderPassBI, VK_SUBPASS_CONTENTS_INLINE
+	);
+	vkCmdBindPipeline(
+		state->cmdBuffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		state->graphicsPipeline
+	);
+	VkViewport viewport{
+		.width = ncast<float>(state->swapchain.createInfo.imageExtent.width),
+		.height = ncast<float>(state->swapchain.createInfo.imageExtent.height),
+		.minDepth = 0.f,
+		.maxDepth = 1.f
+	};
+	VkRect2D scissor{ .extent = state->swapchain.createInfo.imageExtent };
+
+	vkCmdSetViewport(state->cmdBuffer, 0, 1, &viewport);
+	vkCmdSetScissor(state->cmdBuffer, 0, 1, &scissor);
+
+	vkCmdDraw(state->cmdBuffer, 3, 1, 0, 0);
+
+	vkCmdEndRenderPass(state->cmdBuffer);
+
+	res = vkEndCommandBuffer(state->cmdBuffer);
+	ASSERT(res == VK_SUCCESS);
+
+	VkPipelineStageFlags waitStages[] = {
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	};
+	VkSubmitInfo renderSubmitInfo{
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &state->imageAvailableSemaphore,
+		.pWaitDstStageMask = waitStages,
+		.commandBufferCount = 1,
+		.pCommandBuffers = &state->cmdBuffer,
+		.signalSemaphoreCount = 1,
+		.pSignalSemaphores =
+			&state->renderFinishedSemaphores[currentImageIndex],
+	};
+
+	vkQueueSubmit(
+		state->device.queues[QueueFamily::graphics],
+		1,
+		&renderSubmitInfo,
+		state->cmdBufferAvailableFence
+	);
+
+	VkPresentInfoKHR presentInfo{
+		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &state->renderFinishedSemaphores[currentImageIndex],
+		.swapchainCount = 1,
+		.pSwapchains = &state->swapchain.handle,
+		.pImageIndices = &currentImageIndex,
+	};
+	// TODO: fix the queues array
+	vkQueuePresentKHR(
+		state->device.queues[QueueFamily::graphics], &presentInfo
+	);
+}
 
 void Renderer::shutdown(State* state) {
+	vkDeviceWaitIdle(state->device.logical);
+	vkDestroyFence(
+		state->device.logical, state->cmdBufferAvailableFence, nullptr
+	);
+	for (uint32_t i{}; i < state->renderFinishedSemaphores.count; i++) {
+		vkDestroySemaphore(
+			state->device.logical, state->renderFinishedSemaphores[i], nullptr
+		);
+	}
+
+	vkDestroySemaphore(
+		state->device.logical, state->imageAvailableSemaphore, nullptr
+	);
+
 	for (uint32_t i{}; i < state->framebuffers.count; i++) {
 		vkDestroyFramebuffer(
 			state->device.logical, state->framebuffers[i], nullptr

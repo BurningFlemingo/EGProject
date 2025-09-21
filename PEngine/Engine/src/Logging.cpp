@@ -8,7 +8,7 @@
 #include "Core/PAssert.h"
 
 namespace {
-	constexpr uint32_t LOG_ARENA_SIZE{ 1024 };
+	constexpr uint32_t LOG_ARENA_SIZE{ 1024 * 1024 };
 	char g_RawLogArray[LOG_ARENA_SIZE]{};
 	pstd::Arena g_LogArena{};
 
