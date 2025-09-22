@@ -19,12 +19,14 @@ namespace Renderer {
 		VkPipeline graphicsPipeline;
 		VkPipelineLayout graphicsPipelineLayout;
 		pstd::Array<VkFramebuffer> framebuffers;
+		uint32_t maxFramesInFlight;
 		VkCommandPool cmdPool;
-		VkCommandBuffer cmdBuffer;
-		VkSemaphore imageAvailableSemaphore;
+		pstd::Array<VkCommandBuffer> cmdBuffers;
+		pstd::Array<VkSemaphore> imageAvailableSemaphores;
 		pstd::Array<VkSemaphore> renderFinishedSemaphores;
-		VkFence cmdBufferAvailableFence;
+		pstd::Array<VkFence> cmdBufferAvailableFences;
 
+		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
 	};
 }  // namespace Renderer
