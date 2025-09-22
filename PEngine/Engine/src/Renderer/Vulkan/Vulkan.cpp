@@ -369,9 +369,8 @@ void Renderer::render(State* state) {
 	);
 
 	VkViewport viewport{
-		.y = ncast<float>(state->swapchain.createInfo.imageExtent.height),
 		.width = ncast<float>(state->swapchain.createInfo.imageExtent.width),
-		.height = -ncast<float>(state->swapchain.createInfo.imageExtent.height),
+		.height = ncast<float>(state->swapchain.createInfo.imageExtent.height),
 		.minDepth = 0.f,
 		.maxDepth = 1.f
 	};
