@@ -12,12 +12,15 @@ namespace {
 	char g_RawLogArray[LOG_ARENA_SIZE]{};
 	pstd::Arena g_LogArena{};
 
-	constexpr pstd::StaticArray<
-		const char*,
-		cast<size_t>(Console::LogLevel::count),
-		Console::LogLevel>
-		g_LogLevelStrings{ .data = {
-							   "", "[INFO]: ", "[WARNING] ", "[ERROR] " } };
+	const char* g_LogLevelStringsBuffer[4]{
+		"", "[INFO]: ", "[WARNING] ", "[ERROR] "
+	};
+
+	constexpr pstd::Array<const char*, Console::LogLevel> g_LogLevelStrings{
+		pstd::createArray<const char*, Console::LogLevel>(
+			g_LogLevelStringsBuffer
+		)
+	};
 }  // namespace
 
 void Console::startup() {

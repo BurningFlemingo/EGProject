@@ -21,9 +21,8 @@ pstd::Array<const char*> findValidationLayers(pstd::Arena* pPersistArena) {
 
 	vkEnumerateInstanceLayerProperties(&layerCount, layerProps.data);
 
-	pstd::StaticArray<const char*, 1> requiredLayers{
-		.data = { "VK_LAYER_KHRONOS_validation" }
-	};
+	const char* requiredLayersBuffer[]{ "VK_LAYER_KHRONOS_validation" };
+	auto requiredLayers{ pstd::createArray<const char*>(requiredLayersBuffer) };
 
 	auto foundLayers{ pstd::createArray<const char*>(pPersistArena, 1, 0) };
 
