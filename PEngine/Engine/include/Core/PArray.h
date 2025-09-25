@@ -6,6 +6,7 @@
 #include "PContainer.h"
 
 namespace pstd {
+
 	template<typename T, typename I = size_t>
 	struct Array {	// <container type, index type>
 		using ElementType = T;
@@ -53,26 +54,6 @@ namespace pstd {
 		size_t commitSize;	// in bytes
 	};
 
-	template<typename T, size_t n, typename I = size_t>
-	struct StaticArray {  // <container type, element count, index type>
-		using ElementType = T;
-
-		const T& operator[](I index) const {
-			ASSERT(n > cast<size_t>(index));
-
-			return data[cast<size_t>(index)];
-		}
-
-		T& operator[](I index) {
-			ASSERT(n > cast<size_t>(index));
-
-			return data[cast<size_t>(index)];
-		}
-		T data[n];
-		size_t capacity{ n };
-		size_t count{ n };
-	};
-
 	template<typename T, typename I = size_t>
 	Array<T, I> createArray(Arena* pArena, size_t capacity, size_t count) {
 		ASSERT(pArena);
@@ -87,6 +68,33 @@ namespace pstd {
 	template<typename T, typename I = size_t>
 	Array<T, I> createArray(Arena* pArena, size_t capacity) {
 		return createArray<T, I>(pArena, capacity, capacity);
+	}
+
+	template<typename T, typename I = size_t, size_t n>
+	constexpr Array<T, I> createArray(T (&staticArray)[n]) {
+		return Array<T, I>{ .data = staticArray, .capacity = n, .count = n };
+	}
+
+	template<typename T, size_t n, typename I = size_t>
+	Array<T, I> createArray(T (&staticArray)[n], size_t count) {
+		return Array<T, I>{ .data = staticArray,
+							.capacity = n,
+							.count = count };
+	}
+
+	template<size_t n, typename T, typename I = size_t>
+	void set(Array<T, I> array, const T (&initList)[n]) {
+		ASSERT(array.count <= n);
+		for (size_t i{}; i < n; i++) {
+			array[i] = initList[i];
+		}
+	}
+
+	template<typename T, size_t n, typename I = size_t>
+	Array<T, I> createArray(Arena* pArena, const T (&initList)[n]) {
+		Array<T, I> array{ createArray<T>(pArena, n) };
+		set(array, initList);
+		return array;
 	}
 
 	template<typename T, typename I = size_t>
@@ -163,23 +171,6 @@ namespace pstd {
 		pArray->count--;
 	}
 
-	template<typename T, uint32_t n, typename I>
-	void compactRemove(StaticArray<T, n, I>* pArray, I index) {
-		ASSERT(pArray);
-		ASSERT(pArray->count <= n);
-		ASSERT(index < pArray->count);
-
-		if (pArray->count <= 1) {
-			pArray->count = 0;
-			return;
-		}
-
-		I lastIndex{ cast<I>(pArray->count - 1) };
-		T lastElement{ (*pArray)[lastIndex] };
-		(*pArray)[index] = lastElement;
-		pArray->count--;
-	}
-
 	template<typename T, typename I = size_t>
 	void pushBack(DArray<T, I>* pArray, const T& val) {
 		ASSERT(pArray->data);
@@ -221,16 +212,6 @@ namespace pstd {
 		pArray->count++;
 		auto index{ ncast<I>(pArray->count - 1) };
 		(*pArray)[index] = val;
-	}
-
-	template<typename T, size_t n, typename I>
-	void pushBack(StaticArray<T, n, I>* array, const T& val) {
-		ASSERT(array);
-		ASSERT(array->count < n);
-
-		array->count++;
-		auto index{ ncast<I>(array->count - 1) };
-		(*array)[index] = val;
 	}
 
 }  // namespace pstd

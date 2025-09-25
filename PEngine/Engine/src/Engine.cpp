@@ -24,8 +24,6 @@
 
 namespace PE {
 	struct State {
-		pstd::Arena engineArena;
-
 		Platform::State* platformState;
 		Renderer::State* rendererState;
 
@@ -62,8 +60,7 @@ PE::State* PE::startup(pstd::Arena* pPersistArena, pstd::Arena scratchArena) {
 	};
 
 	State* pState{ pstd::alloc<State>(pPersistArena) };
-	new (pState) State{ .engineArena = pPersistArena,
-						.platformState = platformState,
+	new (pState) State{ .platformState = platformState,
 						.rendererState = rendererState,
 						.isRunning = true };
 	return pState;

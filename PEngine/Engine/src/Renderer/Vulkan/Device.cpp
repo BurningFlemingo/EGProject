@@ -3,6 +3,7 @@
 #include "Core/PArena.h"
 #include "Core/PArray.h"
 #include "Core/PContainer.h"
+#include <vulkan/vulkan_core.h>
 
 namespace {
 	struct DeviceQueueFamilyIndices {
@@ -185,10 +186,12 @@ namespace {
 	) {
 		const float priorities[1]{ 1.f };
 
-		pstd::StaticArray<
-			VkDeviceQueueCreateInfo,
-			cast<size_t>(QueueFamily::count)>
-			deviceQueueCreateInfos{ .count = 0 };
+		VkDeviceQueueCreateInfo
+			deviceQueueCIBuffer[cast<size_t>(QueueFamily::count)]{};
+
+		auto deviceQueueCreateInfos{
+			pstd::createArray<VkDeviceQueueCreateInfo>(deviceQueueCIBuffer, 0)
+		};
 
 		for (uint32_t i{}; i < qfi.uniqueIndices.count; i++) {
 			VkDeviceQueueCreateInfo deviceQueueCI{
@@ -201,8 +204,9 @@ namespace {
 			pstd::pushBack(&deviceQueueCreateInfos, deviceQueueCI);
 		}
 
-		pstd::StaticArray<const char*, 1> deviceExtensions{
-			.data = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }
+		const char* deviceExtensionsBuffer[]{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+		auto deviceExtensions{
+			pstd::createArray<const char*>(deviceExtensionsBuffer)
 		};
 
 		VkDeviceCreateInfo deviceCI{
