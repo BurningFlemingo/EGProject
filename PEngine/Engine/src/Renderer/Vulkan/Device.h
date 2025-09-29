@@ -12,8 +12,6 @@ struct Device {
 	VkDevice logical;
 
 	pstd::Array<uint32_t, QueueFamily> queueFamilyIndices;
-	pstd::Array<uint32_t> uniqueQueueFamilyIndices;
-
 	pstd::Array<VkQueue, QueueFamily> queues;
 };
 

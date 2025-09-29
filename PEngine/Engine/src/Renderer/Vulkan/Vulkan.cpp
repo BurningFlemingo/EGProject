@@ -418,9 +418,9 @@ void Renderer::render(State* state) {
 		.pSwapchains = &state->swapchain.handle,
 		.pImageIndices = &currentImageIndex,
 	};
-	// TODO: fix the queues array
+
 	vkQueuePresentKHR(
-		state->device.queues[QueueFamily::graphics], &presentInfo
+		state->device.queues[QueueFamily::presentation], &presentInfo
 	);
 
 	state->frameInFlight =
