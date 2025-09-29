@@ -267,29 +267,33 @@ Renderer::State* Renderer::startup(
 	auto cmdBuffers{ pstd::createArray<VkCommandBuffer>(
 		pPersistArena, swapchain.images.count
 	) };
-
-	auto renderFinishedSemaphores{
-		pstd::createArray<VkSemaphore>(pPersistArena, maxFramesInFlight)
+	auto cmdBufferAvailableFences{
+		pstd::createArray<VkFence>(pPersistArena, maxFramesInFlight)
 	};
+
 	auto imageAvailableSemaphores{
 		pstd::createArray<VkSemaphore>(pPersistArena, maxFramesInFlight)
 	};
-	auto cmdBufferAvailableFences{
-		pstd::createArray<VkFence>(pPersistArena, maxFramesInFlight)
+
+	auto renderFinishedSemaphores{
+		pstd::createArray<VkSemaphore>(pPersistArena, swapchain.images.count)
 	};
 
 	for (uint32_t i{}; i < maxFramesInFlight; i++) {
 		vkAllocateCommandBuffers(
 			device.logical, &cmdBufferAllocInfo, &cmdBuffers[i]
 		);
-		vkCreateSemaphore(
-			device.logical, &semaphoreCI, nullptr, &renderFinishedSemaphores[i]
+		vkCreateFence(
+			device.logical, &fenceCI, nullptr, &cmdBufferAvailableFences[i]
 		);
 		vkCreateSemaphore(
 			device.logical, &semaphoreCI, nullptr, &imageAvailableSemaphores[i]
 		);
-		vkCreateFence(
-			device.logical, &fenceCI, nullptr, &cmdBufferAvailableFences[i]
+	}
+
+	for (uint32_t i{}; i < swapchain.images.count; i++) {
+		vkCreateSemaphore(
+			device.logical, &semaphoreCI, nullptr, &renderFinishedSemaphores[i]
 		);
 	}
 
@@ -322,12 +326,6 @@ void Renderer::render(State* state) {
 		VK_TRUE,
 		uint64Max
 	);
-	vkResetCommandBuffer(state->cmdBuffers[state->frameInFlight], 0);
-	vkResetFences(
-		state->device.logical,
-		1,
-		&state->cmdBufferAvailableFences[state->frameInFlight]
-	);
 
 	uint32_t currentImageIndex{};
 	VkResult res{ vkAcquireNextImageKHR(
@@ -343,6 +341,8 @@ void Renderer::render(State* state) {
 	VkCommandBufferBeginInfo cmdBufferBI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 	};
+
+	vkResetCommandBuffer(state->cmdBuffers[state->frameInFlight], 0);
 	vkBeginCommandBuffer(state->cmdBuffers[state->frameInFlight], &cmdBufferBI);
 
 	VkClearValue clearValue{ .color =
@@ -399,9 +399,14 @@ void Renderer::render(State* state) {
 		.pCommandBuffers = &state->cmdBuffers[state->frameInFlight],
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores =
-			&state->renderFinishedSemaphores[state->frameInFlight],
+			&state->renderFinishedSemaphores[currentImageIndex],
 	};
 
+	vkResetFences(
+		state->device.logical,
+		1,
+		&state->cmdBufferAvailableFences[state->frameInFlight]
+	);
 	vkQueueSubmit(
 		state->device.queues[QueueFamily::graphics],
 		1,
@@ -412,8 +417,7 @@ void Renderer::render(State* state) {
 	VkPresentInfoKHR presentInfo{
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 		.waitSemaphoreCount = 1,
-		.pWaitSemaphores =
-			&state->renderFinishedSemaphores[state->frameInFlight],
+		.pWaitSemaphores = &state->renderFinishedSemaphores[currentImageIndex],
 		.swapchainCount = 1,
 		.pSwapchains = &state->swapchain.handle,
 		.pImageIndices = &currentImageIndex,
@@ -431,14 +435,17 @@ void Renderer::shutdown(State* state) {
 	vkDeviceWaitIdle(state->device.logical);
 
 	for (uint32_t i{}; i < state->maxFramesInFlight; i++) {
-		vkDestroySemaphore(
-			state->device.logical, state->renderFinishedSemaphores[i], nullptr
+		vkDestroyFence(
+			state->device.logical, state->cmdBufferAvailableFences[i], nullptr
 		);
 		vkDestroySemaphore(
 			state->device.logical, state->imageAvailableSemaphores[i], nullptr
 		);
-		vkDestroyFence(
-			state->device.logical, state->cmdBufferAvailableFences[i], nullptr
+	}
+
+	for (uint32_t i{}; i < state->swapchain.images.count; i++) {
+		vkDestroySemaphore(
+			state->device.logical, state->renderFinishedSemaphores[i], nullptr
 		);
 	}
 

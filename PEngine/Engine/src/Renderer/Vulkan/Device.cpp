@@ -186,11 +186,17 @@ namespace {
 
 		for (uint32_t i{}; i < queueFamilyIndices.count; i++) {
 			auto index{ queueFamilyIndices[ncast<QueueFamily>(i)] };
+			bool repeatedIndex{};
 			for (uint32_t j{}; j < deviceQueueCreateInfos.count; j++) {
 				if (deviceQueueCreateInfos[j].queueFamilyIndex == index) {
-					continue;
+					repeatedIndex = true;
+					break;
 				}
 			}
+			if (repeatedIndex) {
+				continue;
+			}
+
 			VkDeviceQueueCreateInfo deviceQueueCI{
 				.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 				.queueFamilyIndex = index,

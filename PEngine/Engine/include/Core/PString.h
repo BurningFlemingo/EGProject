@@ -17,7 +17,7 @@ namespace pstd {
 		}
 
 		constexpr uint32_t maxStringSize{
-			1024
+			1024 * 1024
 		};	// to avoid an infinite loop for ill-formed cstrings
 
 		uint32_t stringLength{};
