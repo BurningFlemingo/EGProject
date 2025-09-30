@@ -15,10 +15,8 @@ namespace Renderer {
 		VkSurfaceKHR surface;
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debugMessenger;
-		VkRenderPass renderPass;
 		VkPipeline graphicsPipeline;
 		VkPipelineLayout graphicsPipelineLayout;
-		pstd::Array<VkFramebuffer> framebuffers;
 		uint32_t maxFramesInFlight;
 		VkCommandPool cmdPool;
 		pstd::Array<VkCommandBuffer> cmdBuffers;

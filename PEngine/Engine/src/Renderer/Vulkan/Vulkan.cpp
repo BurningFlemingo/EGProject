@@ -153,48 +153,15 @@ Renderer::State* Renderer::startup(
 	VkPipelineLayout pipelineLayout{};
 	vkCreatePipelineLayout(device.logical, &layoutCI, nullptr, &pipelineLayout);
 
-	VkAttachmentDescription colorAttachmentDescription{
-		.format = swapchain.createInfo.imageFormat,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-	};
-
-	VkAttachmentReference colorAttachmentRef{
-		.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	};
-
-	VkSubpassDescription subpassDescription{
-		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+	VkPipelineRenderingCreateInfo renderingCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 		.colorAttachmentCount = 1,
-		.pColorAttachments = &colorAttachmentRef,
+		.pColorAttachmentFormats = &swapchain.createInfo.imageFormat
 	};
-
-	VkSubpassDependency imageAcquiredDependency{
-		.srcSubpass = VK_SUBPASS_EXTERNAL,
-		.dstSubpass = 0,
-		.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-	};
-
-	VkRenderPassCreateInfo renderPassCI{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		.attachmentCount = 1,
-		.pAttachments = &colorAttachmentDescription,
-		.subpassCount = 1,
-		.pSubpasses = &subpassDescription,
-		.dependencyCount = 1,
-		.pDependencies = &imageAcquiredDependency
-	};
-
-	VkRenderPass renderPass{};
-	vkCreateRenderPass(device.logical, &renderPassCI, nullptr, &renderPass);
 
 	VkGraphicsPipelineCreateInfo pipelineCI{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &renderingCI,
 		.stageCount = 2,
 		.pStages = shaderStages,
 		.pVertexInputState = &vertInputCI,
@@ -206,8 +173,6 @@ Renderer::State* Renderer::startup(
 		.pColorBlendState = &colorBlendCI,
 		.pDynamicState = &dynamicCI,
 		.layout = pipelineLayout,
-		.renderPass = renderPass,
-		.subpass = 0
 	};
 
 	VkPipeline graphicsPipeline{};
@@ -222,25 +187,6 @@ Renderer::State* Renderer::startup(
 
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
-
-	auto framebuffers{
-		pstd::createArray<VkFramebuffer>(pPersistArena, swapchain.images.count)
-	};
-	for (uint32_t i{}; i < framebuffers.count; i++) {
-		VkFramebufferCreateInfo framebufferCI{
-			.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-			.renderPass = renderPass,
-			.attachmentCount = 1,
-			.pAttachments = &swapchain.imageViews[i],
-			.width = swapchain.createInfo.imageExtent.width,
-			.height = swapchain.createInfo.imageExtent.height,
-			.layers = 1,
-		};
-
-		vkCreateFramebuffer(
-			device.logical, &framebufferCI, nullptr, &framebuffers[i]
-		);
-	}
 
 	VkCommandPoolCreateInfo cmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -304,10 +250,8 @@ Renderer::State* Renderer::startup(
 			   .surface = surface,
 			   .instance = instance,
 			   .debugMessenger = debugMessenger,
-			   .renderPass = renderPass,
 			   .graphicsPipeline = graphicsPipeline,
 			   .graphicsPipelineLayout = pipelineLayout,
-			   .framebuffers = framebuffers,
 			   .maxFramesInFlight = maxFramesInFlight,
 			   .cmdPool = cmdPool,
 			   .cmdBuffers = cmdBuffers,
@@ -348,19 +292,61 @@ void Renderer::render(State* state) {
 	VkClearValue clearValue{ .color =
 								 VkClearColorValue{ { 0.f, 0.f, 0.f, 1.f } } };
 
-	VkRenderPassBeginInfo renderPassBI{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-		.renderPass = state->renderPass,
-		.framebuffer = state->framebuffers[currentImageIndex],
+	VkRenderingAttachmentInfo colorAttachmentInfo{
+		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+		.imageView = state->swapchain.imageViews[currentImageIndex],
+		.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.clearValue = clearValue
+	};
+	VkRenderingInfo renderingInfo{
+		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
 		.renderArea =
 			VkRect2D{ .extent = state->swapchain.createInfo.imageExtent },
-		.clearValueCount = 1,
-		.pClearValues = &clearValue,
+		.layerCount = 1,
+		.colorAttachmentCount = 1,
+		.pColorAttachments = &colorAttachmentInfo
 	};
-	vkCmdBeginRenderPass(
+
+	VkImageMemoryBarrier
+		colorAttachmentFormatBarrier{ .sType =
+										  VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+									  .dstAccessMask =
+										  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+									  .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+									  .newLayout =
+										  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+									  .srcQueueFamilyIndex =
+										  state->device.queueFamilyIndices
+											  [QueueFamily::graphics],
+									  .dstQueueFamilyIndex =
+										  state->device.queueFamilyIndices
+											  [QueueFamily::graphics],
+									  .image = state->swapchain
+												   .images[currentImageIndex],
+									  .subresourceRange = {
+										  .aspectMask =
+											  VK_IMAGE_ASPECT_COLOR_BIT,
+										  .levelCount = 1,
+										  .layerCount = 1,
+									  } };
+
+	vkCmdPipelineBarrier(
 		state->cmdBuffers[state->frameInFlight],
-		&renderPassBI,
-		VK_SUBPASS_CONTENTS_INLINE
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		0,
+		0,
+		nullptr,
+		0,
+		nullptr,
+		1,
+		&colorAttachmentFormatBarrier
+	);
+
+	vkCmdBeginRendering(
+		state->cmdBuffers[state->frameInFlight], &renderingInfo
 	);
 	vkCmdBindPipeline(
 		state->cmdBuffers[state->frameInFlight],
@@ -381,7 +367,42 @@ void Renderer::render(State* state) {
 
 	vkCmdDraw(state->cmdBuffers[state->frameInFlight], 3, 1, 0, 0);
 
-	vkCmdEndRenderPass(state->cmdBuffers[state->frameInFlight]);
+	vkCmdEndRendering(state->cmdBuffers[state->frameInFlight]);
+
+	VkImageMemoryBarrier
+		presentFormatBarrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+
+							  .srcAccessMask =
+								  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+							  .oldLayout =
+								  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+							  .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+							  .srcQueueFamilyIndex =
+								  state->device.queueFamilyIndices
+									  [QueueFamily::graphics],
+							  .dstQueueFamilyIndex =
+								  state->device.queueFamilyIndices
+									  [QueueFamily::presentation],
+							  .image =
+								  state->swapchain.images[currentImageIndex],
+							  .subresourceRange = {
+								  .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+								  .levelCount = 1,
+								  .layerCount = 1,
+							  } };
+
+	vkCmdPipelineBarrier(
+		state->cmdBuffers[state->frameInFlight],
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		0,
+		0,
+		nullptr,
+		0,
+		nullptr,
+		1,
+		&presentFormatBarrier
+	);
 
 	res = vkEndCommandBuffer(state->cmdBuffers[state->frameInFlight]);
 	ASSERT(res == VK_SUCCESS);
@@ -450,13 +471,7 @@ void Renderer::shutdown(State* state) {
 	}
 
 	vkDestroyCommandPool(state->device.logical, state->cmdPool, nullptr);
-	for (uint32_t i{}; i < state->framebuffers.count; i++) {
-		vkDestroyFramebuffer(
-			state->device.logical, state->framebuffers[i], nullptr
-		);
-	}
 	vkDestroyPipeline(state->device.logical, state->graphicsPipeline, nullptr);
-	vkDestroyRenderPass(state->device.logical, state->renderPass, nullptr);
 	vkDestroyPipelineLayout(
 		state->device.logical, state->graphicsPipelineLayout, nullptr
 	);

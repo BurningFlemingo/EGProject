@@ -212,12 +212,25 @@ namespace {
 			pstd::createArray<const char*>(deviceExtensionsBuffer)
 		};
 
+		// TODO: move this into argument and check device actually has these
+		// features
+		VkPhysicalDeviceVulkan13Features features13{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+			.dynamicRendering = VK_TRUE
+		};
+
+		VkPhysicalDeviceFeatures2 physicalDeviceFeatures{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+			.pNext = &features13
+		};
+
 		VkDeviceCreateInfo deviceCI{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+			.pNext = &physicalDeviceFeatures,
 			.queueCreateInfoCount = (uint32_t)deviceQueueCreateInfos.count,
 			.pQueueCreateInfos = deviceQueueCreateInfos.data,
 			.enabledExtensionCount = 1,
-			.ppEnabledExtensionNames = deviceExtensions.data
+			.ppEnabledExtensionNames = deviceExtensions.data,
 		};
 
 		VkDevice device{};

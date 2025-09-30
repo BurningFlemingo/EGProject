@@ -57,7 +57,7 @@ VkInstance createInstance(pstd::ArenaPair scratchArenas) {
 								   VK_MAKE_API_VERSION(0, 1, 0, 0),
 							   .pEngineName = "NA",
 							   .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
-							   .apiVersion = VK_API_VERSION_1_0 };
+							   .apiVersion = VK_API_VERSION_1_3 };
 
 	const VkDebugUtilsMessengerCreateInfoEXT* debugMessengerCI{
 		getDebugMessengerCreateInfo()
