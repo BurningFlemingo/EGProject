@@ -260,7 +260,7 @@ Renderer::State* Renderer::startup(
 			   .cmdBufferAvailableFences = cmdBufferAvailableFences };
 }
 
-void Renderer::render(State* state) {
+void Renderer::render(State* state, bool windowResized) {
 	constexpr uint64_t uint64Max{ ~ncast<uint64_t>(0) };
 
 	vkWaitForFences(
@@ -288,27 +288,6 @@ void Renderer::render(State* state) {
 
 	vkResetCommandBuffer(state->cmdBuffers[state->frameInFlight], 0);
 	vkBeginCommandBuffer(state->cmdBuffers[state->frameInFlight], &cmdBufferBI);
-
-	VkClearValue clearValue{ .color =
-								 VkClearColorValue{ { 0.f, 0.f, 0.f, 1.f } } };
-
-	VkRenderingAttachmentInfo colorAttachmentInfo{
-		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-		.imageView = state->swapchain.imageViews[currentImageIndex],
-		.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.clearValue = clearValue
-	};
-	VkRenderingInfo renderingInfo{
-		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-		.renderArea =
-			VkRect2D{ .extent = state->swapchain.createInfo.imageExtent },
-		.layerCount = 1,
-		.colorAttachmentCount = 1,
-		.pColorAttachments = &colorAttachmentInfo
-	};
-
 	VkImageMemoryBarrier
 		colorAttachmentFormatBarrier{ .sType =
 										  VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -344,6 +323,26 @@ void Renderer::render(State* state) {
 		1,
 		&colorAttachmentFormatBarrier
 	);
+
+	VkClearValue clearValue{ .color =
+								 VkClearColorValue{ { 0.f, 0.f, 0.f, 1.f } } };
+
+	VkRenderingAttachmentInfo colorAttachmentInfo{
+		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+		.imageView = state->swapchain.imageViews[currentImageIndex],
+		.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.clearValue = clearValue
+	};
+	VkRenderingInfo renderingInfo{
+		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+		.renderArea =
+			VkRect2D{ .extent = state->swapchain.createInfo.imageExtent },
+		.layerCount = 1,
+		.colorAttachmentCount = 1,
+		.pColorAttachments = &colorAttachmentInfo
+	};
 
 	vkCmdBeginRendering(
 		state->cmdBuffers[state->frameInFlight], &renderingInfo

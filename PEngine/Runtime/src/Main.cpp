@@ -54,6 +54,7 @@ int main() {
 	const char* originalDllPathCString{
 		pstd::createCString(&scratchArena, originalDllPath)
 	};
+
 	while (isRunning) {
 		if (pstd::getLastFileWriteTime(originalDllPathCString) !=
 			gameDll.lastWriteTime) {
@@ -126,8 +127,9 @@ namespace {
 		GameDll res{ .handle = gameHandle,
 					 .api = gameAPI,
 					 .isValid = isValid,
-					 .lastWriteTime =
-						 pstd::getLastFileWriteTime(originalDllPath.buffer) };
+					 .lastWriteTime = pstd::getLastFileWriteTime(
+						 pstd::createCString(&scratchArena, originalDllPath)
+					 ) };
 		return res;
 	}
 	void unloadGameDll(GameDll dll) {

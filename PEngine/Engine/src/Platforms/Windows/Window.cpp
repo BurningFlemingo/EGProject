@@ -76,6 +76,12 @@ Platform::State* Platform::startup(
 		adjustedWindowHeight = clientRect.bottom - clientRect.top;
 	}
 
+	WindowData windowData{ .isRunning = true,
+						   .eventBuffer = {
+							   .block = eventBufferBlock,
+							   .size = WindowData::eventBufferCapacity } };
+	state->windowData = windowData;
+
 	// the window data pointer passed here cant be local since it will be
 	// refrenced after this function in windowProc
 	HWND hwnd{ CreateWindowExA(
@@ -98,11 +104,6 @@ Platform::State* Platform::startup(
 	}
 
 	ShowWindow(hwnd, SW_SHOW);
-
-	WindowData windowData{ .isRunning = true,
-						   .eventBuffer = {
-							   .block = eventBufferBlock,
-							   .size = WindowData::eventBufferCapacity } };
 
 	return new (state)
 		State{ .windowData = windowData, .hwnd = hwnd, .hInstance = hInstance };
@@ -229,6 +230,11 @@ namespace {
 				Platform::Event event{ .type = Platform::EventType::key,
 									   .keyEvent = { .action = iAction,
 													 .code = iCode } };
+				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
+			} break;
+			case WM_SIZE: {
+				Platform::Event event{ .type = Platform::EventType::window,
+									   .windowEvent = { .resized = true } };
 				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
 			} break;
 			default: {

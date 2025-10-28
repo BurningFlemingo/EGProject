@@ -15,6 +15,6 @@ namespace Renderer {
 		const Platform::State& platformState
 	);
 
-	void render(State* state);
+	void render(State* state, bool windowResized);
 	void shutdown(State* state);
 }  // namespace Renderer

@@ -158,7 +158,7 @@ namespace {
 
 		ASSERT(indices[QueueFamily::graphics] != invalidIndex);
 
-		if (nQueueFamilies <= 0) {
+		if (nQueueFamilies > 0) {
 			for (uint32_t i{}; i < indices.count; i++) {
 				auto family{ ncast<QueueFamily>(i) };
 				if (indices[family] == invalidIndex) {
@@ -216,7 +216,8 @@ namespace {
 		// features
 		VkPhysicalDeviceVulkan13Features features13{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-			.dynamicRendering = VK_TRUE
+			.synchronization2 = VK_TRUE,
+			.dynamicRendering = VK_TRUE,
 		};
 
 		VkPhysicalDeviceFeatures2 physicalDeviceFeatures{

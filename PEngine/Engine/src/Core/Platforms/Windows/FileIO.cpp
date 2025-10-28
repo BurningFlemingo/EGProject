@@ -113,10 +113,11 @@ uint32_t pstd::getFileSize(FileHandle pHandle) {
 size_t pstd::getLastFileWriteTime(const char* filename) {
 	WIN32_FILE_ATTRIBUTE_DATA attribData{};
 	GetFileAttributesExA(filename, GetFileExInfoStandard, &attribData);
-	size_t time{ attribData.ftLastWriteTime.dwHighDateTime };
-	time = time << 32;
-	time |= attribData.ftLastWriteTime.dwLowDateTime;
-	return time;
+	ULARGE_INTEGER time{ .LowPart = attribData.ftLastWriteTime.dwLowDateTime,
+						 .HighPart =
+							 attribData.ftLastWriteTime.dwHighDateTime };
+
+	return cast<size_t>(time.QuadPart);
 }
 
 pstd::String pstd::readFile(pstd::Arena* pArena, pstd::FileHandle pHandle) {

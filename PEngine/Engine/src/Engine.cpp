@@ -70,6 +70,7 @@ bool PE::update(State* state) {
 		Platform::update(state->platformState);
 
 		Platform::Event event{};
+		bool windowResized{};
 		while (Platform::popEvent(state->platformState, &event)) {
 			switch (event.type) {
 				case Platform::EventType::key: {
@@ -79,12 +80,19 @@ bool PE::update(State* state) {
 						}
 					}
 				} break;
+				case Platform::EventType::window: {
+					if (event.windowEvent.resized) {
+						windowResized = true;
+					}
+				} break;
 				default:
 					break;
 			}
 		}
-		Renderer::render(state->rendererState);
+
+		Renderer::render(state->rendererState, false);
 	}
+
 	return state->isRunning;
 }
 void PE::shutdown(State* state) {

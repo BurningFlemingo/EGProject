@@ -9,7 +9,7 @@
 namespace Platform {
 	struct State;
 
-	enum class EventType { key, COUNT };
+	enum class EventType { key, window, COUNT };
 
 	struct Event {
 		EventType type;
@@ -18,6 +18,9 @@ namespace Platform {
 				InputAction action;
 				InputCode code;
 			} keyEvent;
+			struct {
+				bool resized;
+			} windowEvent;
 		};
 	};
 

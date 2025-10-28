@@ -16,6 +16,7 @@ set(SRC_FILES
 add_executable(PEngineRuntime ${SRC_FILES})
 
 target_link_libraries(PEngineRuntime PRIVATE PEngine)
+target_compile_definitions(PEngineRuntime PRIVATE LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
 
 target_include_directories(PEngineRuntime
 	PRIVATE ${SRC_DIR} ${ENGINE_SRC_DIR}
