@@ -38,7 +38,7 @@ int main() {
 		&allocationRegistry, PE::getSizeofState() + scratchSize
 	) };
 
-	engineState = PE::startup(&engineArena, scratchArena);
+	engineState = PE::startup(&engineArena, scratchArena, &allocationRegistry);
 
 	GameDll gameDll{ loadGameDll(scratchArena) };
 	Game::State* gameState{ gameDll.api.startup() };

@@ -50,7 +50,11 @@ size_t PE::getSizeofState() {
 	return totalSize;
 }
 
-PE::State* PE::startup(pstd::Arena* pPersistArena, pstd::Arena scratchArena) {
+PE::State* PE::startup(
+	pstd::Arena* pPersistArena,
+	pstd::Arena scratchArena,
+	pstd::AllocationRegistry* pRegistry
+) {
 	Platform::State* platformState{
 		Platform::startup(pPersistArena, "window", 1920 / 2, 1080 / 2)
 	};

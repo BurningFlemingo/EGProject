@@ -26,5 +26,7 @@ namespace Renderer {
 
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
+
+		pstd::Arena frameArena;
 	};
 }  // namespace Renderer
