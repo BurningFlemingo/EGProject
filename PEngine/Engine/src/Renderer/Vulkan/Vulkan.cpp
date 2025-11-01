@@ -1,3 +1,4 @@
+#include "Core/PVector.h"
 #include "Renderer/Renderer.h"
 
 #include "DebugMessenger.h"
@@ -17,6 +18,11 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
+
+struct Vertex {
+	pstd::Vec3 pos;
+	pstd::Vec3 color;
+};
 
 Renderer::State* Renderer::startup(
 	pstd::Arena* pPersistArena,
@@ -81,12 +87,33 @@ Renderer::State* Renderer::startup(
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertPipeCI, fragPipeCI };
 
+	VkVertexInputAttributeDescription vPosInputAttrib{
+		.location = 0,
+		.binding = 0,
+		.format = VK_FORMAT_R32G32B32_SFLOAT,
+		.offset = offsetof(Vertex, pos),
+	};
+	VkVertexInputAttributeDescription vColorInputAttrib{
+		.location = 1,
+		.binding = 0,
+		.format = VK_FORMAT_R32G32B32_SFLOAT,
+		.offset = offsetof(Vertex, color),
+	};
+	VkVertexInputAttributeDescription vInputAttribs[] = { vPosInputAttrib,
+														  vColorInputAttrib };
+
+	VkVertexInputBindingDescription vInputBindingDesc{
+		.binding = 0,
+		.stride = sizeof(Vertex),
+		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+	};
+
 	VkPipelineVertexInputStateCreateInfo vertInputCI{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-		.vertexBindingDescriptionCount = 0,
-		.pVertexBindingDescriptions = nullptr,
-		.vertexAttributeDescriptionCount = 0,
-		.pVertexAttributeDescriptions = nullptr,
+		.vertexBindingDescriptionCount = 1,
+		.pVertexBindingDescriptions = &vInputBindingDesc,
+		.vertexAttributeDescriptionCount = 1,
+		.pVertexAttributeDescriptions = vInputAttribs,
 	};
 
 	VkDynamicState dynamicStates[]{ VK_DYNAMIC_STATE_SCISSOR,
