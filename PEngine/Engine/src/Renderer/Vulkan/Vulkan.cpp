@@ -116,6 +116,22 @@ Renderer::State* Renderer::startup(
 		.pVertexAttributeDescriptions = vInputAttribs,
 	};
 
+	VkBufferCreateInfo vBufferCI{
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+	VkBuffer vBuffer{};
+	vkCreateBuffer(device.logical, &vBufferCI, nullptr, &vBuffer);
+
+	VkMemoryRequirements memReqs{};
+	vkGetBufferMemoryRequirements(device.logical, vBuffer, &memReqs);
+	VkPhysicalDeviceMemoryProperties memProps{};
+	vkGetPhysicalDeviceMemoryProperties(device.physical, &memProps);
+
+	VkMemoryAllocateInfo memAllocInfo{
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+	};
 	VkDynamicState dynamicStates[]{ VK_DYNAMIC_STATE_SCISSOR,
 									VK_DYNAMIC_STATE_VIEWPORT };
 
