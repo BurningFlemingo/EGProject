@@ -4,6 +4,7 @@
 #include "Core/PFunction.h"
 
 #include "Swapchain.h"
+#include "Allocation.h"
 #include "Device.h"
 
 #include <vulkan/vulkan.h>
@@ -23,6 +24,7 @@ namespace Renderer {
 		pstd::Array<VkSemaphore> imageAvailableSemaphores;
 		pstd::Array<VkSemaphore> renderFinishedSemaphores;
 		pstd::Array<VkFence> cmdBufferAvailableFences;
+		Buffer vertexBuffer;
 
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;

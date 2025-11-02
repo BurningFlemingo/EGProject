@@ -140,6 +140,12 @@ namespace {
 				nQueueFamilies--;
 			}
 
+			if (familyProps.queueFlags & VK_QUEUE_TRANSFER_BIT &&
+				indices[QueueFamily::transfer] == invalidIndex) {
+				indices[QueueFamily::transfer] = i;
+				nQueueFamilies--;
+			}
+
 			VkBool32 surfaceSupported;
 			vkGetPhysicalDeviceSurfaceSupportKHR(
 				physicalDevice, i, surface, &surfaceSupported

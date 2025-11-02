@@ -5,6 +5,7 @@
 #include "Instance.h"
 #include "Device.h"
 #include "Swapchain.h"
+#include "Allocation.h"
 #include "Types.h"
 
 #include "Core/PContainer.h"
@@ -112,26 +113,58 @@ Renderer::State* Renderer::startup(
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 		.vertexBindingDescriptionCount = 1,
 		.pVertexBindingDescriptions = &vInputBindingDesc,
-		.vertexAttributeDescriptionCount = 1,
+		.vertexAttributeDescriptionCount = 2,
 		.pVertexAttributeDescriptions = vInputAttribs,
 	};
 
-	VkBufferCreateInfo vBufferCI{
-		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-		.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-	};
-	VkBuffer vBuffer{};
-	vkCreateBuffer(device.logical, &vBufferCI, nullptr, &vBuffer);
+	constexpr uint32_t nVertices{ 3 };
+	Vertex vertices[nVertices]{ Vertex{ .pos = pstd::Vec3{ -0.5, -0.5, 1.0 },
+										.color = pstd::Vec3{ 1.0, 0.0, 0.0 } },
+								Vertex{ .pos = pstd::Vec3{ 0.5, -0.5, 1.0 },
+										.color = pstd::Vec3{ 0.0, 1.0, 0.0 } },
+								Vertex{ .pos = pstd::Vec3{ 0.0, 0.5, 1.0 },
+										.color =
+											pstd::Vec3{ 0.0, 0.0, 1.0 } } };
 
-	VkMemoryRequirements memReqs{};
-	vkGetBufferMemoryRequirements(device.logical, vBuffer, &memReqs);
-	VkPhysicalDeviceMemoryProperties memProps{};
-	vkGetPhysicalDeviceMemoryProperties(device.physical, &memProps);
-
-	VkMemoryAllocateInfo memAllocInfo{
-		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+	VkCommandPoolCreateInfo transferCmdPoolCI{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+		.queueFamilyIndex = device.queueFamilyIndices[QueueFamily::transfer],
 	};
+
+	VkCommandPool transferCmdPool{};
+	vkCreateCommandPool(
+		device.logical, &transferCmdPoolCI, nullptr, &transferCmdPool
+	);
+
+	Buffer stagingBuffer{ createBuffer(
+		device,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		sizeof(Vertex) * nVertices
+	) };
+
+	Buffer vBuffer{ createBuffer(
+		device,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		sizeof(Vertex) * nVertices
+	) };
+
+	void* mappedData{};
+	vkMapMemory(
+		device.logical,
+		stagingBuffer.memory,
+		0,
+		stagingBuffer.size,
+		0,
+		&mappedData
+	);
+	memcpy(mappedData, vertices, stagingBuffer.size);
+	vkUnmapMemory(device.logical, stagingBuffer.memory);
+	copyBuffer(device, transferCmdPool, stagingBuffer, vBuffer, vBuffer.size);
+
 	VkDynamicState dynamicStates[]{ VK_DYNAMIC_STATE_SCISSOR,
 									VK_DYNAMIC_STATE_VIEWPORT };
 
@@ -158,9 +191,7 @@ Renderer::State* Renderer::startup(
 		.depthClampEnable = VK_FALSE,
 		.polygonMode = VK_POLYGON_MODE_FILL,
 		.cullMode = VK_CULL_MODE_BACK_BIT,
-		.frontFace =
-			VK_FRONT_FACE_CLOCKWISE,  // viewport is flipped so the frontFace is
-									  // actually counter clockwise
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		.lineWidth = 1.f,
 	};
 
@@ -300,7 +331,8 @@ Renderer::State* Renderer::startup(
 			   .cmdBuffers = cmdBuffers,
 			   .imageAvailableSemaphores = imageAvailableSemaphores,
 			   .renderFinishedSemaphores = renderFinishedSemaphores,
-			   .cmdBufferAvailableFences = cmdBufferAvailableFences };
+			   .cmdBufferAvailableFences = cmdBufferAvailableFences,
+			   .vertexBuffer = vBuffer };
 }
 
 void Renderer::render(State* state, bool windowResized) {
@@ -394,6 +426,15 @@ void Renderer::render(State* state, bool windowResized) {
 		state->cmdBuffers[state->frameInFlight],
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		state->graphicsPipeline
+	);
+
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(
+		state->cmdBuffers[state->frameInFlight],
+		0,
+		1,
+		&state->vertexBuffer.handle,
+		offsets
 	);
 
 	VkViewport viewport{
@@ -496,6 +537,8 @@ void Renderer::render(State* state, bool windowResized) {
 
 void Renderer::shutdown(State* state) {
 	vkDeviceWaitIdle(state->device.logical);
+
+	vkDestroyBuffer(state->device.logical, state->vertexBuffer.handle, nullptr);
 
 	for (uint32_t i{}; i < state->maxFramesInFlight; i++) {
 		vkDestroyFence(

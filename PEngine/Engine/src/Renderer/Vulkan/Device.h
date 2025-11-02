@@ -5,7 +5,12 @@
 
 #include <vulkan/vulkan.h>
 
-enum class QueueFamily : uint32_t { graphics = 0, presentation = 1, count };
+enum class QueueFamily : uint32_t {
+	graphics = 0,
+	presentation = 1,
+	transfer = 2,
+	count
+};
 
 struct Device {
 	VkPhysicalDevice physical;
