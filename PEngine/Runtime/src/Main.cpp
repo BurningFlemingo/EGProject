@@ -55,6 +55,23 @@ int main() {
 		pstd::createCString(&scratchArena, originalDllPath)
 	};
 
+	pstd::String cubeString{
+		pstd::readFile(&scratchArena, ".\\assets\\models\\cube.obj")
+	};
+	while (cubeString.size > 0) {
+		pstd::String line{ pstd::readLine(&cubeString) };
+
+		pstd::Array<pstd::String> elements{
+			splitLine(&scratchArena, line, ' ')
+		};
+
+		for (int i{}; i < elements.count; i++) {
+			LOG_INFO("%m ", elements[i]);
+		}
+
+		LOG_INFO("\n")
+	}
+
 	while (isRunning) {
 		if (pstd::getLastFileWriteTime(originalDllPathCString) !=
 			gameDll.lastWriteTime) {

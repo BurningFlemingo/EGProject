@@ -140,10 +140,6 @@ String pstd::formatString(pstd::Arena* pArena, const String& format, T val) {
 		default:
 			break;
 	}
-	auto stringFormatSizeDifference{
-		pstd::abs(ncast<int>(format.size) - ncast<int>(string.size))
-	};
-
 	if (formatCharactersProccessed < format.size) {
 		String restOfFormat{ .buffer =
 								 format.buffer + formatCharactersProccessed,
@@ -262,6 +258,58 @@ bool pstd::substringMatchBackward(
 		}
 	}
 	return false;
+}
+
+String pstd::getLine(String lines) {
+	for (uint32_t i{}; i < lines.size; i++) {
+		char ch{ lines.buffer[i] };
+		if (ch == '\n') {
+			return String{ .buffer = lines.buffer, .size = i + 1 };
+		}
+	}
+	return lines;
+}
+
+pstd::Array<String>
+	pstd::splitLine(pstd::Arena* pArena, String line, char seperator) {
+	int nItems{ 1 };
+	bool seperated{ false };
+	for (size_t i{}; i < line.size; i++) {
+		char ch{ line.buffer[i] };
+		if (ch == seperator) {
+			seperated = true;
+			continue;
+		}
+
+		if (seperated) {
+			nItems++;
+			seperated = false;
+		}
+	}
+	auto items{ pstd::createArray<String>(pArena, nItems, 0) };
+
+	String item{ .buffer = line.buffer };
+	seperated = false;
+	for (size_t i{}; i < line.size; i++) {
+		char ch{ line.buffer[i] };
+		if (ch == seperator) {
+			seperated = true;
+			continue;
+		}
+
+		if (seperated) {
+			pstd::pushBack(&items, item);
+			item = String{ .buffer = line.buffer + i };
+			seperated = false;
+		}
+		item.size++;
+	}
+
+	if (item.size > 0) {
+		pstd::pushBack(&items, item);
+	}
+
+	return items;
 }
 
 namespace {

@@ -1,4 +1,5 @@
 #include "Core/PFileIO.h"
+#include "Logging.h"
 
 pstd::String pstd::makeExeDirectoryPath(pstd::Arena* pPersistArena) {
 	pstd::String exeString{ pstd::getEXEPath(pPersistArena) };

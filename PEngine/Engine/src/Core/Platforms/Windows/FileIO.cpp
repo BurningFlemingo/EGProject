@@ -2,8 +2,10 @@
 #include "Core/PString.h"
 #include "Core/PFileIO.h"
 #include "Core/PAssert.h"
+#include "Logging.h"
 
 #include <Windows.h>
+#include "Events.h"
 #include "new"
 
 namespace {
@@ -48,8 +50,14 @@ pstd::FileHandle pstd::openFile(
 		0
 	) };
 
-	// ASSERT(hFile != INVALID_HANDLE_VALUE);
-	DWORD errorCode{ GetLastError() };
+	if (hFile == INVALID_HANDLE_VALUE) {
+		DWORD errorCode{ GetLastError() };
+		LOG_ERROR(
+			"%m could not be opened: error code %u",
+			pstd::createString(filepath),
+			ncast<uint32_t>(errorCode)
+		);
+	}
 
 	return hFile;
 }

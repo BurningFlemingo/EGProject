@@ -18,7 +18,7 @@ uint32_t getMemoryTypeIndex(
 	}
 
 	LOG_ERROR("Couldn't find valid memory type...");
-	return -1;
+	return 0;
 }
 
 Buffer createBuffer(

@@ -93,7 +93,6 @@ namespace pstd {
 	}
 
 	String getFileName(const String& string);
-
 	String getFileName(const char* cString);
 
 	inline bool stringsMatch(const char* a, const char* b) {
@@ -115,4 +114,15 @@ namespace pstd {
 	) {
 		return formatString(pArena, createString(format), val, args...);
 	}
+
+	String getLine(String lines);
+	inline String readLine(String* pLines) {
+		ASSERT(pLines);
+		String line{ getLine(*pLines) };
+		pLines->buffer += line.size;
+		pLines->size -= line.size;
+		return line;
+	}
+	pstd::Array<String>
+		splitLine(pstd::Arena* pArena, String line, char seperator);
 }  // namespace pstd
