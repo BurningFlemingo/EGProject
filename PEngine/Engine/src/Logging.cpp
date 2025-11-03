@@ -12,15 +12,8 @@ namespace {
 	char g_RawLogArray[LOG_ARENA_SIZE]{};
 	pstd::Arena g_LogArena{};
 
-	const char* g_LogLevelStringsBuffer[4]{
-		"", "[INFO]: ", "[WARNING] ", "[ERROR] "
-	};
+	const char* g_LogLevelStrings[4]{ "", "[INFO]", "[WARNING]", "[ERROR]" };
 
-	constexpr pstd::Array<const char*, Console::LogLevel> g_LogLevelStrings{
-		pstd::createArray<const char*, Console::LogLevel>(
-			g_LogLevelStringsBuffer
-		)
-	};
 }  // namespace
 
 void Console::startup() {
@@ -43,8 +36,10 @@ void Console::log(const Console::LogLevel logLevel, const pstd::String& msg) {
 
 	pstd::reset(&g_LogArena);
 
-	pstd::String logLevelString{ pstd::createString(g_LogLevelStrings[logLevel]
-	) };
+	pstd::String logLevelString{
+		pstd::createString(g_LogLevelStrings[ncast<size_t>(logLevel)])
+	};
+
 	pstd::consoleWrite(logLevelString);
 	pstd::consoleWrite(msg);
 

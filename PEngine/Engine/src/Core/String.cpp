@@ -5,6 +5,7 @@
 #include "Core/PArray.h"
 #include "Core/PMath.h"
 #include "Core/PMemory.h"
+#include "Logging.h"
 
 using namespace pstd;
 
@@ -30,7 +31,7 @@ String pstd::createString(pstd::Arena* pArena, const String& string) {
 
 	char* newStringBuffer{ pstd::alloc<char>(pArena, string.size) };
 
-	memCpy(newStringBuffer, string.buffer, string.size);
+	memcpy(newStringBuffer, string.buffer, string.size);
 
 	return String{ .buffer = newStringBuffer, .size = string.size };
 }
@@ -53,7 +54,7 @@ String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 
 	char* newStringBuffer{ pstd::alloc<char>(pArena, lettersToCopy) };
 
-	pstd::memCpy(newStringBuffer, string.buffer, lettersToCopy);
+	memcpy(newStringBuffer, string.buffer, lettersToCopy);
 	pushLetter(pArena, '\0');
 	return String{ .buffer = newStringBuffer, .size = lettersToCopy };
 }
@@ -130,7 +131,7 @@ String pstd::formatString(pstd::Arena* pArena, const String& format, T val) {
 			concat(&string, pushDoubleAsString(pArena, ncast<double>(val)));
 		} break;
 		default:
-			break;
+			ASSERT(false);
 	}
 	if (formatCharactersProccessed < format.size) {
 		String restOfFormat{ .buffer =
@@ -308,21 +309,29 @@ double pstd::stringToDouble(String stringNum) {
 	if (stringNum.size == 0) {
 		return 0;
 	}
+
 	double wholePart{};
 	double fractionalNumerator{};
 	double fractionalDenominator{ 1 };
 	bool wholePartDone{ false };
+	bool isNegative{ false };
 
 	if (stringNum.buffer[0] == '-') {
-		wholePart *= -1;
+		isNegative = true;
 	}
 
 	for (int i{}; i < stringNum.size; i++) {
 		char ch{ stringNum.buffer[i] };
-		double num{ ncast<double>(stringNum.buffer[i] - '0') };
-		if (ch == '.') {
+		if (ch == '.' && wholePartDone == false) {
 			wholePartDone = true;
-		} else if (!wholePartDone) {
+			continue;
+		}
+		if (ch > '9' || ch < '0') {
+			break;
+		}
+
+		double num{ ncast<double>(stringNum.buffer[i] - '0') };
+		if (!wholePartDone) {
 			wholePart *= 10;
 			wholePart += num;
 		} else {
@@ -333,6 +342,7 @@ double pstd::stringToDouble(String stringNum) {
 	}
 
 	double num{ wholePart + (fractionalNumerator / fractionalDenominator) };
+	num = isNegative ? -num : num;
 
 	return num;
 }
