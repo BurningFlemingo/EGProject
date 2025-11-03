@@ -65,11 +65,13 @@ int main() {
 			splitLine(&scratchArena, line, ' ')
 		};
 
-		for (int i{}; i < elements.count; i++) {
-			LOG_INFO("%m ", elements[i]);
+		if (pstd::stringsMatch(elements[0], pstd::createString("vt"))) {
+			for (int i{ 1 }; i < elements.count; i++) {
+				pstd::String element{ elements[i] };
+				LOG_INFO("element: %s\n", element);
+				LOG_INFO("parsed: %d\n", pstd::stringToDouble(element));
+			}
 		}
-
-		LOG_INFO("\n")
 	}
 
 	while (isRunning) {

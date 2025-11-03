@@ -125,4 +125,6 @@ namespace pstd {
 	}
 	pstd::Array<String>
 		splitLine(pstd::Arena* pArena, String line, char seperator);
+
+	double stringToDouble(String stringNum);
 }  // namespace pstd

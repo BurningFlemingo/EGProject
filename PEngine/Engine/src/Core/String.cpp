@@ -9,29 +9,18 @@
 using namespace pstd;
 
 namespace {
-	pstd::String pushUInt64AsString(
-		pstd::Arena* pArena, uint64_t number
-	);	// returns size of string pushed
-	pstd::String pushInt64AsString(
-		pstd::Arena* pArena, int64_t number
-	);	// returns size of string pushed
+	pstd::String pushUInt64AsString(pstd::Arena* pArena, uint64_t number);
+	pstd::String pushInt64AsString(pstd::Arena* pArena, int64_t number);
 	pstd::String pushDoubleAsString(
-		pstd::Arena* pArena,
-		double number,
-		uint32_t precision = 5
-	);	// returns size of string pushed
-
-	pstd::String pushString(
-		pstd::Arena* pArena, const String& string
-	);	// returns size of string pushed
-
+		pstd::Arena* pArena, double number, uint32_t precision = 5
+	);
+	pstd::String pushString(pstd::Arena* pArena, const String& string);
 	pstd::String pushStringUntilControlCharacter(
 		pstd::Arena* pArena,
 		const String& format,
 		uint32_t* outFormatCharactersProccessed,
 		char* outControlCharacter
 	);
-	// returns size of string pushed
 
 	pstd::String pushLetter(pstd::Arena* pArena, char letter);
 }  // namespace
@@ -137,6 +126,9 @@ String pstd::formatString(pstd::Arena* pArena, const String& format, T val) {
 		case 'f': {
 			concat(&string, pushDoubleAsString(pArena, ncast<double>(val)));
 		} break;
+		case 'd': {
+			concat(&string, pushDoubleAsString(pArena, ncast<double>(val)));
+		} break;
 		default:
 			break;
 	}
@@ -161,7 +153,7 @@ String pstd::formatString(
 		pArena, format, &formatCharactersProccessed, &controlCharacter
 	) };
 
-	if (controlCharacter == 'm') {
+	if (controlCharacter == 'm' || controlCharacter == 's') {
 		concat(&string, pushString(pArena, val));
 	}
 
@@ -310,6 +302,39 @@ pstd::Array<String>
 	}
 
 	return items;
+}
+
+double pstd::stringToDouble(String stringNum) {
+	if (stringNum.size == 0) {
+		return 0;
+	}
+	double wholePart{};
+	double fractionalNumerator{};
+	double fractionalDenominator{ 1 };
+	bool wholePartDone{ false };
+
+	if (stringNum.buffer[0] == '-') {
+		wholePart *= -1;
+	}
+
+	for (int i{}; i < stringNum.size; i++) {
+		char ch{ stringNum.buffer[i] };
+		double num{ ncast<double>(stringNum.buffer[i] - '0') };
+		if (ch == '.') {
+			wholePartDone = true;
+		} else if (!wholePartDone) {
+			wholePart *= 10;
+			wholePart += num;
+		} else {
+			fractionalNumerator *= 10;
+			fractionalDenominator *= 10;
+			fractionalNumerator += num;
+		}
+	}
+
+	double num{ wholePart + (fractionalNumerator / fractionalDenominator) };
+
+	return num;
 }
 
 namespace {
