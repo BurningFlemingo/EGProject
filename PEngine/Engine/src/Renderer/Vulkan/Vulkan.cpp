@@ -117,24 +117,29 @@ Renderer::State* Renderer::startup(
 		.pVertexAttributeDescriptions = vInputAttribs,
 	};
 
-	constexpr uint32_t nVertices{ 3 };
+	constexpr uint32_t nVertices{ 4 };
 	Vertex vertices[nVertices]{ Vertex{ .pos = pstd::Vec3{ -0.5, -0.5, 1.0 },
 										.color = pstd::Vec3{ 1.0, 0.0, 0.0 } },
 								Vertex{ .pos = pstd::Vec3{ 0.5, -0.5, 1.0 },
 										.color = pstd::Vec3{ 0.0, 1.0, 0.0 } },
-								Vertex{ .pos = pstd::Vec3{ 0.0, 0.5, 1.0 },
+								Vertex{ .pos = pstd::Vec3{ 0.5, 0.5, 1.0 },
+										.color = pstd::Vec3{ 0.0, 0.0, 1.0 } },
+								Vertex{ .pos = pstd::Vec3{ -0.5, 0.5, 1.0 },
 										.color =
-											pstd::Vec3{ 0.0, 0.0, 1.0 } } };
+											pstd::Vec3{ 1.0, 1.0, 1.0 } } };
 
-	VkCommandPoolCreateInfo transferCmdPoolCI{
+	constexpr uint32_t nIndices{ 6 };
+	uint16_t indices[nIndices]{ 0, 1, 2, 2, 3, 0 };
+
+	VkCommandPoolCreateInfo transientCmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
 		.queueFamilyIndex = device.queueFamilyIndices[QueueFamily::transfer],
 	};
 
-	VkCommandPool transferCmdPool{};
+	VkCommandPool transientCmdPool{};
 	vkCreateCommandPool(
-		device.logical, &transferCmdPoolCI, nullptr, &transferCmdPool
+		device.logical, &transientCmdPoolCI, nullptr, &transientCmdPool
 	);
 
 	Buffer stagingBuffer{ createBuffer(
@@ -142,7 +147,7 @@ Renderer::State* Renderer::startup(
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		sizeof(Vertex) * nVertices
+		1024
 	) };
 
 	Buffer vBuffer{ createBuffer(
@@ -150,6 +155,13 @@ Renderer::State* Renderer::startup(
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		sizeof(Vertex) * nVertices
+	) };
+
+	Buffer iBuffer{ createBuffer(
+		device,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		sizeof(uint16_t) * nIndices
 	) };
 
 	void* mappedData{};
@@ -161,9 +173,11 @@ Renderer::State* Renderer::startup(
 		0,
 		&mappedData
 	);
-	memcpy(mappedData, vertices, stagingBuffer.size);
-	vkUnmapMemory(device.logical, stagingBuffer.memory);
-	copyBuffer(device, transferCmdPool, stagingBuffer, vBuffer, vBuffer.size);
+	memcpy(mappedData, vertices, sizeof(vertices));
+	copyBuffer(device, transientCmdPool, stagingBuffer, vBuffer, vBuffer.size);
+
+	memcpy(mappedData, indices, sizeof(indices));
+	copyBuffer(device, transientCmdPool, stagingBuffer, iBuffer, iBuffer.size);
 
 	VkDynamicState dynamicStates[]{ VK_DYNAMIC_STATE_SCISSOR,
 									VK_DYNAMIC_STATE_VIEWPORT };
@@ -318,21 +332,26 @@ Renderer::State* Renderer::startup(
 	}
 
 	State* state{ pstd::alloc<State>(pPersistArena) };
-	return new (state)
-		State{ .swapchain = swapchain,
-			   .device = device,
-			   .surface = surface,
-			   .instance = instance,
-			   .debugMessenger = debugMessenger,
-			   .graphicsPipeline = graphicsPipeline,
-			   .graphicsPipelineLayout = pipelineLayout,
-			   .maxFramesInFlight = maxFramesInFlight,
-			   .cmdPool = cmdPool,
-			   .cmdBuffers = cmdBuffers,
-			   .imageAvailableSemaphores = imageAvailableSemaphores,
-			   .renderFinishedSemaphores = renderFinishedSemaphores,
-			   .cmdBufferAvailableFences = cmdBufferAvailableFences,
-			   .vertexBuffer = vBuffer };
+	return new (state) State{
+		.swapchain = swapchain,
+		.device = device,
+		.surface = surface,
+		.instance = instance,
+		.debugMessenger = debugMessenger,
+		.graphicsPipeline = graphicsPipeline,
+		.graphicsPipelineLayout = pipelineLayout,
+		.maxFramesInFlight = maxFramesInFlight,
+		.cmdPool = cmdPool,
+		.transientCmdPool = transientCmdPool,
+		.cmdBuffers = cmdBuffers,
+		.imageAvailableSemaphores = imageAvailableSemaphores,
+		.renderFinishedSemaphores = renderFinishedSemaphores,
+		.cmdBufferAvailableFences = cmdBufferAvailableFences,
+		.stagingBufferData = mappedData,
+		.stagingBuffer = stagingBuffer,
+		.vertexBuffer = vBuffer,
+		.indexBuffer = iBuffer,
+	};
 }
 
 void Renderer::render(State* state, bool windowResized) {
@@ -437,6 +456,13 @@ void Renderer::render(State* state, bool windowResized) {
 		offsets
 	);
 
+	vkCmdBindIndexBuffer(
+		state->cmdBuffers[state->frameInFlight],
+		state->indexBuffer.handle,
+		offsets[0],
+		VK_INDEX_TYPE_UINT16
+	);
+
 	VkViewport viewport{
 		.width = ncast<float>(state->swapchain.createInfo.imageExtent.width),
 		.height = ncast<float>(state->swapchain.createInfo.imageExtent.height),
@@ -448,7 +474,7 @@ void Renderer::render(State* state, bool windowResized) {
 	vkCmdSetViewport(state->cmdBuffers[state->frameInFlight], 0, 1, &viewport);
 	vkCmdSetScissor(state->cmdBuffers[state->frameInFlight], 0, 1, &scissor);
 
-	vkCmdDraw(state->cmdBuffers[state->frameInFlight], 3, 1, 0, 0);
+	vkCmdDrawIndexed(state->cmdBuffers[state->frameInFlight], 6, 1, 0, 0, 0);
 
 	vkCmdEndRendering(state->cmdBuffers[state->frameInFlight]);
 
@@ -538,7 +564,16 @@ void Renderer::render(State* state, bool windowResized) {
 void Renderer::shutdown(State* state) {
 	vkDeviceWaitIdle(state->device.logical);
 
+	vkUnmapMemory(state->device.logical, state->stagingBuffer.memory);
+
 	vkDestroyBuffer(state->device.logical, state->vertexBuffer.handle, nullptr);
+	vkFreeMemory(state->device.logical, state->vertexBuffer.memory, nullptr);
+	vkDestroyBuffer(state->device.logical, state->indexBuffer.handle, nullptr);
+	vkFreeMemory(state->device.logical, state->indexBuffer.memory, nullptr);
+	vkDestroyBuffer(
+		state->device.logical, state->stagingBuffer.handle, nullptr
+	);
+	vkFreeMemory(state->device.logical, state->stagingBuffer.memory, nullptr);
 
 	for (uint32_t i{}; i < state->maxFramesInFlight; i++) {
 		vkDestroyFence(
@@ -556,6 +591,9 @@ void Renderer::shutdown(State* state) {
 	}
 
 	vkDestroyCommandPool(state->device.logical, state->cmdPool, nullptr);
+	vkDestroyCommandPool(
+		state->device.logical, state->transientCmdPool, nullptr
+	);
 	vkDestroyPipeline(state->device.logical, state->graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(
 		state->device.logical, state->graphicsPipelineLayout, nullptr

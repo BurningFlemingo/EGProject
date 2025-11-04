@@ -70,7 +70,6 @@ int main() {
 				pstd::String element{ elements[i] };
 				LOG_INFO("element: %s\n", element);
 				LOG_WARN("parsed: %d\n", pstd::stringToDouble(element));
-				ASSERT(false, "heyyy");
 			}
 		}
 	}

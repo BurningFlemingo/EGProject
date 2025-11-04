@@ -19,12 +19,20 @@ namespace Renderer {
 		VkPipeline graphicsPipeline;
 		VkPipelineLayout graphicsPipelineLayout;
 		uint32_t maxFramesInFlight;
+
 		VkCommandPool cmdPool;
+		VkCommandPool transientCmdPool;
+
 		pstd::Array<VkCommandBuffer> cmdBuffers;
 		pstd::Array<VkSemaphore> imageAvailableSemaphores;
 		pstd::Array<VkSemaphore> renderFinishedSemaphores;
 		pstd::Array<VkFence> cmdBufferAvailableFences;
+
+		void* stagingBufferData;
+
+		Buffer stagingBuffer;
 		Buffer vertexBuffer;
+		Buffer indexBuffer;
 
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
