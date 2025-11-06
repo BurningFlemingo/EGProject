@@ -1,10 +1,10 @@
-#include "Core/PArena.h"
-#include "Core/PString.h"
-#include "Core/PTypes.h"
-#include "Core/PAlgorithm.h"
-#include "Core/PArray.h"
-#include "Core/PMath.h"
-#include "Core/PMemory.h"
+#include "STD/PArena.h"
+#include "STD/PString.h"
+#include "STD/PTypes.h"
+#include "STD/PAlgorithm.h"
+#include "STD/PArray.h"
+#include "STD/PMath.h"
+#include "STD/PMemory.h"
 #include "Logging.h"
 
 using namespace pstd;

@@ -46,11 +46,19 @@ Buffer createBuffer(
 		getMemoryTypeIndex(memReqs.memoryTypeBits, memoryProps, memProps)
 	};
 
+	VkMemoryAllocateFlagsInfo allocFlagsInfo{
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+	};
 	VkMemoryAllocateInfo memAllocInfo{
 		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.pNext = &allocFlagsInfo,
 		.allocationSize = memReqs.size,
 		.memoryTypeIndex = memTypeIndex,
 	};
+	if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+		allocFlagsInfo.flags |= VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+	}
+
 	VkDeviceMemory memory{};
 	vkAllocateMemory(device.logical, &memAllocInfo, nullptr, &memory);
 	vkBindBufferMemory(device.logical, buffer, memory, 0);

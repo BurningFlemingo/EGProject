@@ -1,4 +1,4 @@
-#include "Core/PVector.h"
+#include "STD/PVector.h"
 #include "Renderer/Renderer.h"
 
 #include "DebugMessenger.h"
@@ -8,11 +8,11 @@
 #include "Allocation.h"
 #include "Types.h"
 
-#include "Core/PContainer.h"
-#include "Core/PFileIO.h"
-#include "Core/PArena.h"
-#include "Core/PArray.h"
-#include "Core/PString.h"
+#include "STD/PContainer.h"
+#include "STD/PFileIO.h"
+#include "STD/PArena.h"
+#include "STD/PArray.h"
+#include "STD/PString.h"
 #include "Logging.h"
 #include "Platforms/VulkanSurface.h"
 
@@ -21,11 +21,11 @@
 #include <new>
 
 struct Vertex {
-	pstd::Vec3 pos;
-	pstd::Vec3 color;
+	pstd::Vec4 pos;
+	pstd::Vec4 color;
 };
 
-struct PushConstant {
+struct PushConstants {
 	VkDeviceAddress vertexBufferAddress;
 };
 
@@ -92,45 +92,21 @@ Renderer::State* Renderer::startup(
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertPipeCI, fragPipeCI };
 
-	VkVertexInputAttributeDescription vPosInputAttrib{
-		.location = 0,
-		.binding = 0,
-		.format = VK_FORMAT_R32G32B32_SFLOAT,
-		.offset = offsetof(Vertex, pos),
-	};
-	VkVertexInputAttributeDescription vColorInputAttrib{
-		.location = 1,
-		.binding = 0,
-		.format = VK_FORMAT_R32G32B32_SFLOAT,
-		.offset = offsetof(Vertex, color),
-	};
-	VkVertexInputAttributeDescription vInputAttribs[] = { vPosInputAttrib,
-														  vColorInputAttrib };
-
-	VkVertexInputBindingDescription vInputBindingDesc{
-		.binding = 0,
-		.stride = sizeof(Vertex),
-		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
-	};
-
 	VkPipelineVertexInputStateCreateInfo vertInputCI{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &vInputBindingDesc,
-		.vertexAttributeDescriptionCount = 2,
-		.pVertexAttributeDescriptions = vInputAttribs,
 	};
 
 	constexpr uint32_t nVertices{ 4 };
-	Vertex vertices[nVertices]{ Vertex{ .pos = pstd::Vec3{ -0.5, -0.5, 1.0 },
-										.color = pstd::Vec3{ 1.0, 0.0, 0.0 } },
-								Vertex{ .pos = pstd::Vec3{ 0.5, -0.5, 1.0 },
-										.color = pstd::Vec3{ 0.0, 1.0, 0.0 } },
-								Vertex{ .pos = pstd::Vec3{ 0.5, 0.5, 1.0 },
-										.color = pstd::Vec3{ 0.0, 0.0, 1.0 } },
-								Vertex{ .pos = pstd::Vec3{ -0.5, 0.5, 1.0 },
-										.color =
-											pstd::Vec3{ 1.0, 1.0, 1.0 } } };
+	Vertex vertices[nVertices]{
+		Vertex{ .pos = pstd::Vec4{ -0.5, -0.5, 1.0, 1.0 },
+				.color = pstd::Vec4{ 1.0, 0.0, 0.0, 1.0 } },
+		Vertex{ .pos = pstd::Vec4{ 0.5, -0.5, 1.0, 1.0 },
+				.color = pstd::Vec4{ 0.0, 1.0, 0.0, 1.0 } },
+		Vertex{ .pos = pstd::Vec4{ 0.5, 0.5, 1.0, 1.0 },
+				.color = pstd::Vec4{ 0.0, 0.0, 1.0, 1.0 } },
+		Vertex{ .pos = pstd::Vec4{ -0.5, 0.5, 1.0, 1.0 },
+				.color = pstd::Vec4{ 1.0, 1.0, 1.0, 1.0 } }
+	};
 
 	constexpr uint32_t nIndices{ 6 };
 	uint16_t indices[nIndices]{ 0, 1, 2, 2, 3, 0 };
@@ -156,7 +132,9 @@ Renderer::State* Renderer::startup(
 
 	Buffer vBuffer{ createBuffer(
 		device,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		sizeof(Vertex) * nVertices
 	) };
@@ -167,6 +145,15 @@ Renderer::State* Renderer::startup(
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		sizeof(uint16_t) * nIndices
 	) };
+
+	VkBufferDeviceAddressInfo vAddressInfo{
+		.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+		.buffer = vBuffer.handle
+	};
+
+	VkDeviceAddress vertexDeviceAddress{
+		vkGetBufferDeviceAddress(device.logical, &vAddressInfo)
+	};
 
 	void* mappedData{};
 	vkMapMemory(
@@ -239,10 +226,15 @@ Renderer::State* Renderer::startup(
 	};
 
 	VkPushConstantRange pushConstantRange{
-		.
-	} VkPipelineLayoutCreateInfo layoutCI{
+		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		.offset = 0,
+		.size = sizeof(PushConstants),
+	};
+
+	VkPipelineLayoutCreateInfo layoutCI{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = &pushConstantRange
 	};
 
 	VkPipelineLayout pipelineLayout{};
@@ -357,6 +349,7 @@ Renderer::State* Renderer::startup(
 		.stagingBufferData = mappedData,
 		.stagingBuffer = stagingBuffer,
 		.vertexBuffer = vBuffer,
+		.vertexBufferDeviceAddress = vertexDeviceAddress,
 		.indexBuffer = iBuffer,
 	};
 }
@@ -455,13 +448,6 @@ void Renderer::render(State* state, bool windowResized) {
 	);
 
 	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(
-		state->cmdBuffers[state->frameInFlight],
-		0,
-		1,
-		&state->vertexBuffer.handle,
-		offsets
-	);
 
 	vkCmdBindIndexBuffer(
 		state->cmdBuffers[state->frameInFlight],
@@ -480,6 +466,17 @@ void Renderer::render(State* state, bool windowResized) {
 
 	vkCmdSetViewport(state->cmdBuffers[state->frameInFlight], 0, 1, &viewport);
 	vkCmdSetScissor(state->cmdBuffers[state->frameInFlight], 0, 1, &scissor);
+
+	PushConstants pushConstants{ .vertexBufferAddress =
+									 state->vertexBufferDeviceAddress };
+	vkCmdPushConstants(
+		state->cmdBuffers[state->frameInFlight],
+		state->graphicsPipelineLayout,
+		VK_SHADER_STAGE_VERTEX_BIT,
+		0,
+		sizeof(PushConstants),
+		&pushConstants
+	);
 
 	vkCmdDrawIndexed(state->cmdBuffers[state->frameInFlight], 6, 1, 0, 0, 0);
 

@@ -1,8 +1,8 @@
-#include "Core/PConsole.h"
-#include "Core/PString.h"
-#include "Core/PAssert.h"
+#include "STD/PConsole.h"
+#include "STD/PString.h"
+#include "STD/PAssert.h"
 
-#include "Core/Console.h"
+#include "STD/Console.h"
 
 #include <Windows.h>
 

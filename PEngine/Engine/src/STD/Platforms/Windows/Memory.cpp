@@ -1,8 +1,8 @@
-#include "Core/PMemory.h"
-#include "Core/Memory.h"
+#include "STD/PMemory.h"
+#include "STD/Memory.h"
 
-#include "Core/PTypes.h"
-#include "Core/PAssert.h"
+#include "STD/PTypes.h"
+#include "STD/PAssert.h"
 
 #include <Windows.h>
 

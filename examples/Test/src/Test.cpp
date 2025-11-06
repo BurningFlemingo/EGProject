@@ -1,11 +1,11 @@
 #include "Game.h"
 #include "Logging.h"
-#include "Core/PArena.h"
-#include "Core/PMemory.h"
-#include "Core/PCircularBuffer.h"
-#include "Core/PVector.h"
-#include "Core/PMatrix.h"
-#include "Core/PMath.h"
+#include "STD/PArena.h"
+#include "STD/PMemory.h"
+#include "STD/PCircularBuffer.h"
+#include "STD/PVector.h"
+#include "STD/PMatrix.h"
+#include "STD/PMath.h"
 
 #include <new>
 

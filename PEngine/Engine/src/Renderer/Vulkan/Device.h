@@ -1,7 +1,7 @@
 #pragma once
-#include "Core/PTypes.h"
-#include "Core/PArray.h"
-#include "Core/PArena.h"
+#include "STD/PTypes.h"
+#include "STD/PArray.h"
+#include "STD/PArena.h"
 
 #include <vulkan/vulkan.h>
 

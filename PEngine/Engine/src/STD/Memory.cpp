@@ -1,11 +1,11 @@
-#include "Core/PMemory.h"
-#include "Core/PMemory.h"
+#include "STD/PMemory.h"
+#include "STD/PMemory.h"
 
-#include "Core/Memory.h"
+#include "STD/Memory.h"
 
-#include "Core/PAssert.h"
-#include "Core/PAlgorithm.h"
-#include "Core/PArena.h"
+#include "STD/PAssert.h"
+#include "STD/PAlgorithm.h"
+#include "STD/PArena.h"
 
 #include <new>
 

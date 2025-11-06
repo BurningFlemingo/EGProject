@@ -45,6 +45,7 @@ set (VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
 set(SRC_FILES
 	${SRC_DIR}/Engine.cpp
 	${SRC_DIR}/Logging.cpp
+	${SRC_DIR}/AssetLoader.cpp
 	${SRC_DIR}/Platforms/Windows/Window.cpp
 	${SRC_DIR}/Platforms/Windows/VulkanSurface.cpp
 	${SRC_DIR}/Renderer/Vulkan/Vulkan.cpp
@@ -57,19 +58,19 @@ set(SRC_FILES
 	${SRC_DIR}/Renderer/Vulkan/Swapchain.cpp
 	${SRC_DIR}/Renderer/Vulkan/Allocation.cpp
 
-	${SRC_DIR}/Core/Platforms/Windows/Entry.cpp
-	${SRC_DIR}/Core/Platforms/Windows/Required.cpp
-	${SRC_DIR}/Core/Platforms/Windows/Memory.cpp
-	${SRC_DIR}/Core/Platforms/Windows/Console.cpp
-	${SRC_DIR}/Core/Platforms/Windows/FileIO.cpp
-	${SRC_DIR}/Core/Platforms/Windows/Assert.cpp
-	${SRC_DIR}/Core/String.cpp
-	${SRC_DIR}/Core/Arena.cpp
-	${SRC_DIR}/Core/Memory.cpp
-	${SRC_DIR}/Core/Vector.cpp
-	${SRC_DIR}/Core/Matrix.cpp
-	${SRC_DIR}/Core/Math.cpp
-	${SRC_DIR}/Core/FileIO.cpp
+	${SRC_DIR}/STD/Platforms/Windows/Entry.cpp
+	${SRC_DIR}/STD/Platforms/Windows/Required.cpp
+	${SRC_DIR}/STD/Platforms/Windows/Memory.cpp
+	${SRC_DIR}/STD/Platforms/Windows/Console.cpp
+	${SRC_DIR}/STD/Platforms/Windows/FileIO.cpp
+	${SRC_DIR}/STD/Platforms/Windows/Assert.cpp
+	${SRC_DIR}/STD/String.cpp
+	${SRC_DIR}/STD/Arena.cpp
+	${SRC_DIR}/STD/Memory.cpp
+	${SRC_DIR}/STD/Vector.cpp
+	${SRC_DIR}/STD/Matrix.cpp
+	${SRC_DIR}/STD/Math.cpp
+	${SRC_DIR}/STD/FileIO.cpp
 	)
 
 add_library(PEngine ${SRC_FILES})
@@ -82,7 +83,7 @@ target_include_directories(PEngine
 )
 
 target_compile_definitions(PEngine PRIVATE PENGINE_PROJECT LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
-target_compile_options(PEngine PUBLIC /FI ${SRC_DIR}/Core/Platforms/Windows/Required.h)
+target_compile_options(PEngine PUBLIC /FI ${SRC_DIR}/STD/Platforms/Windows/Required.h)
 
 add_custom_command(
 	TARGET PEngine POST_BUILD

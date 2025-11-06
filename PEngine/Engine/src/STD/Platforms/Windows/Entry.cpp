@@ -1,6 +1,6 @@
-#include "Core/PTypes.h"
-#include "Core/Memory.h"
-#include "Core/Console.h"
+#include "STD/PTypes.h"
+#include "STD/Memory.h"
+#include "STD/Console.h"
 
 #include <Windows.h>
 

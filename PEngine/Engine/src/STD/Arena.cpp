@@ -1,7 +1,7 @@
-#include "Core/PArena.h"
-#include "Core/PMemory.h"
-#include "Core/Memory.h"
-#include "Core/PAssert.h"
+#include "STD/PArena.h"
+#include "STD/PMemory.h"
+#include "STD/Memory.h"
+#include "STD/PAssert.h"
 #include <new>
 
 using namespace pstd;

@@ -1,8 +1,8 @@
 #pragma once
-#include "Core/PTypes.h"
-#include "Core/PArray.h"
-#include "Core/PArena.h"
-#include "Core/PCircularBuffer.h"
+#include "STD/PTypes.h"
+#include "STD/PArray.h"
+#include "STD/PArena.h"
+#include "STD/PCircularBuffer.h"
 
 #include "Events.h"
 

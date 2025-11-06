@@ -1,11 +1,11 @@
 #include "Logging.h"
 #include "LoggingSetup.h"
 
-#include "Core/PTypes.h"
-#include "Core/PArena.h"
-#include "Core/PConsole.h"
-#include "Core/PString.h"
-#include "Core/PAssert.h"
+#include "STD/PTypes.h"
+#include "STD/PArena.h"
+#include "STD/PConsole.h"
+#include "STD/PString.h"
+#include "STD/PAssert.h"
 
 namespace {
 	constexpr uint32_t LOG_ARENA_SIZE{ 1024 * 1024 };

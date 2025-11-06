@@ -1,10 +1,10 @@
 #include "Extensions.h"
 
-#include "Core/PString.h"
-#include "Core/PArray.h"
-#include "Core/PArena.h"
-#include "Core/PMemory.h"
-#include "Core/PContainer.h"
+#include "STD/PString.h"
+#include "STD/PArray.h"
+#include "STD/PArena.h"
+#include "STD/PMemory.h"
+#include "STD/PContainer.h"
 #include "Logging.h"
 
 #include <vulkan/vulkan.h>

@@ -1,7 +1,7 @@
 #pragma once
-#include "Core/PArray.h"
-#include "Core/PArray.h"
-#include "Core/PFunction.h"
+#include "STD/PArray.h"
+#include "STD/PArray.h"
+#include "STD/PFunction.h"
 
 #include "Swapchain.h"
 #include "Allocation.h"
@@ -32,6 +32,7 @@ namespace Renderer {
 
 		Buffer stagingBuffer;
 		Buffer vertexBuffer;
+		VkDeviceAddress vertexBufferDeviceAddress;
 		Buffer indexBuffer;
 
 		uint32_t frameInFlight;

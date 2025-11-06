@@ -3,10 +3,10 @@
 #include "Extensions.h"
 #include "DebugMessenger.h"
 
-#include "Core/PArena.h"
-#include "Core/PArray.h"
-#include "Core/PContainer.h"
-#include "Core/PMemory.h"
+#include "STD/PArena.h"
+#include "STD/PArray.h"
+#include "STD/PContainer.h"
+#include "STD/PMemory.h"
 #include "Logging.h"
 #include "Platforms/VulkanSurface.h"
 

@@ -1,7 +1,7 @@
 #pragma once
-#include "Core/PArena.h"
-#include "Core/PTypes.h"
-#include "Core/PString.h"
+#include "STD/PArena.h"
+#include "STD/PTypes.h"
+#include "STD/PString.h"
 
 namespace Console {
 	enum class LogLevel : uint32_t {

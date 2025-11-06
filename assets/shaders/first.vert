@@ -1,13 +1,26 @@
 #version 450
+#extension GL_EXT_buffer_reference : require
 
-layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 color;
+struct Vertex{
+	vec4 pos; 
+	vec4 color; 
+};
+
+layout(buffer_reference, std430) buffer readonly VertexBuffer {
+	Vertex vertices[];
+};
+
+layout (push_constant) uniform constants {
+	VertexBuffer vertexBuffer;
+} pushConstants;
+
 
 layout (location = 0) out vec3 outFragColor;
 
 void main() {
-	gl_Position = vec4(pos.xyz, 1.0);
-	gl_Position.y *= -1;
+	Vertex vertex = pushConstants.vertexBuffer.vertices[gl_VertexIndex];
+	gl_Position = vertex.pos;
 	
-	outFragColor = color;
+	gl_Position.y *= -1;
+	outFragColor = vertex.color.xyz;
 }

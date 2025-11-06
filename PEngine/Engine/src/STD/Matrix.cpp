@@ -1,6 +1,6 @@
-#include "Core/PVector.h"
-#include "Core/PMatrix.h"
-#include "Core/PMath.h"
+#include "STD/PVector.h"
+#include "STD/PMatrix.h"
+#include "STD/PMath.h"
 
 using namespace pstd;
 

@@ -1,6 +1,6 @@
 #pragma once
-#include "Core/PArray.h"
-#include "Core/PArena.h"
+#include "STD/PArray.h"
+#include "STD/PArena.h"
 #include "Platforms/Window.h"
 
 #include "Device.h"

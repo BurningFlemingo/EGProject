@@ -1,9 +1,9 @@
 #include "Platforms/Window.h"
 
-#include "Core/PCircularBuffer.h"
-#include "Core/PMemory.h"
-#include "Core/PAlgorithm.h"
-#include "Core/PArray.h"
+#include "STD/PCircularBuffer.h"
+#include "STD/PMemory.h"
+#include "STD/PAlgorithm.h"
+#include "STD/PArray.h"
 
 #include "Events.h"
 #include "Base.h"

@@ -1,6 +1,6 @@
 #pragma once
-#include "Core/PMemory.h"
-#include "Core/PTypes.h"
+#include "STD/PMemory.h"
+#include "STD/PTypes.h"
 
 namespace pstd {
 	struct Allocation {

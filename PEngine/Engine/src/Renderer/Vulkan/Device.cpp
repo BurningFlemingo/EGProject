@@ -1,8 +1,8 @@
 #include "Device.h"
 
-#include "Core/PArena.h"
-#include "Core/PArray.h"
-#include "Core/PContainer.h"
+#include "STD/PArena.h"
+#include "STD/PArray.h"
+#include "STD/PContainer.h"
 #include <vulkan/vulkan_core.h>
 
 namespace {
@@ -221,7 +221,7 @@ namespace {
 		// TODO: move this into argument and check device actually has these
 		// features
 		VkPhysicalDeviceVulkan12Features features12{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 			.bufferDeviceAddress = VK_TRUE
 		};
 

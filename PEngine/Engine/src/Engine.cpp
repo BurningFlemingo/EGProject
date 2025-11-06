@@ -5,20 +5,20 @@
 #include "Platforms/Window.h"
 #include "Renderer/Renderer.h"
 
-#include "Core/PArena.h"
-#include "Core/PArray.h"
-#include "Core/PCircularBuffer.h"
+#include "STD/PArena.h"
+#include "STD/PArray.h"
+#include "STD/PCircularBuffer.h"
 
-#include "Core/PMatrix.h"
-#include "Core/PMemory.h"
-#include "Core/PString.h"
-#include "Core/PVector.h"
-#include "Core/PMath.h"
-#include "Core/PArray.h"
-#include "Core/Memory.h"
-#include "Core/Console.h"
+#include "STD/PMatrix.h"
+#include "STD/PMemory.h"
+#include "STD/PString.h"
+#include "STD/PVector.h"
+#include "STD/PMath.h"
+#include "STD/PArray.h"
+#include "STD/Memory.h"
+#include "STD/Console.h"
 
-#include "Core/PFunction.h"
+#include "STD/PFunction.h"
 
 #include <new>
 

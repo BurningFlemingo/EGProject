@@ -1,6 +1,6 @@
 #pragma once
-#include "Core/PArena.h"
-#include "Core/PMemory.h"
+#include "STD/PArena.h"
+#include "STD/PMemory.h"
 
 namespace PE {
 

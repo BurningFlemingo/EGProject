@@ -2,11 +2,11 @@
 #include "Logging.h"
 #include "LoggingSetup.h"
 #include "Game.h"
-#include "Core/PArena.h"
-#include "Core/PMemory.h"
-#include "Core/PFileIO.h"
-#include "Core/PString.h"
-#include "Core/Memory.h"
+#include "STD/PArena.h"
+#include "STD/PMemory.h"
+#include "STD/PFileIO.h"
+#include "STD/PString.h"
+#include "STD/Memory.h"
 #include <Windows.h>
 
 namespace {

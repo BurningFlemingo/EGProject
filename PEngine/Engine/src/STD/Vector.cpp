@@ -1,5 +1,5 @@
-#include "Core/PVector.h"
-#include "Core/PMath.h"
+#include "STD/PVector.h"
+#include "STD/PMath.h"
 
 using namespace pstd;
 

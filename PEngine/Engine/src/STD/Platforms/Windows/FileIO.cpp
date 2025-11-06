@@ -1,7 +1,7 @@
-#include "Core/PArena.h"
-#include "Core/PString.h"
-#include "Core/PFileIO.h"
-#include "Core/PAssert.h"
+#include "STD/PArena.h"
+#include "STD/PString.h"
+#include "STD/PFileIO.h"
+#include "STD/PAssert.h"
 #include "Logging.h"
 
 #include <Windows.h>
