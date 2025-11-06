@@ -220,8 +220,14 @@ namespace {
 
 		// TODO: move this into argument and check device actually has these
 		// features
+		VkPhysicalDeviceVulkan12Features features12{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+			.bufferDeviceAddress = VK_TRUE
+		};
+
 		VkPhysicalDeviceVulkan13Features features13{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+			.pNext = &features12,
 			.synchronization2 = VK_TRUE,
 			.dynamicRendering = VK_TRUE,
 		};

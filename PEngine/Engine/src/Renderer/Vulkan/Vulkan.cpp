@@ -25,6 +25,10 @@ struct Vertex {
 	pstd::Vec3 color;
 };
 
+struct PushConstant {
+	VkDeviceAddress vertexBufferAddress;
+};
+
 Renderer::State* Renderer::startup(
 	pstd::Arena* pPersistArena,
 	pstd::Arena scratchArena,
@@ -234,8 +238,11 @@ Renderer::State* Renderer::startup(
 
 	};
 
-	VkPipelineLayoutCreateInfo layoutCI{
+	VkPushConstantRange pushConstantRange{
+		.
+	} VkPipelineLayoutCreateInfo layoutCI{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.pushConstantRangeCount = 1,
 	};
 
 	VkPipelineLayout pipelineLayout{};
