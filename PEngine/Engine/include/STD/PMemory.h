@@ -10,6 +10,10 @@ namespace pstd {
 }
 
 namespace pstd {
+	struct Allocation {
+		void* block;
+		size_t size;  // always in bytes
+	};
 
 	enum AllocationType : uint32_t {
 		ALLOC_INVALID = 0b0,

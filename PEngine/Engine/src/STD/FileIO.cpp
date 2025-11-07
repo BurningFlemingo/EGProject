@@ -18,7 +18,7 @@ pstd::String pstd::makeExeDirectoryPath(pstd::Arena* pPersistArena) {
 	return exeString;
 }
 
-pstd::String pstd::readFile(pstd::Arena* pArena, const char* filePath) {
+pstd::Allocation pstd::readFile(pstd::Arena* pArena, const char* filePath) {
 	pstd::FileHandle fileHandle{ pstd::openFile(
 		filePath,
 		pstd::FileAccess::read,
@@ -26,13 +26,13 @@ pstd::String pstd::readFile(pstd::Arena* pArena, const char* filePath) {
 		pstd::FileCreate::openExisting
 	) };
 
-	pstd::String fileString{ readFile(pArena, fileHandle) };
+	pstd::Allocation fileAllocation{ readFile(pArena, fileHandle) };
 
 	pstd::closeFile(fileHandle);
 
-	return fileString;
+	return fileAllocation;
 }
-pstd::String pstd::readFile(pstd::Arena* pArena, pstd::String filePath) {
+pstd::Allocation pstd::readFile(pstd::Arena* pArena, pstd::String filePath) {
 	pstd::FileHandle fileHandle{ pstd::openFile(
 		pArena,
 		filePath,
@@ -41,9 +41,9 @@ pstd::String pstd::readFile(pstd::Arena* pArena, pstd::String filePath) {
 		pstd::FileCreate::openExisting
 	) };
 
-	pstd::String fileString{ readFile(pArena, fileHandle) };
+	pstd::Allocation fileAllocation{ readFile(pArena, fileHandle) };
 
 	pstd::closeFile(fileHandle);
 
-	return fileString;
+	return fileAllocation;
 }

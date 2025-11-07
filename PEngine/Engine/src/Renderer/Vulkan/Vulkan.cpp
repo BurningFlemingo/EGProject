@@ -34,7 +34,7 @@ Renderer::State* Renderer::startup(
 	pstd::Arena scratchArena,
 	const Platform::State& platformState
 ) {
-	VkInstance instance{ createInstance({ *pPersistArena, scratchArena }) };
+	VkInstance instance{ createInstance(*pPersistArena, scratchArena) };
 
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
@@ -48,12 +48,12 @@ Renderer::State* Renderer::startup(
 		pPersistArena, scratchArena, device, surface, platformState
 	) };
 
-	pstd::String fragShaderString{
+	pstd::String fragShaderString{ pstd::createString(
 		pstd::readFile(&scratchArena, "shaders\\first.frag.spv")
-	};
-	pstd::String vertShaderString{
+	) };
+	pstd::String vertShaderString{ pstd::createString(
 		pstd::readFile(&scratchArena, "shaders\\first.vert.spv")
-	};
+	) };
 
 	VkShaderModuleCreateInfo fragmentShaderModuleCI{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,

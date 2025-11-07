@@ -12,11 +12,6 @@ namespace pstd {
 		uint32_t offset;
 	};
 
-	struct ArenaPair {
-		Arena primary;
-		Arena secondary;
-	};
-
 	template<typename T>
 	constexpr size_t getCount(const Arena& arena) {
 		return arena.offset / sizeof(T);

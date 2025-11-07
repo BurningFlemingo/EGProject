@@ -36,6 +36,11 @@ String pstd::createString(pstd::Arena* pArena, const String& string) {
 	return String{ .buffer = newStringBuffer, .size = string.size };
 }
 
+pstd::String pstd::createString(const pstd::Allocation& allocation) {
+	return String{ .buffer = rcast<char*>(allocation.block),
+				   .size = ncast<uint32_t>(allocation.size) };
+}
+
 String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 	ASSERT(pArena);
 	ASSERT(string.buffer);

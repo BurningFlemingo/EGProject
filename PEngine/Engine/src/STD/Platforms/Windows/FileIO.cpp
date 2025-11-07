@@ -128,7 +128,7 @@ size_t pstd::getLastFileWriteTime(const char* filename) {
 	return cast<size_t>(time.QuadPart);
 }
 
-pstd::String pstd::readFile(pstd::Arena* pArena, pstd::FileHandle pHandle) {
+pstd::Allocation pstd::readFile(pstd::Arena* pArena, pstd::FileHandle pHandle) {
 	auto hFile{ rcast<FileHandleImpl>(pHandle) };
 	DWORD bytesRead{};
 	OVERLAPPED ol{};
@@ -137,14 +137,12 @@ pstd::String pstd::readFile(pstd::Arena* pArena, pstd::FileHandle pHandle) {
 
 	ASSERT(fileSize < pstd::getAvailableCount<char>(*pArena));
 
-	auto* fileBuffer{ pstd::alloc<char>(pArena, fileSize) };
+	void* fileBuffer{ pstd::alloc(pArena, fileSize, 1) };
 
 	if (ReadFile(hFile, rcast<void*>(fileBuffer), fileSize, &bytesRead, &ol) ==
 		false) {
 		ASSERT(false);
 	}
 
-	pstd::String fileString{ .buffer = fileBuffer, .size = bytesRead };
-
-	return fileString;
+	return pstd::Allocation{ .block = fileBuffer, .size = bytesRead };
 }

@@ -12,13 +12,12 @@
 
 #include <vulkan/vulkan_core.h>
 
-VkInstance createInstance(pstd::ArenaPair scratchArenas) {
-	pstd::Arena& scratchArena{ scratchArenas.primary };
-
+VkInstance
+	createInstance(pstd::Arena scratchArena1, pstd::Arena scratchArena2) {
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 	auto extensionProps{
-		pstd::createArray<VkExtensionProperties>(&scratchArena, extensionCount)
+		pstd::createArray<VkExtensionProperties>(&scratchArena1, extensionCount)
 	};
 
 	vkEnumerateInstanceExtensionProperties(
@@ -26,7 +25,7 @@ VkInstance createInstance(pstd::ArenaPair scratchArenas) {
 	);
 
 	auto requiredExtensions{
-		pstd::createArray<const char*>(&scratchArena, 2, 0)
+		pstd::createArray<const char*>(&scratchArena1, 2, 0)
 	};
 
 	pstd::pushBack(
@@ -40,15 +39,15 @@ VkInstance createInstance(pstd::ArenaPair scratchArenas) {
 	auto optionalExtensions{ getDebugExtensions() };
 
 	pstd::Array<const char*> foundExtensions{ takeFoundExtensions(
-		&scratchArena,
-		scratchArenas.secondary,
+		&scratchArena1,
+		scratchArena2,
 		extensionProps,
 		&requiredExtensions,
 		&optionalExtensions
 	) };
 
 	pstd::Array<const char*> foundValidationLayers{
-		findValidationLayers(&scratchArena)
+		findValidationLayers(&scratchArena1)
 	};
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,

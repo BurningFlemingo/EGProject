@@ -1,10 +1,6 @@
 #include "AssetLoader.h"
 
-// BMP DEBUGLoadBPM(
-// 	Game::ThreadContext* thread,
-// 	Platform::DEBUGReadEntireFile* readEntireFile,
-// 	const char* filePath
-// ) {
+// BMP DEBUGLoadBPM(const char* filePath) {
 // 	Platform::DEBUGReadFileResult file{ readEntireFile(thread, filePath) };
 // 	if (!file.contents || file.size == 0) {
 // 		return {};

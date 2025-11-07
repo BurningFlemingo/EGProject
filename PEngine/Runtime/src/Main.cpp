@@ -55,9 +55,9 @@ int main() {
 		pstd::createCString(&scratchArena, originalDllPath)
 	};
 
-	pstd::String cubeString{
+	pstd::String cubeString{ pstd::createString(
 		pstd::readFile(&scratchArena, ".\\assets\\models\\cube.obj")
-	};
+	) };
 	while (cubeString.size > 0) {
 		pstd::String line{ pstd::readLine(&cubeString) };
 

@@ -36,6 +36,7 @@ namespace pstd {
 	}
 
 	String createString(Arena* pArena, const String& string);
+	String createString(const Allocation& allocation);
 
 	inline String createString(Arena* pArena, const char* string) {
 		return createString(pArena, createString(string));
