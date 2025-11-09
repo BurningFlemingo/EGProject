@@ -99,7 +99,7 @@ Renderer::State* Renderer::startup(
 	constexpr uint32_t nVertices{ 4 };
 	Vertex vertices[nVertices]{
 		Vertex{ .pos = pstd::Vec4{ -0.5, -0.5, 1.0, 1.0 },
-				.color = pstd::Vec4{ 1.0, 0.0, 0.0, 1.0 } },
+				.color = pstd::Vec4{ 1.0, 1.0, 0.0, 1.0 } },
 		Vertex{ .pos = pstd::Vec4{ 0.5, -0.5, 1.0, 1.0 },
 				.color = pstd::Vec4{ 0.0, 1.0, 0.0, 1.0 } },
 		Vertex{ .pos = pstd::Vec4{ 0.5, 0.5, 1.0, 1.0 },

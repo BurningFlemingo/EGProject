@@ -1,4 +1,42 @@
 #include "AssetLoader.h"
+#include "STD/PFileIO.h"
+
+namespace {
+#pragma pack(push, 1)
+	struct BMPHeader {
+		uint16_t fileType;
+		uint32_t fileSize;
+		uint16_t reserved1;
+		uint16_t reserved2;
+		uint32_t pxOffset;
+		uint32_t headerSize;
+		int32_t pxWidth;
+		int32_t pxHeight;
+		uint16_t nPlanes;
+		uint16_t bitsPerPixel;
+		uint32_t compressionMethod;
+		uint32_t bmpSize;
+		int32_t horizontalResolution;
+		int32_t verticalResolution;
+		uint32_t nColorsUsed;
+		uint32_t nColorsImportant;	// generally ignored
+
+		uint32_t redMask;
+		uint32_t greenMask;
+		uint32_t blueMask;
+	};
+#pragma pack(pop)
+}  // namespace
+
+pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
+	pstd::Allocation rawBMP{ pstd::readFile(pArena, path) };
+	if (rawBMP.size == 0 || rawBMP.block == nullptr) {
+		return {};
+	}
+
+	BMPHeader* header{ rcast<BMPHeader*>(rawBMP.block) };
+	uint64_t* pPixels{ rcast<uint64_t*>(rawBMP.block) + header->pxOffset };
+}
 
 // BMP DEBUGLoadBPM(const char* filePath) {
 // 	Platform::DEBUGReadFileResult file{ readEntireFile(thread, filePath) };
