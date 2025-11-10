@@ -11,7 +11,13 @@ namespace pstd {
 		size_t height;
 	};
 
-	struct OBJ {};
+	struct OBJ {
+		pstd::Array<pstd::Vec3> uniquePositions;
+		pstd::Array<uint32_t> indices;
+	};
 
 	BMP loadBMP(pstd::Arena* pArena, const char* path);
+	OBJ loadOBJ(
+		pstd::Arena* pArena, pstd::Arena scratchArena, const char* path
+	);
 }  // namespace pstd

@@ -76,3 +76,21 @@ pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
 	}
 	return bmp;
 }
+
+pstd::OBJ pstd::loadOBJ(
+	pstd::Arena* pArena, pstd::Arena scratchArena, const char* path
+) {
+	pstd::String objString{
+		pstd::createString(pstd::readFile(&scratchArena, path))
+	};
+
+	while (objString.size > 0) {
+		pstd::String line{ pstd::readLine(&objString) };
+
+		pstd::Array<pstd::String> elements{
+			splitLine(&scratchArena, line, ' ')
+		};
+
+		if (pstd::stringsMatch(elements[0], pstd::createString("n"))) {}
+	}
+}
