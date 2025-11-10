@@ -1,5 +1,6 @@
 #include "AssetLoader.h"
 #include "STD/PFileIO.h"
+#include "STD/PAlgorithm.h"
 
 namespace {
 #pragma pack(push, 1)
@@ -35,7 +36,35 @@ pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
 	}
 
 	BMPHeader* header{ rcast<BMPHeader*>(rawBMP.block) };
-	uint64_t* pPixels{ rcast<uint64_t*>(rawBMP.block) + header->pxOffset };
+	uint32_t* pPixels{ rcast<uint32_t*>(rawBMP.block) + header->pxOffset };
+
+	ASSERT(header->pxWidth > 0);
+
+	ASSERT(header->compressionMethod == 3);
+	ASSERT(header->bitsPerPixel == 32);
+
+	pstd::BMP bmp{
+		.pPixels = pPixels,
+		.width = pstd::abs(header->pxWidth),
+		.height = pstd::abs(header->pxHeight),
+	};
+
+	uint32_t redMask{ header->redMask };
+	uint32_t greenMask{ header->greenMask };
+	uint32_t blueMask{ header->blueMask };
+	uint32_t alphaMask{ ~(redMask | greenMask | blueMask) };
+
+	pstd::FirstSetBit redShift{ pstd::bitscanForward(redMask) };
+	pstd::FirstSetBit greenShift{ pstd::bitscanForward(greenMask) };
+	pstd::FirstSetBit blueShift{ pstd::bitscanForward(blueMask) };
+	pstd::FirstSetBit alphaShift{ pstd::bitscanForward(alphaMask) };
+
+	ASSERT(redShift.found);
+	ASSERT(greenShift.found);
+	ASSERT(blueShift.found);
+	ASSERT(alphaShift.found);
+
+	uint32_t* pPixel{};
 }
 
 // BMP DEBUGLoadBPM(const char* filePath) {

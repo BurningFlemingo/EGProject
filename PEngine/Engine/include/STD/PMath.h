@@ -18,16 +18,6 @@ namespace pstd {
 	}
 
 	template<typename T>
-	T abs(const T num) {
-		T res{ num };
-		if (num < 0) {
-			return -res;
-		}
-
-		return res;
-	}
-
-	template<typename T>
 	constexpr float roundf(const T num) {
 		float res{ (int)(num + 0.5f) };
 		if (num < 0) {

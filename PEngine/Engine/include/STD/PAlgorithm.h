@@ -16,23 +16,22 @@ namespace pstd {
 		return val;
 	}
 
+	template<typename T>
+	size_t abs(const T num) {
+		T res{ num };
+		if (num < 0) {
+			return -res;
+		}
+
+		return res;
+	}
+
 	struct FirstSetBit {
 		uint32_t shift;
 		bool found;
 	};
 
-	inline FirstSetBit bitscanForward(uint64_t val) {
-		FirstSetBit result{};
-
-		constexpr uint32_t nBitsInUInt{ 32 };
-		for (int i{}; i < nBitsInUInt; i++) {
-			if (val & (1 << i)) {
-				result.found = true;
-				result.shift = i;
-				break;
-			}
-		}
-		return result;
-	}
+	template<typename T>
+	FirstSetBit bitscanForward(T val);
 
 };	// namespace pstd

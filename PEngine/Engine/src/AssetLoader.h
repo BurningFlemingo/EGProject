@@ -5,7 +5,8 @@
 
 namespace pstd {
 	struct BMP {
-		pstd::Vec4* pPixels;
+		// 32 Bit pixels
+		uint32_t* pPixels;
 		size_t width;
 		size_t height;
 	};

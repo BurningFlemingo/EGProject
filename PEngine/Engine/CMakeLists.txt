@@ -64,6 +64,7 @@ set(SRC_FILES
 	${SRC_DIR}/STD/Platforms/Windows/Console.cpp
 	${SRC_DIR}/STD/Platforms/Windows/FileIO.cpp
 	${SRC_DIR}/STD/Platforms/Windows/Assert.cpp
+	${SRC_DIR}/STD/Algorithm.cpp
 	${SRC_DIR}/STD/String.cpp
 	${SRC_DIR}/STD/Arena.cpp
 	${SRC_DIR}/STD/Memory.cpp

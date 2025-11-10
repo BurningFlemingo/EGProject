@@ -21,6 +21,5 @@ void main() {
 	Vertex vertex = pushConstants.vertexBuffer.vertices[gl_VertexIndex];
 	gl_Position = vertex.pos;
 	
-	gl_Position.y *= -1;
 	outFragColor = vertex.color.xyz;
 }
