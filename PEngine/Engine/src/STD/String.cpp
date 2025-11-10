@@ -12,8 +12,8 @@ using namespace pstd;
 namespace {
 	pstd::String pushUInt64AsString(pstd::Arena* pArena, uint64_t number);
 	pstd::String pushInt64AsString(pstd::Arena* pArena, int64_t number);
-	pstd::String pushDoubleAsString(
-		pstd::Arena* pArena, double number, uint32_t precision = 5
+	pstd::String pushFloatAsString(
+		pstd::Arena* pArena, float number, uint32_t precision = 5
 	);
 	pstd::String pushString(pstd::Arena* pArena, const String& string);
 	pstd::String pushStringUntilControlCharacter(
@@ -130,10 +130,7 @@ String pstd::formatString(pstd::Arena* pArena, const String& format, T val) {
 			concat(&string, pushInt64AsString(pArena, ncast<uint64_t>(val)));
 		} break;
 		case 'f': {
-			concat(&string, pushDoubleAsString(pArena, ncast<double>(val)));
-		} break;
-		case 'd': {
-			concat(&string, pushDoubleAsString(pArena, ncast<double>(val)));
+			concat(&string, pushFloatAsString(pArena, ncast<float>(val)));
 		} break;
 		default:
 			ASSERT(false);
@@ -310,14 +307,14 @@ pstd::Array<String>
 	return items;
 }
 
-double pstd::stringToDouble(String stringNum) {
+float pstd::stringToFloat(String stringNum) {
 	if (stringNum.size == 0) {
 		return 0;
 	}
 
-	double wholePart{};
-	double fractionalNumerator{};
-	double fractionalDenominator{ 1 };
+	float wholePart{};
+	float fractionalNumerator{};
+	float fractionalDenominator{ 1 };
 	bool wholePartDone{ false };
 	bool isNegative{ false };
 
@@ -335,7 +332,7 @@ double pstd::stringToDouble(String stringNum) {
 			break;
 		}
 
-		double num{ ncast<double>(stringNum.buffer[i] - '0') };
+		float num{ ncast<float>(stringNum.buffer[i] - '0') };
 		if (!wholePartDone) {
 			wholePart *= 10;
 			wholePart += num;
@@ -346,15 +343,15 @@ double pstd::stringToDouble(String stringNum) {
 		}
 	}
 
-	double num{ wholePart + (fractionalNumerator / fractionalDenominator) };
+	float num{ wholePart + (fractionalNumerator / fractionalDenominator) };
 	num = isNegative ? -num : num;
 
 	return num;
 }
 
 namespace {
-	String pushDoubleAsString(
-		pstd::Arena* pArena, double number, uint32_t precision
+	String pushFloatAsString(
+		pstd::Arena* pArena, float number, uint32_t precision
 	) {
 		ASSERT(precision < 128);  // to avoid a loop that blows out the buffer
 
@@ -371,7 +368,7 @@ namespace {
 
 		size_t factor{ pstd::pow<size_t>(10, precision) };
 		auto decimalPart{
-			ncast<uint32_t>((pstd::abs(number - wholePart) * factor) + 0.5f)
+			ncast<uint32_t>((pstd::absf(number - wholePart) * factor) + 0.5f)
 		};
 		concat(&string, pushUInt64AsString(pArena, decimalPart));
 		return string;

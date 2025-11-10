@@ -45,8 +45,8 @@ pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
 
 	pstd::BMP bmp{
 		.pPixels = pPixels,
-		.width = pstd::abs(header->pxWidth),
-		.height = pstd::abs(header->pxHeight),
+		// .width = pstd::abs(header->pxWidth),
+		// .height = pstd::abs(header->pxHeight),
 	};
 
 	uint32_t redMask{ header->redMask };

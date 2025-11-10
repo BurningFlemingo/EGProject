@@ -196,7 +196,7 @@ Renderer::State* Renderer::startup(
 		.depthClampEnable = VK_FALSE,
 		.polygonMode = VK_POLYGON_MODE_FILL,
 		.cullMode = VK_CULL_MODE_BACK_BIT,
-		.frontFace = VK_FRONT_FACE_CLOCKWISE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		.lineWidth = 1.f,
 	};
 
@@ -457,6 +457,7 @@ void Renderer::render(State* state, bool windowResized) {
 	);
 
 	VkViewport viewport{
+		.y = ncast<float>(state->swapchain.createInfo.imageExtent.height),
 		.width = ncast<float>(state->swapchain.createInfo.imageExtent.width),
 		.height = -ncast<float>(state->swapchain.createInfo.imageExtent.height),
 		.minDepth = 0.f,

@@ -69,8 +69,7 @@ int main() {
 			for (int i{ 1 }; i < elements.count; i++) {
 				pstd::String element{ elements[i] };
 				LOG_INFO("element: %s\n", element);
-				double num{ pstd::stringToDouble(element) };
-				LOG_INFO("parsed: %d\n", num);
+				LOG_INFO("parsed: %f\n", pstd::stringToFloat(element));
 			}
 		}
 	}
