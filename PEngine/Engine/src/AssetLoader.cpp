@@ -39,13 +39,17 @@ pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
 	uint32_t* pPixels{ rcast<uint32_t*>(rawBMP.block) + header->pxOffset };
 
 	ASSERT(header->pxWidth > 0);
+	ASSERT(header->pxHeight > 0);
 	ASSERT(header->compressionMethod == 3);
 	ASSERT(header->bitsPerPixel == 32);
 
+	size_t absWidth{ pstd::abs(header->pxWidth) };
+	size_t absHeight{ pstd::abs(header->pxHeight) };
+
 	pstd::BMP bmp{
 		.pPixels = pPixels,
-		.width = pstd::abs(header->pxWidth),
-		.height = pstd::abs(header->pxHeight),
+		.width = absWidth,
+		.height = absHeight,
 	};
 
 	uint32_t redMask{ header->redMask };
@@ -64,8 +68,8 @@ pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
 	ASSERT(alphaShift.found);
 
 	uint32_t* pPixel{ pPixels };
-	for (int y{}; y < bmp.height; y++) {
-		for (int x{}; x < bmp.width; x++) {
+	for (int y{}; y < absHeight; y++) {
+		for (int x{}; x < absWidth; x++) {
 			uint32_t color{ *pPixel };
 			*pPixel = (((color >> redShift.shift) & 0xFF) << 0) |
 				(((color >> greenShift.shift) & 0xFF) << 8) |
@@ -74,6 +78,7 @@ pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
 			pPixel++;
 		}
 	}
+
 	return bmp;
 }
 
@@ -93,4 +98,6 @@ pstd::OBJ pstd::loadOBJ(
 
 		if (pstd::stringsMatch(elements[0], pstd::createString("n"))) {}
 	}
+
+	return {};
 }
