@@ -12,7 +12,7 @@ namespace pstd {
 	};
 
 	struct OBJ {
-		pstd::Array<pstd::Vec3> uniquePositions;
+		pstd::Array<pstd::Vec4> uniquePositions;
 		pstd::Array<uint32_t> indices;
 	};
 

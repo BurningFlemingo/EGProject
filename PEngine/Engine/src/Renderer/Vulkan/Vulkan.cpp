@@ -1,4 +1,5 @@
 #include "STD/PVector.h"
+#include "Renderer.h"
 #include "Renderer/Renderer.h"
 
 #include "DebugMessenger.h"
@@ -7,12 +8,15 @@
 #include "Swapchain.h"
 #include "Allocation.h"
 #include "Types.h"
+#include "AssetLoader.h"
 
 #include "STD/PContainer.h"
 #include "STD/PFileIO.h"
 #include "STD/PArena.h"
 #include "STD/PArray.h"
 #include "STD/PString.h"
+#include "STD/PMatrix.h"
+#include "STD/PMath.h"
 #include "Logging.h"
 #include "Platforms/VulkanSurface.h"
 
@@ -20,13 +24,9 @@
 #include <vulkan/vulkan_core.h>
 #include <new>
 
-struct Vertex {
-	pstd::Vec4 pos;
-	pstd::Vec4 color;
-};
-
 struct PushConstants {
 	VkDeviceAddress vertexBufferAddress;
+	alignas(16) pstd::Mat4 MVPMatrix;
 };
 
 Renderer::State* Renderer::startup(
@@ -96,20 +96,9 @@ Renderer::State* Renderer::startup(
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 	};
 
-	constexpr uint32_t nVertices{ 4 };
-	Vertex vertices[nVertices]{
-		Vertex{ .pos = pstd::Vec4{ -0.5, -0.5, 1.0, 1.0 },
-				.color = pstd::Vec4{ 1.0, 1.0, 0.0, 1.0 } },
-		Vertex{ .pos = pstd::Vec4{ 0.5, -0.5, 1.0, 1.0 },
-				.color = pstd::Vec4{ 0.0, 1.0, 0.0, 1.0 } },
-		Vertex{ .pos = pstd::Vec4{ 0.5, 0.5, 1.0, 1.0 },
-				.color = pstd::Vec4{ 0.0, 0.0, 1.0, 1.0 } },
-		Vertex{ .pos = pstd::Vec4{ -0.5, 0.5, 1.0, 1.0 },
-				.color = pstd::Vec4{ 1.0, 1.0, 1.0, 1.0 } }
-	};
-
-	constexpr uint32_t nIndices{ 6 };
-	uint16_t indices[nIndices]{ 0, 1, 2, 2, 3, 0 };
+	pstd::OBJ cubeOBJ{ pstd::loadOBJ(
+		pPersistArena, scratchArena, ".\\assets\\models\\cube.obj"
+	) };
 
 	VkCommandPoolCreateInfo transientCmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -136,14 +125,14 @@ Renderer::State* Renderer::startup(
 			VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		sizeof(Vertex) * nVertices
+		sizeof(cubeOBJ.uniquePositions[0]) * cubeOBJ.uniquePositions.count
 	) };
 
 	Buffer iBuffer{ createBuffer(
 		device,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		sizeof(uint16_t) * nIndices
+		sizeof(cubeOBJ.indices[0]) * cubeOBJ.indices.count
 	) };
 
 	VkBufferDeviceAddressInfo vAddressInfo{
@@ -164,10 +153,25 @@ Renderer::State* Renderer::startup(
 		0,
 		&mappedData
 	);
-	memcpy(mappedData, vertices, sizeof(vertices));
+
+	LOG_INFO(
+		"size %u, %u",
+		vBuffer.size,
+		cubeOBJ.uniquePositions.count * sizeof(cubeOBJ.uniquePositions[0])
+	);
+
+	memcpy(
+		mappedData,
+		cubeOBJ.uniquePositions.data,
+		cubeOBJ.uniquePositions.count * sizeof(cubeOBJ.uniquePositions[0])
+	);
 	copyBuffer(device, transientCmdPool, stagingBuffer, vBuffer, vBuffer.size);
 
-	memcpy(mappedData, indices, sizeof(indices));
+	memcpy(
+		mappedData,
+		cubeOBJ.indices.data,
+		cubeOBJ.indices.count * sizeof(cubeOBJ.indices[0])
+	);
 	copyBuffer(device, transientCmdPool, stagingBuffer, iBuffer, iBuffer.size);
 
 	VkDynamicState dynamicStates[]{ VK_DYNAMIC_STATE_SCISSOR,
@@ -331,27 +335,31 @@ Renderer::State* Renderer::startup(
 	}
 
 	State* state{ pstd::alloc<State>(pPersistArena) };
-	return new (state) State{
-		.swapchain = swapchain,
-		.device = device,
-		.surface = surface,
-		.instance = instance,
-		.debugMessenger = debugMessenger,
-		.graphicsPipeline = graphicsPipeline,
-		.graphicsPipelineLayout = pipelineLayout,
-		.maxFramesInFlight = maxFramesInFlight,
-		.cmdPool = cmdPool,
-		.transientCmdPool = transientCmdPool,
-		.cmdBuffers = cmdBuffers,
-		.imageAvailableSemaphores = imageAvailableSemaphores,
-		.renderFinishedSemaphores = renderFinishedSemaphores,
-		.cmdBufferAvailableFences = cmdBufferAvailableFences,
-		.stagingBufferData = mappedData,
-		.stagingBuffer = stagingBuffer,
-		.vertexBuffer = vBuffer,
-		.vertexBufferDeviceAddress = vertexDeviceAddress,
-		.indexBuffer = iBuffer,
-	};
+	return new (state)
+		State{ .swapchain = swapchain,
+			   .device = device,
+			   .surface = surface,
+			   .instance = instance,
+			   .debugMessenger = debugMessenger,
+			   .graphicsPipeline = graphicsPipeline,
+			   .graphicsPipelineLayout = pipelineLayout,
+			   .maxFramesInFlight = maxFramesInFlight,
+			   .cmdPool = cmdPool,
+			   .transientCmdPool = transientCmdPool,
+			   .cmdBuffers = cmdBuffers,
+			   .imageAvailableSemaphores = imageAvailableSemaphores,
+			   .renderFinishedSemaphores = renderFinishedSemaphores,
+			   .cmdBufferAvailableFences = cmdBufferAvailableFences,
+			   .stagingBufferData = mappedData,
+			   .stagingBuffer = stagingBuffer,
+			   .vertexBuffer = vBuffer,
+			   .vertexBufferDeviceAddress = vertexDeviceAddress,
+			   .indexBuffer = iBuffer,
+			   .MVPMatrix = pstd::getIdentityMatrix<4>() };
+}
+
+void Renderer::setMVPMatrix(State* pState, const pstd::Mat4& mvpMat) {
+	pState->MVPMatrix = mvpMat;
 }
 
 void Renderer::render(State* state, bool windowResized) {
@@ -453,7 +461,7 @@ void Renderer::render(State* state, bool windowResized) {
 		state->cmdBuffers[state->frameInFlight],
 		state->indexBuffer.handle,
 		offsets[0],
-		VK_INDEX_TYPE_UINT16
+		VK_INDEX_TYPE_UINT32
 	);
 
 	VkViewport viewport{
@@ -469,7 +477,8 @@ void Renderer::render(State* state, bool windowResized) {
 	vkCmdSetScissor(state->cmdBuffers[state->frameInFlight], 0, 1, &scissor);
 
 	PushConstants pushConstants{ .vertexBufferAddress =
-									 state->vertexBufferDeviceAddress };
+									 state->vertexBufferDeviceAddress,
+								 .MVPMatrix = state->MVPMatrix };
 	vkCmdPushConstants(
 		state->cmdBuffers[state->frameInFlight],
 		state->graphicsPipelineLayout,
@@ -479,7 +488,10 @@ void Renderer::render(State* state, bool windowResized) {
 		&pushConstants
 	);
 
-	vkCmdDrawIndexed(state->cmdBuffers[state->frameInFlight], 6, 1, 0, 0, 0);
+	size_t nIndices{ state->indexBuffer.size / sizeof(uint32_t) };
+	vkCmdDrawIndexed(
+		state->cmdBuffers[state->frameInFlight], nIndices, 1, 0, 0, 0
+	);
 
 	vkCmdEndRendering(state->cmdBuffers[state->frameInFlight]);
 

@@ -78,4 +78,6 @@ namespace pstd {
 		return HALF_PI - asinf(ratio);
 	}
 
+	float toRadians(float degrees);
+
 }  // namespace pstd

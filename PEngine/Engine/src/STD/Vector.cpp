@@ -40,9 +40,9 @@ float pstd::dot(const Vec<n>& a, const Vec<n>& b) {
 }
 
 Vec3 pstd::cross(const Vec3& a, const Vec3 b) {
-	Vec3 res{ .x = a.y * b.z - a.z * b.y,  // yz
-			  .y = -(a.x * b.z - a.z * b.x),  // xz
-			  .z = a.x * b.y - a.y * b.x };	 // xy
+	Vec3 res{ .x = a.y * b.z - a.z * b.y,  // yz, i
+			  .y = a.z * b.x - a.x * b.z,  // -zx, j
+			  .z = a.x * b.y - a.y * b.x };	 // xy, k
 	return res;
 }
 
@@ -63,6 +63,12 @@ float pstd::calcMagnitude(const Vec<n>& a) {
 	}
 	res = (float)pstd::sqrtf((float)res);
 	return res;
+}
+
+float pstd::calcMagnitude(const Rot3& r) {
+	return pstd::sqrtf(
+		r.scalar * r.scalar + r.xy * r.xy + r.yz * r.yz + r.zx + r.zx
+	);
 }
 
 template<uint32_t n>
@@ -125,6 +131,19 @@ void pstd::normalize(Vec<n>* a) {
 	float magnitude{ pstd::calcMagnitude(*a) };
 	ASSERT(magnitude != 0);
 	*a /= pstd::getFilledVector<n>(magnitude);
+}
+
+void pstd::normalize(Rot3* a) {
+	ASSERT(a);
+
+	float magnitude{ pstd::calcMagnitude(*a) };
+	ASSERT(magnitude != 0);
+	*a = Rot3{
+		.scalar = a->scalar / magnitude,
+		.xy = a->xy / magnitude,
+		.yz = a->yz / magnitude,
+		.zx = a->zx / magnitude,
+	};
 }
 
 void pstd::rotate(Vec3* vPtr, const Rot3& r) {

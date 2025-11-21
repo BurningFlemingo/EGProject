@@ -1,87 +1,129 @@
+#include "Core.h"
 #include "Engine.h"
-
 #include "Logging.h"
-
+#include "LoggingSetup.h"
+#include "Game.h"
+#include "AssetLoader.h"
+#include "STD/PArena.h"
+#include "STD/PMemory.h"
+#include "STD/PFileIO.h"
+#include "STD/PString.h"
+#include "STD/Memory.h"
 #include "Platforms/Window.h"
 #include "Renderer/Renderer.h"
 
-#include "STD/PArena.h"
-#include "STD/PArray.h"
-#include "STD/PCircularBuffer.h"
-
-#include "STD/PMatrix.h"
-#include "STD/PMemory.h"
-#include "STD/PString.h"
-#include "STD/PVector.h"
-#include "STD/PMath.h"
-#include "STD/PArray.h"
-#include "STD/Memory.h"
-#include "STD/Console.h"
-
-#include "STD/PFunction.h"
-
 #include <new>
 
-namespace PE {
-	struct State {
-		Platform::State* platformState;
-		Renderer::State* rendererState;
-
-		bool isRunning;
-	};
-};	// namespace PE
-
 namespace {
-	size_t getSizeofSubsystems() {
-		size_t allocPadding{ 100 };
-		size_t platformSize{ Platform::getSizeofState() };
-		size_t vulkanSize{ 1024 };
-		size_t vulkanArraysSize{ 1024 };
-		size_t totalSize{ allocPadding + platformSize + vulkanSize };
-		return totalSize;
-	}
 
+	struct GameDll {
+		pstd::DllHandle handle;
+		Game::API api;
+		bool isValid;
+		size_t lastWriteTime;
+	};
+
+	GameDll loadGameDll(pstd::Arena scratchArena);
+	void unloadGameDll(GameDll dll);
 }  // namespace
 
-using namespace PE;
+struct Application::State {
+	pstd::AllocationRegistry allocationRegistry;
+	pstd::Arena scratchArena;
+	pstd::Arena subsystemArena;
+	GameDll gameDll;
+	Game::State* pGameState;
+	pstd::String originalDllPath;
+	const char* originalDllPathCString;
+	bool isRunning;
 
-size_t PE::getSizeofState() {
-	size_t totalSize{ sizeof(State) };
-	return totalSize;
-}
+	bool pressedKeys[ncast<size_t>(InputCode::COUNT)];
+};
 
-PE::State* PE::startup(
-	pstd::Arena* pPersistArena,
-	pstd::Arena scratchArena,
-	pstd::AllocationRegistry* pRegistry
-) {
-	Platform::State* platformState{
-		Platform::startup(pPersistArena, "window", 1920 / 2, 1080 / 2)
+Engine::Subsystems Engine::startup() {
+	constexpr size_t scratchSize{ 1024 * 1024 };
+
+	Console::startup();
+
+	pstd::AllocationRegistry allocationRegistry{ pstd::createAllocationRegistry(
+	) };
+
+	pstd::Arena scratchArena{
+		pstd::allocateArena(&allocationRegistry, scratchSize)
 	};
 
-	Renderer::State* rendererState{
-		Renderer::startup(pPersistArena, scratchArena, *platformState)
+	pstd::Arena subsystemArena{
+		pstd::allocateArena(&allocationRegistry, scratchSize * 2)
 	};
 
-	State* pState{ pstd::alloc<State>(pPersistArena) };
-	new (pState) State{ .platformState = platformState,
-						.rendererState = rendererState,
-						.isRunning = true };
-	return pState;
+	GameDll gameDll{ loadGameDll(scratchArena) };
+
+	Game::State* pGameState{ gameDll.api.startup() };
+
+	pstd::String originalDllPath{ pstd::formatString(
+		&scratchArena,
+		"%mGame.%m",
+		makeExeDirectoryPath(&scratchArena),
+		pstd::getDllExtensionName()
+	) };
+
+	const char* originalDllPathCString{
+		pstd::createCString(&scratchArena, originalDllPath)
+	};
+
+	Application::State* pApplicationState =
+		new (pstd::alloc<Application::State>(&subsystemArena)
+		) Application::State{ .allocationRegistry = allocationRegistry,
+							  .scratchArena = scratchArena,
+							  .subsystemArena = subsystemArena,
+							  .gameDll = gameDll,
+							  .pGameState = pGameState,
+							  .originalDllPath = originalDllPath,
+							  .originalDllPathCString = originalDllPathCString,
+							  .isRunning = true };
+
+	Platform::State* pPlatformState{
+		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
+	};
+	Renderer::State* pRendererState{
+		Renderer::startup(&subsystemArena, scratchArena, *pPlatformState)
+	};
+
+	return Engine::Subsystems{
+		.pApplicationState = pApplicationState,
+		.pRendererState = pRendererState,
+		.pPlatformState = pPlatformState,
+	};
 }
-bool PE::update(State* state) {
-	if (state->isRunning && Platform::isRunning(state->platformState)) {
-		Platform::update(state->platformState);
+
+void Engine::shutdown(const Subsystems& systems) {
+	systems.pApplicationState->gameDll.api.shutdown(
+		systems.pApplicationState->pGameState
+	);
+
+	Renderer::shutdown(systems.pRendererState);
+	Platform::shutdown(systems.pPlatformState);
+}
+
+bool Engine::update(const Subsystems& systems) {
+	Renderer::State* pRenderer{ systems.pRendererState };
+	Platform::State* pPlatform{ systems.pPlatformState };
+	Application::State* pApp{ systems.pApplicationState };
+
+	if (pApp->isRunning && Platform::isRunning(pPlatform)) {
+		Platform::update(pPlatform);
 
 		Platform::Event event{};
 		bool windowResized{};
-		while (Platform::popEvent(state->platformState, &event)) {
+		while (Platform::popEvent(pPlatform, &event)) {
 			switch (event.type) {
 				case Platform::EventType::key: {
 					if (event.keyEvent.action == InputAction::PRESSED) {
-						if (event.keyEvent.code == InputCode::TAB) {
-							state->isRunning = false;
-						}
+						pApp->pressedKeys[ncast<size_t>(event.keyEvent.code)] =
+							true;
+					} else if (event.keyEvent.action == InputAction::RELEASED) {
+						pApp->pressedKeys[ncast<size_t>(event.keyEvent.code)] =
+							false;
 					}
 				} break;
 				case Platform::EventType::window: {
@@ -93,13 +135,105 @@ bool PE::update(State* state) {
 					break;
 			}
 		}
-
-		Renderer::render(state->rendererState, false);
 	}
 
-	return state->isRunning;
+	if (pApp->pressedKeys[(uint32_t)InputCode::TAB]) {
+		pApp->isRunning = false;
+	}
+
+	return pApp->isRunning;
 }
-void PE::shutdown(State* state) {
-	Renderer::shutdown(state->rendererState);
-	Platform::shutdown(state->platformState);
+
+void Engine::run(const Subsystems& systems) {
+	Renderer::State* pRenderer{ systems.pRendererState };
+	Platform::State* pPlatform{ systems.pPlatformState };
+	Application::State* pApp{ systems.pApplicationState };
+
+	while (pApp->isRunning) {
+		pstd::reset(&pApp->scratchArena);
+
+		if (pstd::getLastFileWriteTime(pApp->originalDllPathCString) !=
+			pApp->gameDll.lastWriteTime) {
+			unloadGameDll(pApp->gameDll);
+			pApp->gameDll = loadGameDll(pApp->scratchArena);
+		}
+
+		pApp->isRunning &= Engine::update(systems);
+		pApp->isRunning &= pApp->gameDll.api.update(systems, pApp->pGameState);
+		Renderer::render(pRenderer, false);
+	}
 }
+
+bool Engine::getKeyDown(Application::State* pAppState, InputCode keyCode) {
+	bool isPressed{ pAppState->pressedKeys[(uint32_t)keyCode] };
+	return isPressed;
+}
+
+namespace {
+
+	GameDll loadGameDll(pstd::Arena scratchArena) {
+		static uint32_t loadedDllSlot{};
+
+		const pstd::String originalDllName{ pstd::createString("Game") };
+
+		pstd::String loadedDllPath{ pstd::formatString(
+			&scratchArena,
+			"%mGame_Loaded_%u.%m",
+			makeExeDirectoryPath(&scratchArena),
+			loadedDllSlot,
+			pstd::getDllExtensionName()
+		) };
+
+		uint32_t unloadedDllSlot{ (loadedDllSlot + 1) % 2 };
+
+		pstd::String toLoadDllPath{ pstd::formatString(
+			&scratchArena,
+			"%mGame_Loaded_%u.%m",
+			makeExeDirectoryPath(&scratchArena),
+			unloadedDllSlot,
+			pstd::getDllExtensionName()
+		) };
+
+		pstd::String originalDllPath{ pstd::formatString(
+			&scratchArena,
+			"%mGame.%m",
+			makeExeDirectoryPath(&scratchArena),
+			pstd::getDllExtensionName()
+		) };
+
+		pstd::copyFile(
+			pstd::createCString(&scratchArena, toLoadDllPath),
+			pstd::createCString(&scratchArena, originalDllPath),
+			true
+		);
+
+		pstd::DllHandle gameHandle{
+			pstd::loadDll(pstd::createCString(&scratchArena, toLoadDllPath))
+		};
+		loadedDllSlot = unloadedDllSlot;
+
+		Game::API gameAPI{
+			.startup = (Game::API::Startup
+			)pstd::findDllFunction(gameHandle, "startup"),
+			.update =
+				(Game::API::Update)pstd::findDllFunction(gameHandle, "update"),
+			.shutdown = (Game::API::Shutdown
+			)pstd::findDllFunction(gameHandle, "shutdown"),
+		};
+
+		bool isValid{ gameAPI.shutdown && gameAPI.update && gameAPI.shutdown };
+
+		GameDll res{ .handle = gameHandle,
+					 .api = gameAPI,
+					 .isValid = isValid,
+					 .lastWriteTime = pstd::getLastFileWriteTime(
+						 pstd::createCString(&scratchArena, originalDllPath)
+					 ) };
+		return res;
+	}
+	void unloadGameDll(GameDll dll) {
+		if (dll.handle) {
+			pstd::unloadDll(dll.handle);
+		}
+	}
+}  // namespace

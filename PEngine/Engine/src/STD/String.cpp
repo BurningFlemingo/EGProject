@@ -26,6 +26,16 @@ namespace {
 	pstd::String pushLetter(pstd::Arena* pArena, char letter);
 }  // namespace
 
+pstd::String::String(const char* cString) {
+	buffer = cString;
+	size = getCStringLength(cString);
+}
+
+pstd::String::String(const char* buf, uint32_t bufSize) {
+	buffer = buf;
+	size = bufSize;
+}
+
 String pstd::createString(pstd::Arena* pArena, const String& string) {
 	ASSERT(pArena);
 
@@ -33,12 +43,13 @@ String pstd::createString(pstd::Arena* pArena, const String& string) {
 
 	memcpy(newStringBuffer, string.buffer, string.size);
 
-	return String{ .buffer = newStringBuffer, .size = string.size };
+	return String(newStringBuffer, string.size);
 }
 
 pstd::String pstd::createString(const pstd::Allocation& allocation) {
-	return String{ .buffer = rcast<char*>(allocation.block),
-				   .size = ncast<uint32_t>(allocation.size) };
+	return String(
+		rcast<char*>(allocation.block), ncast<uint32_t>(allocation.size)
+	);
 }
 
 String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
@@ -61,7 +72,8 @@ String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 
 	memcpy(newStringBuffer, string.buffer, lettersToCopy);
 	pushLetter(pArena, '\0');
-	return String{ .buffer = newStringBuffer, .size = lettersToCopy };
+
+	return String(newStringBuffer, lettersToCopy);
 }
 
 bool pstd::stringsMatch(const String& a, const String& b) {
@@ -90,7 +102,7 @@ bool pstd::concat(String* a, String&& b) {
 	const char* bEnd{ b.buffer + b.size };
 	uint32_t size{ a->size + b.size };
 	if (aEnd == b.buffer) {
-		*a = String{ .buffer = a->buffer, .size = size };
+		*a = String(a->buffer, size);
 		return false;
 	}
 	return true;
@@ -101,17 +113,11 @@ String pstd::makeConcatted(pstd::Arena* pArena, String a, String b) {
 
 	String newA{ pushString(pArena, a) };
 	String newB{ pushString(pArena, b) };
-	String res{
-		.buffer = newA.buffer,
-		.size = newA.size + newB.size,
-	};
-
-	return res;
+	return String(newA.buffer, newA.size + newB.size);
 }
 
 String pstd::formatString(pstd::Arena* pArena, const String& format) {
-	String res{ pushString(pArena, format) };
-	return res;
+	return pushString(pArena, format);
 }
 
 template<typename T>
@@ -136,9 +142,10 @@ String pstd::formatString(pstd::Arena* pArena, const String& format, T val) {
 			ASSERT(false);
 	}
 	if (formatCharactersProccessed < format.size) {
-		String restOfFormat{ .buffer =
-								 format.buffer + formatCharactersProccessed,
-							 .size = format.size - formatCharactersProccessed };
+		String restOfFormat(
+			format.buffer + formatCharactersProccessed,
+			format.size - formatCharactersProccessed
+		);
 
 		concat(&string, pushString(pArena, restOfFormat));
 	}
@@ -161,9 +168,10 @@ String pstd::formatString(
 	}
 
 	if (formatCharactersProccessed < format.size) {
-		String restOfFormat{ .buffer =
-								 format.buffer + formatCharactersProccessed,
-							 .size = format.size - formatCharactersProccessed };
+		String restOfFormat(
+			format.buffer + formatCharactersProccessed,
+			format.size - formatCharactersProccessed
+		);
 
 		concat(&string, pushString(pArena, restOfFormat));
 	}
@@ -191,12 +199,25 @@ String pstd::getFileName(const String& string) {
 	}
 	size_t pathSize{ string.size - fileNameSize };
 	const char* address{ string.buffer + pathSize };
-	String res{ .buffer = address, .size = fileNameSize };
-	return res;
+	return String(address, fileNameSize);
 }
 
 String pstd::getFileName(const char* cString) {
 	return getFileName(pstd::createString(cString));
+}
+
+bool pstd::substringMatchForward(
+	const char a, const String& b, uint32_t* outIndex
+) {
+	for (size_t i{}; i < b.size; i++) {
+		if (a == b.buffer[i]) {
+			if (outIndex != nullptr) {
+				*outIndex = i;
+			}
+			return true;
+		}
+	}
+	return false;
 }
 
 bool pstd::substringMatchForward(
@@ -259,49 +280,38 @@ String pstd::getLine(String lines) {
 	for (uint32_t i{}; i < lines.size; i++) {
 		char ch{ lines.buffer[i] };
 		if (ch == '\n') {
-			return String{ .buffer = lines.buffer, .size = i + 1 };
+			return String(lines.buffer, i + 1);
 		}
 	}
 	return lines;
 }
 
 pstd::Array<String>
-	pstd::splitLine(pstd::Arena* pArena, String line, char seperator) {
+	pstd::splitLine(pstd::Arena* pArena, String line, String delimiters) {
 	int nItems{ 1 };
-	bool seperated{ false };
 	for (size_t i{}; i < line.size; i++) {
-		char ch{ line.buffer[i] };
-		if (ch == seperator) {
-			seperated = true;
-			continue;
-		}
-
-		if (seperated) {
+		if (pstd::substringMatchForward(line.buffer[i], delimiters)) {
 			nItems++;
-			seperated = false;
 		}
 	}
+
 	auto items{ pstd::createArray<String>(pArena, nItems, 0) };
 
-	String item{ .buffer = line.buffer };
-	seperated = false;
+	String currentItem(line.buffer, 0);
 	for (size_t i{}; i < line.size; i++) {
-		char ch{ line.buffer[i] };
-		if (ch == seperator) {
-			seperated = true;
+		if (!pstd::substringMatchForward(line.buffer[i], delimiters)) {
+			currentItem.size++;
 			continue;
 		}
-
-		if (seperated) {
-			pstd::pushBack(&items, item);
-			item = String{ .buffer = line.buffer + i };
-			seperated = false;
+		if (currentItem.size > 0) {
+			pstd::pushBack(&items, currentItem);
 		}
-		item.size++;
+
+		currentItem = String(line.buffer + i + 1, 0);
 	}
 
-	if (item.size > 0) {
-		pstd::pushBack(&items, item);
+	if (currentItem.size > 0) {
+		pstd::pushBack(&items, currentItem);
 	}
 
 	return items;
@@ -316,18 +326,26 @@ float pstd::stringToFloat(String stringNum) {
 	float fractionalNumerator{};
 	float fractionalDenominator{ 1 };
 	bool wholePartDone{ false };
-	bool isNegative{ false };
+	float isNegative{ false };
 
-	if (stringNum.buffer[0] == '-') {
-		isNegative = true;
+	size_t offset{};
+	while (offset < (stringNum.size - 1)) {
+		char ch{ stringNum.buffer[offset] };
+		if (ch <= '9' && ch >= '0') {
+			break;
+		}
+
+		isNegative = ch == '-';
+		offset++;
 	}
 
-	for (int i{}; i < stringNum.size; i++) {
+	for (size_t i{ offset }; i < stringNum.size; i++) {
 		char ch{ stringNum.buffer[i] };
-		if (ch == '.' && wholePartDone == false) {
+		if (ch == '.' && !wholePartDone) {
 			wholePartDone = true;
 			continue;
 		}
+
 		if (ch > '9' || ch < '0') {
 			break;
 		}
@@ -345,6 +363,27 @@ float pstd::stringToFloat(String stringNum) {
 
 	float num{ wholePart + (fractionalNumerator / fractionalDenominator) };
 	num = isNegative ? -num : num;
+
+	return num;
+}
+
+template<>
+float pstd::parse(String string) {
+	return stringToFloat(string);
+}
+
+template<>
+uint32_t pstd::parse(String string) {
+	uint32_t num{};
+	for (int i{}; i < string.size; i++) {
+		char ch{ string.buffer[i] };
+		if (ch > '9' || ch < '0') {
+			break;
+		}
+
+		num *= 10;
+		num += ncast<float>(ch - '0');
+	}
 
 	return num;
 }
@@ -406,9 +445,11 @@ namespace {
 			letterArray[reverseIndex] = digitLetter;
 			number /= 10;
 		}
-		String string{ .buffer = rcast<const char*>(letterArray.data),
-					   .size = ncast<uint32_t>(letterArray.count) };
-		return string;
+
+		return String(
+			rcast<const char*>(letterArray.data),
+			ncast<uint32_t>(letterArray.count)
+		);
 	}
 
 	String pushLetter(pstd::Arena* pArena, char letter) {
@@ -419,9 +460,10 @@ namespace {
 		auto letterArray{ pstd::createArray<char>(pArena, 1) };
 
 		letterArray[0] = letter;
-		String string{ .buffer = rcast<const char*>(letterArray.data),
-					   .size = ncast<uint32_t>(letterArray.count) };
-		return string;
+		return String(
+			rcast<const char*>(letterArray.data),
+			ncast<uint32_t>(letterArray.count)
+		);
 	}
 
 	String pushString(pstd::Arena* pArena, const String& string) {
@@ -431,7 +473,7 @@ namespace {
 		char* newStringBuffer{ pstd::alloc<char>(pArena, string.size) };
 
 		memcpy(newStringBuffer, string.buffer, string.size);
-		return String{ .buffer = newStringBuffer, .size = string.size };
+		return String(newStringBuffer, string.size);
 	}
 
 	String pushStringUntilControlCharacter(
@@ -461,8 +503,7 @@ namespace {
 			previousLetter = currentLetter;
 			normalStringSize++;
 		}
-		pstd::String normalString{ .buffer = format.buffer,
-								   .size = normalStringSize };
+		pstd::String normalString(format.buffer, normalStringSize);
 		*outControlCharacter = controlCharacter;
 		*outFormatCharactersProccessed =
 			normalStringSize + controlCharactersProccessedSize;

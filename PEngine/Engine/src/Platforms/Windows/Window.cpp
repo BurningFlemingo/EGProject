@@ -5,7 +5,6 @@
 #include "STD/PAlgorithm.h"
 #include "STD/PArray.h"
 
-#include "Events.h"
 #include "Base.h"
 #include "Platforms/Windows/Types.h"
 

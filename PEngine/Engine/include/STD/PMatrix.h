@@ -151,9 +151,7 @@ namespace pstd {
 
 	template<uint32_t n>
 	Mat<n> calcRotationMatrix(const Rot3& rotor) {
-		constexpr Mat<n> res{ getIdentityMatrix<4>() };
-		rotate(&res, rotor);
-		return res;
+		return calcRotated(getIdentityMatrix<4>(), rotor);
 	}
 
 	template<uint32_t n>

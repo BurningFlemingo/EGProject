@@ -15,11 +15,12 @@ Vec<n> pstd::operator*(const Mat<n>& mat, const Vec<n>& vec) {
 
 template<uint32_t n>
 Mat<n> pstd::operator*(const Mat<n>& mat1, const Mat<n>& mat2) {
+	// fix this
 	Mat<n> res{};
 	Mat<n> transposed{ pstd::calcTranspose(mat1) };
 	for (uint32_t i{}; i < n; i++) {
 		for (uint32_t j{}; j < n; j++) {
-			res[i][j] = pstd::dot(transposed[i], mat2[j]);
+			res[i][j] = pstd::dot(transposed[j], mat2[i]);
 		}
 	}
 	return res;
@@ -85,36 +86,35 @@ Mat4 pstd::calcOrthoMatrix(
 	return res;
 }
 
-Mat4 pstd::calcPerspectiveMatrix(
-	float fov, float aspectRatio, float n, float f
-) {
-	float t{ pstd::tanf(fov) * n };
-	float b{ -t };
-	float r{ t * aspectRatio };
-	float l{ -r };
-
-	Mat4 res{
-		.col1 = { .x = (2 * n) / (r - l), .w = -(r + l) / (r - l) },
-		.col2 = { .y = (2 * n) / (t - b), .w = -(t + b) / (t - b),},
-		.col3 = { .z = 1 / (f - n), .w = -n / (f - n) }, 
-		.col4 = {.z = 1}
-	};
+Mat4 pstd::calcPerspectiveMatrix(float fov, float ar, float n, float f) {
+	Mat4 res{ .col1 = { .x = 1.f / (ar * pstd::tanf(fov / 2.f)),
+						.y = 0.f,
+						.z = 0.f,
+						.w = 0.f },
+			  .col2 = { .x = 0.f,
+						.y = 1.f / (pstd::tanf(fov / 2.f)),
+						.z = 0.f,
+						.w = 0.f },
+			  .col3 = { .x = 0.f, .y = 0.f, .z = f / (f - n), .w = 1.f },
+			  .col4 = {
+				  .x = 0.f, .y = 0.f, .z = -(f * n) / (f - n), .w = 0.f } };
 	return res;
 }
 
 Mat4 pstd::calcLookAtMatrix(const Vec3& from, const Vec3& to, Vec3 up) {
-	Vec3 forward{ pstd::calcNormalized(to - from) };
-	Vec3 right{ pstd::calcNormalized(pstd::cross(up, forward)) };
-	up = pstd::cross(forward, right);
-	Mat4 res{
-		.col1{
-			.x = right.x, .y = up.x, .z = forward.x, .w = -dot(right, from) },
-		.col2{ .x = right.y, .y = up.y, .z = forward.y, .w = -dot(up, from) },
-		.col3{
-			.x = right.z, .y = up.z, .z = forward.z, .w = -dot(forward, from) },
-		.col4{ .w = 1 },
+	Vec3 z_basis{ pstd::calcNormalized(to - from) };
+	Vec3 x_basis{ pstd::calcNormalized(pstd::cross(up, z_basis)) };
+	Vec3 y_basis{ pstd::calcNormalized(pstd::cross(z_basis, x_basis)) };
+
+	return Mat4{
+		.col1{ .x = x_basis.x, .y = y_basis.x, .z = z_basis.x, .w = 0.0 },
+		.col2{ .x = x_basis.y, .y = y_basis.y, .z = z_basis.y, .w = 0.0 },
+		.col3{ .x = x_basis.z, .y = y_basis.z, .z = z_basis.z, .w = 0.0 },
+		.col4{ .x = -dot(x_basis, from),
+			   .y = -dot(y_basis, from),
+			   .z = -dot(z_basis, from),
+			   .w = 1.0 },
 	};
-	return res;
 }
 
 #define INIT_FUNCTIONS(n)                                                    \

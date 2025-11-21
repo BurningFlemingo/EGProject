@@ -82,6 +82,24 @@ namespace pstd {
 							.count = count };
 	}
 
+	template<typename T, typename I = size_t>
+	Array<T, I>
+		makeSliced(const Array<T, I>& array, size_t offset, size_t end = -1) {
+		end = min(end, array.capacity);
+
+		size_t difference{ offset + (array.capacity - end) };
+		size_t remaining{ array.capacity - difference };
+
+		ASSERT(end > offset);
+		ASSERT(difference <= array.capacity);
+
+		size_t newCount{ array.count >= offset ? array.count - offset : 0 };
+		newCount = min(newCount, remaining);
+		return Array<T, I>{ .data = array.data + offset,
+							.capacity = remaining,
+							.count = newCount };
+	}
+
 	template<size_t n, typename T, typename I = size_t>
 	void set(Array<T, I> array, const T (&initList)[n]) {
 		ASSERT(array.count <= n);

@@ -75,6 +75,10 @@ float pstd::asinf(const float ratio) {
 	return res;
 }
 
+float pstd::toRadians(float degrees) {
+	return pstd::PI * (degrees / 180);
+}
+
 namespace Soft {
 
 	float sinfTaylor(float radians) {

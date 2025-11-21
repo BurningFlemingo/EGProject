@@ -133,6 +133,8 @@ namespace pstd {
 	template<uint32_t n>
 	float calcMagnitude(const Vec<n>& a);
 
+	float calcMagnitude(const Rot3& r);
+
 	template<uint32_t n>
 	float calcDistance(const Vec<n>& a, const Vec<n>& b);
 
@@ -153,9 +155,17 @@ namespace pstd {
 	template<uint32_t n>
 	void normalize(Vec<n>* a);
 
+	void normalize(Rot3* a);
+
 	template<uint32_t n>
 	Vec<n> calcNormalized(const Vec<n>& a) {
 		Vec<n> res{ a };
+		normalize(&res);
+		return res;
+	}
+
+	inline Rot3 calcNormalized(const Rot3& a) {
+		Rot3 res{ a };
 		normalize(&res);
 		return res;
 	}

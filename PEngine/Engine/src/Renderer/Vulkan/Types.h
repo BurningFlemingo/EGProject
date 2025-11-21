@@ -2,6 +2,7 @@
 #include "STD/PArray.h"
 #include "STD/PArray.h"
 #include "STD/PFunction.h"
+#include "STD/PMatrix.h"
 
 #include "Swapchain.h"
 #include "Allocation.h"
@@ -34,6 +35,7 @@ namespace Renderer {
 		Buffer vertexBuffer;
 		VkDeviceAddress vertexBufferDeviceAddress;
 		Buffer indexBuffer;
+		pstd::Mat4 MVPMatrix;
 
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;

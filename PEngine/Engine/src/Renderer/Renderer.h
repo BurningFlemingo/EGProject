@@ -2,6 +2,7 @@
 #include "STD/PTypes.h"
 #include "STD/PArena.h"
 #include "STD/PMemory.h"
+#include "STD/PMatrix.h"
 #include "Platforms/Window.h"
 
 namespace Renderer {

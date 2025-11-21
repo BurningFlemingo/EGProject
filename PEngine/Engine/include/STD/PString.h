@@ -7,32 +7,30 @@
 
 namespace pstd {
 	struct String {
-		const char* buffer;
-		uint32_t size;
+		String() = default;
+		String(const char* cString);
+		String(const char* buf, uint32_t bufSize);
+
+		const char* buffer{};
+		uint32_t size{};
 	};
 
 	constexpr uint32_t getCStringLength(const char* cString) {
-		if (cString == nullptr) {
-			return 0;
-		}
-
 		constexpr uint32_t maxStringSize{
 			1024 * 1024
 		};	// to avoid an infinite loop for ill-formed cstrings
 
 		uint32_t stringLength{};
-		while (stringLength < 1024 && *cString != '\0') {
-			stringLength++;
-			cString++;
+		for (uint32_t i{}; i < maxStringSize; i++) {
+			if (cString[i] == '\0') {
+				return i;
+			}
 		}
-
-		return stringLength;
+		return 0;
 	}
 
-	constexpr String createString(const char* cString) {
-		uint32_t stringSize{ getCStringLength(cString) };
-		pstd::String string{ .buffer = cString, .size = stringSize };
-		return string;
+	inline String createString(const char* cString) {
+		return pstd::String{ cString, getCStringLength(cString) };
 	}
 
 	String createString(Arena* pArena, const String& string);
@@ -58,6 +56,11 @@ namespace pstd {
 	bool substringMatchForward(
 		const String& a, const String& b, uint32_t* outIndex = nullptr
 	);
+
+	bool substringMatchForward(
+		const char a, const String& b, uint32_t* outIndex = nullptr
+	);
+
 	inline bool substringMatchForward(
 		const char* a, const char* b, uint32_t* outIndex = nullptr
 	) {
@@ -117,6 +120,7 @@ namespace pstd {
 	}
 
 	String getLine(String lines);
+	// consumes the line
 	inline String readLine(String* pLines) {
 		ASSERT(pLines);
 		String line{ getLine(*pLines) };
@@ -125,7 +129,10 @@ namespace pstd {
 		return line;
 	}
 	pstd::Array<String>
-		splitLine(pstd::Arena* pArena, String line, char seperator);
+		splitLine(pstd::Arena* pArena, String line, String delimiters);
 
 	float stringToFloat(String stringNum);
+
+	template<typename T>
+	T parse(String string);
 }  // namespace pstd

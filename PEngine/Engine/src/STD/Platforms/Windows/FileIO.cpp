@@ -5,7 +5,6 @@
 #include "Logging.h"
 
 #include <Windows.h>
-#include "Events.h"
 #include "new"
 
 namespace {
@@ -77,7 +76,7 @@ pstd::String pstd::getEXEPath(Arena* pArena) {
 }
 
 pstd::String pstd::getDllExtensionName() {
-	return pstd::String{ .buffer = "dll", .size = 3 };
+	return pstd::String("dll");
 }
 
 pstd::DllHandle pstd::loadDll(const char* filepath) {

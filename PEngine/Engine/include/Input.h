@@ -10,11 +10,12 @@ enum class InputAction : uint32_t {
 	COUNT
 };
 
+// https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 enum class InputCode : uint32_t {
 	INVALID = 0,
 	BACKSPACE = 8,
 	TAB = 9,
-	ENTER = 27,
+	ENTER = 13,
 	ESC = 27,
 	SPACE = 32,
 

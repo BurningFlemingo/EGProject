@@ -59,6 +59,7 @@ set(SRC_FILES
 	${SRC_DIR}/Renderer/Vulkan/Allocation.cpp
 
 	${SRC_DIR}/STD/Platforms/Windows/Entry.cpp
+	${SRC_DIR}/STD/Platforms/Windows/Time.cpp
 	${SRC_DIR}/STD/Platforms/Windows/Required.cpp
 	${SRC_DIR}/STD/Platforms/Windows/Memory.cpp
 	${SRC_DIR}/STD/Platforms/Windows/Console.cpp
