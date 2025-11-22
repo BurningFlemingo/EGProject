@@ -30,18 +30,21 @@ GAME_API Game::State* Game::startup() {
 	) Game::State{ .allocRegistry = allocRegistry, .gameArena = gameArena } };
 	return statePtr;
 }
-GAME_API bool Game::update(Engine::Subsystems subsystems, State* state) {
-	float speed{ 0.3 };
-	if (Engine::getKeyDown(subsystems.pApplicationState, (InputCode)'S')) {
+GAME_API bool
+	Game::update(Engine::Subsystems subsystems, State* state, float dTime) {
+	Application::State* pApp{ subsystems.pApplicationState };
+
+	float speed{ 0.03f * dTime };
+	if (Engine::getPhysicalKeyDown(pApp, InputCode::D)) {
 		state->pos.x += speed;
 	}
-	if (Engine::getKeyDown(subsystems.pApplicationState, (InputCode)'A')) {
+	if (Engine::getPhysicalKeyDown(pApp, InputCode::A)) {
 		state->pos.x -= speed;
 	}
-	if (Engine::getKeyDown(subsystems.pApplicationState, (InputCode)'W')) {
+	if (Engine::getPhysicalKeyDown(pApp, InputCode::W)) {
 		state->pos.z += speed;
 	}
-	if (Engine::getKeyDown(subsystems.pApplicationState, (InputCode)'R')) {
+	if (Engine::getPhysicalKeyDown(pApp, InputCode::S)) {
 		state->pos.z -= speed;
 	}
 	float ar{ 1920.0 / 1080.0 };

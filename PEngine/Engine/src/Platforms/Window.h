@@ -16,7 +16,8 @@ namespace Platform {
 		union {
 			struct {
 				InputAction action;
-				InputCode code;
+				InputCode virtualCode;
+				InputCode physicalCode;
 			} keyEvent;
 			struct {
 				bool resized;

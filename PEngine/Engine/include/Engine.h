@@ -24,5 +24,6 @@ namespace Engine {
 		Platform::State* pPlatformState;
 	};
 
-	bool getKeyDown(Application::State* pAppState, InputCode keyCode);
+	bool getPhysicalKeyDown(Application::State* pAppState, InputCode keyCode);
+	bool getVirtualKeyDown(Application::State* pAppState, InputCode keyCode);
 }  // namespace Engine

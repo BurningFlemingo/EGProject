@@ -7,7 +7,8 @@ namespace Game {
 
 	struct API {
 		using Startup = State* (*)();
-		using Update = bool (*)(Engine::Subsystems subsystems, State* state);
+		using Update =
+			bool (*)(Engine::Subsystems subsystems, State* state, float dTime);
 		using Shutdown = void (*)(State* state);
 
 		Startup startup;
@@ -16,6 +17,7 @@ namespace Game {
 	};
 
 	GAME_API State* startup();
-	GAME_API bool update(Engine::Subsystems subsystems, State* state);
+	GAME_API bool
+		update(Engine::Subsystems subsystems, State* state, float dTime);
 	GAME_API void shutdown(State* state);
 }  // namespace Game

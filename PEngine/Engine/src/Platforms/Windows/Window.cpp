@@ -9,15 +9,18 @@
 #include "Platforms/Windows/Types.h"
 
 #include <Windows.h>
+#include <winuser.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
+#include "Logging.h"
 
 namespace {
 	LRESULT CALLBACK
 		windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-	InputCode virtualToInputCode(const char vcode);
+	InputCode virtualToInputCode(const uint8_t vcode);
+	InputCode physicalToInputCode(const uint8_t scancode);
 }  // namespace
 
 size_t Platform::getSizeofState() {
@@ -130,7 +133,7 @@ bool Platform::popEvent(Platform::State* state, Event* outEvent) {
 }
 
 namespace {
-	InputCode virtualToInputCode(const char vcode) {
+	InputCode virtualToInputCode(const uint8_t vcode) {
 		if ((vcode >= 'A' && vcode <= 'Z') || (vcode >= '0' && vcode <= '9')) {
 			return (InputCode)vcode;
 		}
@@ -189,6 +192,92 @@ namespace {
 		return keyCode;
 	}
 
+	InputCode physicalToInputCode(const uint8_t scancode) {
+		InputCode keyCode{ InputCode::INVALID };
+		switch (scancode) {
+			case 0x001E:
+				keyCode = InputCode::A;
+				break;
+			case 0x0030:
+				keyCode = InputCode::B;
+				break;
+			case 0x002E:
+				keyCode = InputCode::C;
+				break;
+			case 0x0020:
+				keyCode = InputCode::D;
+				break;
+			case 0x0012:
+				keyCode = InputCode::E;
+				break;
+			case 0x0021:
+				keyCode = InputCode::F;
+				break;
+			case 0x0022:
+				keyCode = InputCode::G;
+				break;
+			case 0x0023:
+				keyCode = InputCode::H;
+				break;
+			case 0x0017:
+				keyCode = InputCode::I;
+				break;
+			case 0x0024:
+				keyCode = InputCode::J;
+				break;
+			case 0x0025:
+				keyCode = InputCode::K;
+				break;
+			case 0x0026:
+				keyCode = InputCode::L;
+				break;
+			case 0x0032:
+				keyCode = InputCode::M;
+				break;
+			case 0x0031:
+				keyCode = InputCode::N;
+				break;
+			case 0x0018:
+				keyCode = InputCode::O;
+				break;
+			case 0x0019:
+				keyCode = InputCode::P;
+				break;
+			case 0x0010:
+				keyCode = InputCode::Q;
+				break;
+			case 0x0013:
+				keyCode = InputCode::R;
+				break;
+			case 0x001F:
+				keyCode = InputCode::S;
+				break;
+			case 0x0014:
+				keyCode = InputCode::T;
+				break;
+			case 0x0016:
+				keyCode = InputCode::U;
+				break;
+			case 0x002F:
+				keyCode = InputCode::V;
+				break;
+			case 0x0011:
+				keyCode = InputCode::W;
+				break;
+			case 0x002D:
+				keyCode = InputCode::X;
+				break;
+			case 0x0015:
+				keyCode = InputCode::Y;
+				break;
+			case 0x002C:
+				keyCode = InputCode::Z;
+				break;
+		}
+
+		return keyCode;
+	}
+
 	LRESULT CALLBACK
 		windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		LRESULT res{};
@@ -215,20 +304,32 @@ namespace {
 			case WM_DESTROY: {
 				windowData->isRunning = false;
 			} break;
-			case WM_KEYUP: {
-				InputCode iCode{ virtualToInputCode(wParam) };
-				InputAction iAction{ InputAction::RELEASED };
+				// https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input#virtual-key-codes-described
+			case WM_KEYUP:
+			case WM_SYSKEYUP:
+			case WM_KEYDOWN:
+			case WM_SYSKEYDOWN: {
+				auto scancode{ ncast<uint8_t>((lParam >> 16) & 0xFF) };
+				auto keyWasDown{ ncast<bool>((lParam >> 30) & 0x1) };
+				auto keyIsUp{ ncast<bool>((lParam >> 31) & 0x1) };
+
+				InputCode virtualCode{ virtualToInputCode(wParam) };
+				InputCode physicalCode{ physicalToInputCode(scancode) };
+
+				InputAction iAction{};
+				if (keyIsUp && keyWasDown) {
+					iAction = InputAction::RELEASED;
+				} else if (!keyIsUp && !keyWasDown) {
+					iAction = InputAction::PRESSED;
+				} else {
+					break;
+				}
+
 				Platform::Event event{ .type = Platform::EventType::key,
 									   .keyEvent = { .action = iAction,
-													 .code = iCode } };
-				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
-			} break;
-			case WM_KEYDOWN: {
-				InputCode iCode{ virtualToInputCode(wParam) };
-				InputAction iAction{ InputAction::PRESSED };
-				Platform::Event event{ .type = Platform::EventType::key,
-									   .keyEvent = { .action = iAction,
-													 .code = iCode } };
+													 .virtualCode = virtualCode,
+													 .physicalCode =
+														 physicalCode } };
 				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
 			} break;
 			case WM_SIZE: {

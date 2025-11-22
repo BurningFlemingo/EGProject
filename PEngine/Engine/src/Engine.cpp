@@ -1,5 +1,6 @@
 #include "Core.h"
 #include "Engine.h"
+#include "Input.h"
 #include "Logging.h"
 #include "LoggingSetup.h"
 #include "Game.h"
@@ -11,6 +12,7 @@
 #include "STD/Memory.h"
 #include "Platforms/Window.h"
 #include "Renderer/Renderer.h"
+#include "STD/PTime.h"
 
 #include <new>
 
@@ -27,18 +29,23 @@ namespace {
 	void unloadGameDll(GameDll dll);
 }  // namespace
 
-struct Application::State {
-	pstd::AllocationRegistry allocationRegistry;
-	pstd::Arena scratchArena;
-	pstd::Arena subsystemArena;
-	GameDll gameDll;
-	Game::State* pGameState;
-	pstd::String originalDllPath;
-	const char* originalDllPathCString;
-	bool isRunning;
+namespace Application {
 
-	bool pressedKeys[ncast<size_t>(InputCode::COUNT)];
-};
+	struct State {
+		pstd::AllocationRegistry allocationRegistry;
+		pstd::Arena scratchArena;
+		pstd::Arena subsystemArena;
+		GameDll gameDll;
+		Game::State* pGameState;
+		pstd::String originalDllPath;
+		const char* originalDllPathCString;
+		bool isRunning;
+
+		pstd::Array<bool, InputCode> virtualKeyState{};
+		pstd::Array<bool, InputCode> physicalKeyState{};
+	};
+
+}  // namespace Application
 
 Engine::Subsystems Engine::startup() {
 	constexpr size_t scratchSize{ 1024 * 1024 };
@@ -72,15 +79,23 @@ Engine::Subsystems Engine::startup() {
 	};
 
 	Application::State* pApplicationState =
-		new (pstd::alloc<Application::State>(&subsystemArena)
-		) Application::State{ .allocationRegistry = allocationRegistry,
-							  .scratchArena = scratchArena,
-							  .subsystemArena = subsystemArena,
-							  .gameDll = gameDll,
-							  .pGameState = pGameState,
-							  .originalDllPath = originalDllPath,
-							  .originalDllPathCString = originalDllPathCString,
-							  .isRunning = true };
+		new (pstd::alloc<Application::State>(&subsystemArena))
+			Application::State{
+				.allocationRegistry = allocationRegistry,
+				.scratchArena = scratchArena,
+				.subsystemArena = subsystemArena,
+				.gameDll = gameDll,
+				.pGameState = pGameState,
+				.originalDllPath = originalDllPath,
+				.originalDllPathCString = originalDllPathCString,
+				.isRunning = true,
+				.virtualKeyState = pstd::createArray<bool, InputCode>(
+					&subsystemArena, ncast<size_t>(InputCode::COUNT)
+				),
+				.physicalKeyState = pstd::createArray<bool, InputCode>(
+					&subsystemArena, ncast<size_t>(InputCode::COUNT)
+				)
+			};
 
 	Platform::State* pPlatformState{
 		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
@@ -119,10 +134,14 @@ bool Engine::update(const Subsystems& systems) {
 			switch (event.type) {
 				case Platform::EventType::key: {
 					if (event.keyEvent.action == InputAction::PRESSED) {
-						pApp->pressedKeys[ncast<size_t>(event.keyEvent.code)] =
+						pApp->virtualKeyState[event.keyEvent.virtualCode] =
+							true;
+						pApp->physicalKeyState[event.keyEvent.physicalCode] =
 							true;
 					} else if (event.keyEvent.action == InputAction::RELEASED) {
-						pApp->pressedKeys[ncast<size_t>(event.keyEvent.code)] =
+						pApp->virtualKeyState[event.keyEvent.virtualCode] =
+							false;
+						pApp->physicalKeyState[event.keyEvent.physicalCode] =
 							false;
 					}
 				} break;
@@ -137,7 +156,7 @@ bool Engine::update(const Subsystems& systems) {
 		}
 	}
 
-	if (pApp->pressedKeys[(uint32_t)InputCode::TAB]) {
+	if (pApp->virtualKeyState[InputCode::TAB]) {
 		pApp->isRunning = false;
 	}
 
@@ -149,7 +168,12 @@ void Engine::run(const Subsystems& systems) {
 	Platform::State* pPlatform{ systems.pPlatformState };
 	Application::State* pApp{ systems.pApplicationState };
 
+	float lastFrameTime{};
 	while (pApp->isRunning) {
+		float beginFrameTime{ ncast<float>(pstd::getTicks()) };
+		float dT{ beginFrameTime - lastFrameTime };
+		lastFrameTime = beginFrameTime;
+
 		pstd::reset(&pApp->scratchArena);
 
 		if (pstd::getLastFileWriteTime(pApp->originalDllPathCString) !=
@@ -159,13 +183,23 @@ void Engine::run(const Subsystems& systems) {
 		}
 
 		pApp->isRunning &= Engine::update(systems);
-		pApp->isRunning &= pApp->gameDll.api.update(systems, pApp->pGameState);
+		pApp->isRunning &=
+			pApp->gameDll.api.update(systems, pApp->pGameState, dT);
 		Renderer::render(pRenderer, false);
 	}
 }
 
-bool Engine::getKeyDown(Application::State* pAppState, InputCode keyCode) {
-	bool isPressed{ pAppState->pressedKeys[(uint32_t)keyCode] };
+bool Engine::getPhysicalKeyDown(
+	Application::State* pAppState, InputCode keyCode
+) {
+	bool isPressed{ pAppState->physicalKeyState[keyCode] };
+	return isPressed;
+}
+
+bool Engine::getVirtualKeyDown(
+	Application::State* pAppState, InputCode keyCode
+) {
+	bool isPressed{ pAppState->virtualKeyState[keyCode] };
 	return isPressed;
 }
 
