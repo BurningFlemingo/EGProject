@@ -37,6 +37,8 @@ namespace Renderer {
 		Buffer indexBuffer;
 		pstd::Mat4 MVPMatrix;
 
+		size_t nIndices;
+
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
 

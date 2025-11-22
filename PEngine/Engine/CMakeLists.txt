@@ -57,6 +57,7 @@ set(SRC_FILES
 	${SRC_DIR}/Renderer/Vulkan/Device.cpp
 	${SRC_DIR}/Renderer/Vulkan/Swapchain.cpp
 	${SRC_DIR}/Renderer/Vulkan/Allocation.cpp
+	${SRC_DIR}/Renderer/Vulkan/Pipeline.cpp
 
 	${SRC_DIR}/STD/Platforms/Windows/Entry.cpp
 	${SRC_DIR}/STD/Platforms/Windows/Time.cpp

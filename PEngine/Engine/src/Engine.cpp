@@ -100,9 +100,17 @@ Engine::Subsystems Engine::startup() {
 	Platform::State* pPlatformState{
 		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
-	Renderer::State* pRendererState{
-		Renderer::startup(&subsystemArena, scratchArena, *pPlatformState)
-	};
+	pstd::OBJ cubeOBJ{ pstd::loadOBJ(
+		&pApplicationState->subsystemArena,
+		pApplicationState->scratchArena,
+		".\\assets\\models\\cube.obj"
+	) };
+	Renderer::State* pRendererState{ Renderer::startup(
+		&subsystemArena, scratchArena, *pPlatformState, cubeOBJ
+	) };
+
+	int myThings[] = { 1, 2, 3, 4 };
+	auto myArray{ pstd::createArray<int>(myThings) };
 
 	return Engine::Subsystems{
 		.pApplicationState = pApplicationState,
@@ -156,10 +164,6 @@ bool Engine::update(const Subsystems& systems) {
 		}
 	}
 
-	if (pApp->virtualKeyState[InputCode::TAB]) {
-		pApp->isRunning = false;
-	}
-
 	return pApp->isRunning;
 }
 
@@ -185,6 +189,7 @@ void Engine::run(const Subsystems& systems) {
 		pApp->isRunning &= Engine::update(systems);
 		pApp->isRunning &=
 			pApp->gameDll.api.update(systems, pApp->pGameState, dT);
+
 		Renderer::render(pRenderer, false);
 	}
 }

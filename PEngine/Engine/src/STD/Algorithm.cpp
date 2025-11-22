@@ -5,8 +5,8 @@ pstd::FirstSetBit pstd::bitscanForward(const T val) {
 	FirstSetBit result{};
 
 	constexpr uint32_t valBitSize{ sizeof(val) * 8 };
-	for (int i{}; i < valBitSize; i++) {
-		if (val & (1 << i)) {
+	for (uint32_t i{}; i < valBitSize; i++) {
+		if (val & (ncast<T>(1) << i)) {
 			result.found = true;
 			result.shift = i;
 			break;

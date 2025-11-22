@@ -30,6 +30,58 @@ namespace pstd {
 		size_t count{ capacity };
 	};
 
+	template<typename T, size_t n, typename I = size_t>
+	struct StaticArray {  // <container type, index type>
+		using ElementType = T;
+
+		const T& operator[](I index) const {
+			ASSERT(data);
+			ASSERT(count > cast<size_t>(index));
+
+			return data[cast<size_t>(index)];
+		}
+
+		T& operator[](I index) {
+			ASSERT(data);
+			ASSERT(count > cast<size_t>(index));
+
+			return data[cast<size_t>(index)];
+		}
+
+		T data[n];
+		size_t capacity{ n };
+		size_t count{ capacity };
+	};
+
+	template<typename T, typename I = size_t>
+	struct Span {  // <container type, index type>
+		using ElementType = T;
+
+		Span(const Array<T, I>& array)
+			: data{ array.data }, count{ array.count } {}
+
+		template<size_t n>
+		Span(const StaticArray<T, n, I>& array)
+			: data{ array.data }, count{ array.count } {}
+
+		const T& operator[](I index) const {
+			ASSERT(data);
+			ASSERT(count > cast<size_t>(index));
+
+			return data[cast<size_t>(index)];
+		}
+
+		T& operator[](I index) {
+			ASSERT(data);
+			ASSERT(count > cast<size_t>(index));
+
+			return data[cast<size_t>(index)];
+		}
+
+		T* data;
+		size_t count;
+	};
+
 	template<typename T, typename I = size_t>
 	struct DArray {	 // <container type, index type>
 		using ElementType = T;
@@ -110,6 +162,13 @@ namespace pstd {
 
 	template<typename T, size_t n, typename I = size_t>
 	Array<T, I> createArray(Arena* pArena, const T (&initList)[n]) {
+		Array<T, I> array{ createArray<T>(pArena, n) };
+		set(array, initList);
+		return array;
+	}
+
+	template<typename T, size_t n, typename I = size_t>
+	Array<T, I> createArray(Arena* pArena, const T (&&initList)[n]) {
 		Array<T, I> array{ createArray<T>(pArena, n) };
 		set(array, initList);
 		return array;

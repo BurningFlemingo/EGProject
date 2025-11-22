@@ -69,6 +69,6 @@ GAME_API bool
 	perspProjMatrix = perspProjMatrix * viewMatrix * modelMat * rotMat;
 	Renderer::setMVPMatrix(subsystems.pRendererState, perspProjMatrix);
 
-	return true;
+	return !Engine::getVirtualKeyDown(pApp, InputCode::TAB);
 }
 GAME_API void Game::shutdown(State* state) {}

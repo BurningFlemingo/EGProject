@@ -8,7 +8,7 @@
 #include "Swapchain.h"
 #include "Allocation.h"
 #include "Types.h"
-#include "AssetLoader.h"
+#include "Pipeline.h"
 
 #include "STD/PContainer.h"
 #include "STD/PFileIO.h"
@@ -32,7 +32,8 @@ struct PushConstants {
 Renderer::State* Renderer::startup(
 	pstd::Arena* pPersistArena,
 	pstd::Arena scratchArena,
-	const Platform::State& platformState
+	const Platform::State& platformState,
+	pstd::OBJ cubeOBJ
 ) {
 	VkInstance instance{ createInstance(*pPersistArena, scratchArena) };
 
@@ -92,13 +93,28 @@ Renderer::State* Renderer::startup(
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertPipeCI, fragPipeCI };
 
-	VkPipelineVertexInputStateCreateInfo vertInputCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+	VkPushConstantRange pushConstantRange{
+		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		.offset = 0,
+		.size = sizeof(PushConstants),
+	};
+	VkFormat colorFormats[] = { swapchain.createInfo.imageFormat };
+
+	VkPushConstantRange pushConstantRanges[] = { pushConstantRange };
+
+	VkPipelineLayout pipelineLayout{
+		createPipelineLayout(device, pstd::createArray(pushConstantRanges))
 	};
 
-	pstd::OBJ cubeOBJ{ pstd::loadOBJ(
-		pPersistArena, scratchArena, ".\\assets\\models\\cube.obj"
+	VkPipeline graphicsPipeline{ createGraphicsPipeline(
+		device,
+		pipelineLayout,
+		pstd::createArray(shaderStages),
+		pstd::createArray(colorFormats)
 	) };
+
+	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
+	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
 
 	VkCommandPoolCreateInfo transientCmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -116,7 +132,7 @@ Renderer::State* Renderer::startup(
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		1024
+		1024 * 4
 	) };
 
 	Buffer vBuffer{ createBuffer(
@@ -125,14 +141,15 @@ Renderer::State* Renderer::startup(
 			VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		sizeof(cubeOBJ.uniquePositions[0]) * cubeOBJ.uniquePositions.count
+		1024 * 4
 	) };
 
 	Buffer iBuffer{ createBuffer(
 		device,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		sizeof(cubeOBJ.indices[0]) * cubeOBJ.indices.count
+		1024 * 4
+
 	) };
 
 	VkBufferDeviceAddressInfo vAddressInfo{
@@ -173,111 +190,6 @@ Renderer::State* Renderer::startup(
 		cubeOBJ.indices.count * sizeof(cubeOBJ.indices[0])
 	);
 	copyBuffer(device, transientCmdPool, stagingBuffer, iBuffer, iBuffer.size);
-
-	VkDynamicState dynamicStates[]{ VK_DYNAMIC_STATE_SCISSOR,
-									VK_DYNAMIC_STATE_VIEWPORT };
-
-	VkPipelineDynamicStateCreateInfo dynamicCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-		.dynamicStateCount = 2,
-		.pDynamicStates = dynamicStates,
-	};
-
-	VkPipelineViewportStateCreateInfo viewportCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-		.viewportCount = 1,
-		.scissorCount = 1,
-	};
-
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-		.primitiveRestartEnable = false
-	};
-
-	VkPipelineRasterizationStateCreateInfo rasterizerCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-		.depthClampEnable = VK_FALSE,
-		.polygonMode = VK_POLYGON_MODE_FILL,
-		.cullMode = VK_CULL_MODE_BACK_BIT,
-		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-		.lineWidth = 1.f,
-	};
-
-	VkPipelineMultisampleStateCreateInfo multisampleCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-		.minSampleShading = 1.f
-	};
-
-	VkPipelineColorBlendAttachmentState colorBlendAttachmentState{
-		.blendEnable = VK_TRUE,
-		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-		.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-		.colorBlendOp = VK_BLEND_OP_ADD,
-		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-		.alphaBlendOp = VK_BLEND_OP_ADD,
-		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-			VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-	};
-
-	VkPipelineColorBlendStateCreateInfo colorBlendCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-		.attachmentCount = 1,
-		.pAttachments = &colorBlendAttachmentState,
-
-	};
-
-	VkPushConstantRange pushConstantRange{
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		.offset = 0,
-		.size = sizeof(PushConstants),
-	};
-
-	VkPipelineLayoutCreateInfo layoutCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &pushConstantRange
-	};
-
-	VkPipelineLayout pipelineLayout{};
-	vkCreatePipelineLayout(device.logical, &layoutCI, nullptr, &pipelineLayout);
-
-	VkPipelineRenderingCreateInfo renderingCI{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-		.colorAttachmentCount = 1,
-		.pColorAttachmentFormats = &swapchain.createInfo.imageFormat
-	};
-
-	VkGraphicsPipelineCreateInfo pipelineCI{
-		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-		.pNext = &renderingCI,
-		.stageCount = 2,
-		.pStages = shaderStages,
-		.pVertexInputState = &vertInputCI,
-		.pInputAssemblyState = &inputAssemblyCI,
-		.pViewportState = &viewportCI,
-		.pRasterizationState = &rasterizerCI,
-		.pMultisampleState = &multisampleCI,
-		.pDepthStencilState = nullptr,
-		.pColorBlendState = &colorBlendCI,
-		.pDynamicState = &dynamicCI,
-		.layout = pipelineLayout,
-	};
-
-	VkPipeline graphicsPipeline{};
-	res = vkCreateGraphicsPipelines(
-		device.logical,
-		VK_NULL_HANDLE,
-		1,
-		&pipelineCI,
-		nullptr,
-		&graphicsPipeline
-	);
-
-	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
-	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
 
 	VkCommandPoolCreateInfo cmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -335,27 +247,29 @@ Renderer::State* Renderer::startup(
 	}
 
 	State* state{ pstd::alloc<State>(pPersistArena) };
-	return new (state)
-		State{ .swapchain = swapchain,
-			   .device = device,
-			   .surface = surface,
-			   .instance = instance,
-			   .debugMessenger = debugMessenger,
-			   .graphicsPipeline = graphicsPipeline,
-			   .graphicsPipelineLayout = pipelineLayout,
-			   .maxFramesInFlight = maxFramesInFlight,
-			   .cmdPool = cmdPool,
-			   .transientCmdPool = transientCmdPool,
-			   .cmdBuffers = cmdBuffers,
-			   .imageAvailableSemaphores = imageAvailableSemaphores,
-			   .renderFinishedSemaphores = renderFinishedSemaphores,
-			   .cmdBufferAvailableFences = cmdBufferAvailableFences,
-			   .stagingBufferData = mappedData,
-			   .stagingBuffer = stagingBuffer,
-			   .vertexBuffer = vBuffer,
-			   .vertexBufferDeviceAddress = vertexDeviceAddress,
-			   .indexBuffer = iBuffer,
-			   .MVPMatrix = pstd::getIdentityMatrix<4>() };
+	return new (state) State{
+		.swapchain = swapchain,
+		.device = device,
+		.surface = surface,
+		.instance = instance,
+		.debugMessenger = debugMessenger,
+		.graphicsPipeline = graphicsPipeline,
+		.graphicsPipelineLayout = pipelineLayout,
+		.maxFramesInFlight = maxFramesInFlight,
+		.cmdPool = cmdPool,
+		.transientCmdPool = transientCmdPool,
+		.cmdBuffers = cmdBuffers,
+		.imageAvailableSemaphores = imageAvailableSemaphores,
+		.renderFinishedSemaphores = renderFinishedSemaphores,
+		.cmdBufferAvailableFences = cmdBufferAvailableFences,
+		.stagingBufferData = mappedData,
+		.stagingBuffer = stagingBuffer,
+		.vertexBuffer = vBuffer,
+		.vertexBufferDeviceAddress = vertexDeviceAddress,
+		.indexBuffer = iBuffer,
+		.MVPMatrix = pstd::getIdentityMatrix<4>(),
+		.nIndices = cubeOBJ.indices.count,
+	};
 }
 
 void Renderer::setMVPMatrix(State* pState, const pstd::Mat4& mvpMat) {
@@ -488,9 +402,8 @@ void Renderer::render(State* state, bool windowResized) {
 		&pushConstants
 	);
 
-	size_t nIndices{ state->indexBuffer.size / sizeof(uint32_t) };
 	vkCmdDrawIndexed(
-		state->cmdBuffers[state->frameInFlight], nIndices, 1, 0, 0, 0
+		state->cmdBuffers[state->frameInFlight], state->nIndices, 1, 0, 0, 0
 	);
 
 	vkCmdEndRendering(state->cmdBuffers[state->frameInFlight]);
