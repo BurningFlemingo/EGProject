@@ -8,11 +8,11 @@
 VkPipeline createGraphicsPipeline(
 	const Device& device,
 	const VkPipelineLayout layout,
-	const pstd::Array<VkPipelineShaderStageCreateInfo> shaderStages,
-	const pstd::Array<VkFormat> colorFormats
+	const pstd::Span<VkPipelineShaderStageCreateInfo> shaderStages,
+	const pstd::Span<VkFormat> colorFormats
 );
 
 VkPipelineLayout createPipelineLayout(
 	const Device& device,
-	const pstd::Array<VkPushConstantRange> pushConstantRanges
+	const pstd::Span<VkPushConstantRange> pushConstantRanges
 );

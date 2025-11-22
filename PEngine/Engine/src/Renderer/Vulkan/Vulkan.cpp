@@ -91,26 +91,29 @@ Renderer::State* Renderer::startup(
 		.pName = "main",
 	};
 
-	VkPipelineShaderStageCreateInfo shaderStages[] = { vertPipeCI, fragPipeCI };
+	pstd::StaticArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{
+		vertPipeCI, fragPipeCI
+	};
 
 	VkPushConstantRange pushConstantRange{
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 		.offset = 0,
 		.size = sizeof(PushConstants),
 	};
-	VkFormat colorFormats[] = { swapchain.createInfo.imageFormat };
+	pstd::StaticArray<VkFormat, 1> colorFormats{
+		swapchain.createInfo.imageFormat
+	};
 
-	VkPushConstantRange pushConstantRanges[] = { pushConstantRange };
+	pstd::StaticArray<VkPushConstantRange, 1> pushConstantRanges{
+		pushConstantRange
+	};
 
 	VkPipelineLayout pipelineLayout{
-		createPipelineLayout(device, pstd::createArray(pushConstantRanges))
+		createPipelineLayout(device, pushConstantRanges)
 	};
 
 	VkPipeline graphicsPipeline{ createGraphicsPipeline(
-		device,
-		pipelineLayout,
-		pstd::createArray(shaderStages),
-		pstd::createArray(colorFormats)
+		device, pipelineLayout, shaderStages, colorFormats
 	) };
 
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
