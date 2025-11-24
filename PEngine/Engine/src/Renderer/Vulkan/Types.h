@@ -10,15 +10,18 @@
 
 #include <vulkan/vulkan.h>
 
-struct FrameResources {
+struct FrameCtx {
 	Buffer vertexBuffer;
 	Buffer indexBuffer;
 	VkDeviceAddress vertexDeviceAddress;
+
+	pstd::Array<uint32_t> meshNIndices;
+	pstd::Array<uint32_t> meshOffsets;
 };
 
 namespace Renderer {
 	struct State {
-		constexpr static uint32_t maxFramesInFlight{ 2 };
+		constexpr static uint32_t maxFramesInFlight{ 1 };
 
 		Swapchain swapchain;
 		Device device;
@@ -39,12 +42,9 @@ namespace Renderer {
 		void* stagingBufferData;
 		Buffer stagingBuffer;
 
-		pstd::Array<FrameResources> frameResources;
+		pstd::Array<FrameCtx> frameContexts;
 
 		pstd::Mat4 MVPMatrix;
-
-		pstd::Array<uint32_t> meshNIndices;
-		pstd::Array<uint32_t> meshOffsets;
 
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;

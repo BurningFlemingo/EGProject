@@ -152,8 +152,10 @@ void Engine::addModel(
 		pstd::loadOBJ(&pEngine->subsystemArena, pEngine->scratchArena, path)
 	};
 
-	pEngine->models.count = max(pEngine->models.count, entityID);
-	pEngine->models[entityID];
+	pEngine->models.count =
+		max(pEngine->models.count, pEngine->entityUIDs.count);
+
+	pEngine->models[entityID] = model;
 }
 
 Engine::Transform Engine::getTransform(Engine::State* pEngine, UID uid) {
@@ -162,6 +164,8 @@ Engine::Transform Engine::getTransform(Engine::State* pEngine, UID uid) {
 void Engine::updateTransform(
 	Engine::State* pEngine, UID uid, const Transform& transform
 ) {
+	pEngine->transforms.count =
+		max(pEngine->transforms.count, pEngine->entityUIDs.count);
 	pEngine->transforms[uid] = transform;
 }
 

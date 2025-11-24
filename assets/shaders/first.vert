@@ -7,7 +7,6 @@ layout(buffer_reference, std430) buffer readonly VertexBuffer {
 
 layout (std430, push_constant) uniform constants {
 	VertexBuffer vertexBuffer;
-	uint meshOffset;
 	mat4 mvp;
 } pushConstants;
 
@@ -15,7 +14,7 @@ layout (std430, push_constant) uniform constants {
 layout (location = 0) out vec3 outFragColor;
 
 void main() {
-	uint meshVertexIndex = pushConstants.meshOffset + gl_VertexIndex;
+	uint meshVertexIndex = gl_VertexIndex;
 	vec4 pos = pushConstants.vertexBuffer.positions[meshVertexIndex];
 	gl_Position = pushConstants.mvp * pos;
 	
