@@ -312,16 +312,15 @@ void Renderer::setupFrame(
 
 	for (size_t j{}; j < meshes.count; j++) {
 		pstd::MeshData mesh{ meshes[j] };
-		uint32_t vertexOffset{ ncast<uint32_t>(vertices.count) };
-
 		renderables[j] = {
 			.indexOffset = ncast<uint32_t>(indices.count),
+			.vertexOffset = ncast<uint32_t>(vertices.count),
 			.indexCount = ncast<uint32_t>(mesh.indices.count),
 			.transform = transforms[j],
 		};
 
 		for (size_t i{}; i < mesh.indices.count; i++) {
-			uint32_t index{ vertexOffset + mesh.indices[i] };
+			uint32_t index{ mesh.indices[i] };
 			pstd::pushBack(&indices, index);
 		}
 
@@ -505,7 +504,7 @@ void Renderer::render(State* state, bool windowResized) {
 		vkCmdBindIndexBuffer(
 			state->cmdBuffers[state->frameInFlight],
 			frameCtx.indexBuffer.handle,
-			renderable.indexOffset,
+			renderable.indexOffset * sizeof(uint32_t),
 			VK_INDEX_TYPE_UINT32
 		);
 
@@ -514,7 +513,7 @@ void Renderer::render(State* state, bool windowResized) {
 			renderable.indexCount,
 			1,
 			0,
-			0,
+			renderable.vertexOffset,
 			0
 		);
 	}
