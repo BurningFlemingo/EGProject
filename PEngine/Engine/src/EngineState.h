@@ -25,10 +25,10 @@ namespace Engine {
 		const char* originalDllPathCString;
 		bool isRunning;
 
-		pstd::Array<bool, InputCode> virtualKeyState{};
-		pstd::Array<bool, InputCode> physicalKeyState{};
+		bool virtualKeyState[ncast<size_t>(InputCode::COUNT)];
+		bool physicalKeyState[ncast<size_t>(InputCode::COUNT)];
 
-		pstd::Array<pstd::OBJ> models;
+		pstd::Array<pstd::MeshData> models;
 		pstd::Array<Engine::Transform> transforms;
 		pstd::Array<Engine::UID> entityUIDs;
 	};

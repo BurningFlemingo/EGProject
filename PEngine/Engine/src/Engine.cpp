@@ -15,6 +15,7 @@
 #include "STD/PTime.h"
 #include "AssetLoader.h"
 #include "EngineState.h"
+#include "STD/PMath.h"
 
 #include <new>
 
@@ -52,34 +53,33 @@ Engine::Subsystems Engine::startup() {
 		pstd::createCString(&scratchArena, originalDllPath)
 	};
 
-	Engine::State* pEngine = new (pstd::alloc<Engine::State>(&subsystemArena)
-	) Engine::State{
-		.allocationRegistry = allocationRegistry,
-		.scratchArena = scratchArena,
-		.subsystemArena = subsystemArena,
-		.gameDll = gameDll,
-		.originalDllPath = originalDllPath,
-		.originalDllPathCString = originalDllPathCString,
-		.isRunning = true,
-		.virtualKeyState = pstd::createArray<bool, InputCode>(
-			&subsystemArena, ncast<size_t>(InputCode::COUNT)
-		),
-		.physicalKeyState = pstd::createArray<bool, InputCode>(
-			&subsystemArena, ncast<size_t>(InputCode::COUNT)
-		),
-		.models = pstd::createArray<pstd::OBJ>(&subsystemArena, 10, 0),
-		.transforms =
-			pstd::createArray<Engine::Transform>(&subsystemArena, 10, 0),
-		.entityUIDs = pstd::createArray<Engine::UID>(&subsystemArena, 10, 0),
+	auto models{ pstd::createArray<pstd::MeshData>(&subsystemArena, 10, 0) };
+	auto transforms{
+		pstd::createArray<Engine::Transform>(&subsystemArena, 10, 0)
 	};
+	auto entityUIDs{ pstd::createArray<Engine::UID>(&subsystemArena, 10, 0) };
 
 	Platform::State* pPlatform{
 		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
 
-	Renderer::State* pRenderer{
-		Renderer::startup(&subsystemArena, scratchArena, *pPlatform)
-	};
+	Renderer::State* pRenderer{ Renderer::startup(
+		&allocationRegistry, &subsystemArena, scratchArena, *pPlatform
+	) };
+
+	Engine::State* pEngine =
+		new (pstd::alloc<Engine::State>(&subsystemArena)) Engine::State{
+			.allocationRegistry = allocationRegistry,
+			.scratchArena = scratchArena,
+			.subsystemArena = subsystemArena,
+			.gameDll = gameDll,
+			.originalDllPath = originalDllPath,
+			.originalDllPathCString = originalDllPathCString,
+			.isRunning = true,
+			.models = models,
+			.transforms = transforms,
+			.entityUIDs = entityUIDs,
+		};
 
 	return Engine::Subsystems{
 		.pEngine = pEngine,
@@ -107,15 +107,19 @@ bool Engine::update(const Subsystems& systems) {
 			switch (event.type) {
 				case Platform::EventType::key: {
 					if (event.keyEvent.action == InputAction::PRESSED) {
-						pApp->virtualKeyState[event.keyEvent.virtualCode] =
+						pApp->virtualKeyState[ncast<size_t>(event.keyEvent
+																.virtualCode)] =
 							true;
-						pApp->physicalKeyState[event.keyEvent.physicalCode] =
-							true;
+						pApp->physicalKeyState[ncast<size_t>(
+							event.keyEvent.physicalCode
+						)] = true;
 					} else if (event.keyEvent.action == InputAction::RELEASED) {
-						pApp->virtualKeyState[event.keyEvent.virtualCode] =
+						pApp->virtualKeyState[ncast<size_t>(event.keyEvent
+																.virtualCode)] =
 							false;
-						pApp->physicalKeyState[event.keyEvent.physicalCode] =
-							false;
+						pApp->physicalKeyState[ncast<size_t>(
+							event.keyEvent.physicalCode
+						)] = false;
 					}
 				} break;
 				case Platform::EventType::window: {
@@ -141,14 +145,15 @@ Engine::UID Engine::createEntity(Engine::State* pEngine) {
 void Engine::addTransform(
 	Engine::State* pEngine, const UID entityID, const Transform& transform
 ) {
-	pEngine->transforms.count = max(pEngine->transforms.count, entityID);
+	pEngine->transforms.count =
+		max(pEngine->transforms.count, pEngine->entityUIDs.count);
 	pEngine->transforms[entityID];
 }
 
 void Engine::addModel(
 	Engine::State* pEngine, const UID entityID, pstd::String path
 ) {
-	pstd::OBJ model{
+	pstd::MeshData model{
 		pstd::loadOBJ(&pEngine->subsystemArena, pEngine->scratchArena, path)
 	};
 
@@ -174,7 +179,9 @@ void Engine::run(const Subsystems& subsystems) {
 	Platform::State* pPlatform{ subsystems.pPlatform };
 	Engine::State* pEngine{ subsystems.pEngine };
 
-	Game::State* pGameState{ pEngine->gameDll.api.startup(subsystems) };
+	Game::State* pGameState{
+		pEngine->gameDll.api.startup(&pEngine->allocationRegistry, subsystems)
+	};
 	float lastFrameTime{};
 	while (pEngine->isRunning) {
 		float beginFrameTime{ ncast<float>(pstd::getTicks()) };
@@ -183,17 +190,24 @@ void Engine::run(const Subsystems& subsystems) {
 
 		pstd::reset(&pEngine->scratchArena);
 
-		if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
-			pEngine->gameDll.lastWriteTime) {
-			unloadGameDll(pEngine->gameDll);
-			pEngine->gameDll = loadGameDll(pEngine->scratchArena);
-		}
+		// if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
+		// 	pEngine->gameDll.lastWriteTime) {
+		// 	unloadGameDll(pEngine->gameDll);
+		// 	pEngine->gameDll = loadGameDll(pEngine->scratchArena);
+		// }
 
 		pEngine->isRunning &= Engine::update(subsystems);
 		pEngine->isRunning &=
 			pEngine->gameDll.api.update(subsystems, pGameState, dT);
 
-		Renderer::setupFrame(pRenderer, pEngine, pEngine->entityUIDs);
+		Engine::Transform transform{ pEngine->transforms[0] };
+
+		Renderer::setupFrame(
+			pRenderer,
+			pEngine->scratchArena,
+			pEngine->models,
+			pEngine->transforms
+		);
 		Renderer::render(pRenderer, false);
 	}
 
@@ -201,12 +215,12 @@ void Engine::run(const Subsystems& subsystems) {
 }
 
 bool Engine::getPhysicalKeyDown(Engine::State* pEngine, InputCode keyCode) {
-	bool isPressed{ pEngine->physicalKeyState[keyCode] };
+	bool isPressed{ pEngine->physicalKeyState[ncast<size_t>(keyCode)] };
 	return isPressed;
 }
 
 bool Engine::getVirtualKeyDown(Engine::State* pEngine, InputCode keyCode) {
-	bool isPressed{ pEngine->virtualKeyState[keyCode] };
+	bool isPressed{ pEngine->virtualKeyState[ncast<size_t>(keyCode)] };
 	return isPressed;
 }
 

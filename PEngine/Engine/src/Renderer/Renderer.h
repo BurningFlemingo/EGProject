@@ -17,13 +17,17 @@ namespace Renderer {
 	size_t getSizeofState();
 
 	State* startup(
+		pstd::AllocationRegistry* pAllocRegistry,
 		pstd::Arena* pPersistArena,
 		pstd::Arena scratchArena,
 		const Platform::State& platformState
 	);
 
 	void setupFrame(
-		State* pState, Engine::State* pEngine, pstd::Span<Engine::UID> entities
+		State* pState,
+		pstd::Arena scratchArena,
+		pstd::Span<pstd::MeshData> mesh,
+		pstd::Span<Engine::Transform> transforms
 	);
 	void render(State* state, bool windowResized);
 	void shutdown(State* state);

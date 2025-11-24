@@ -14,24 +14,32 @@
 
 namespace Game {
 	struct State {
-		pstd::AllocationRegistry allocRegistry;
 		pstd::Arena gameArena;
+		Engine::UID cube1{};
+		Engine::UID cube2{};
 
 		pstd::Vec3 pos;
 	};
 }  // namespace Game
 
-GAME_API Game::State* Game::startup(Engine::Subsystems subsystems) {
-	pstd::AllocationRegistry allocRegistry{ pstd::createAllocationRegistry() };
-	pstd::Arena gameArena{ pstd::allocateArena(&allocRegistry, 1024) };
+GAME_API Game::State* Game::startup(
+	pstd::AllocationRegistry* pAllocRegistry, Engine::Subsystems subsystems
+) {
+	pstd::Arena gameArena{ pstd::allocateArena(pAllocRegistry, 1024) };
 
-	Engine::UID cube{ Engine::createEntity(subsystems.pEngine) };
+	Engine::UID cube1{ Engine::createEntity(subsystems.pEngine) };
+	Engine::UID cube2{ Engine::createEntity(subsystems.pEngine) };
 
-	Engine::addModel(subsystems.pEngine, cube, ".\\assets\\models\\cube.obj");
+	Engine::addModel(subsystems.pEngine, cube1, ".\\assets\\models\\cube.obj");
+	Engine::addTransform(subsystems.pEngine, cube1, {});
+
+	Engine::addModel(subsystems.pEngine, cube2, ".\\assets\\models\\cube.obj");
+	Engine::addTransform(subsystems.pEngine, cube2, {});
 
 	Game::State* gameState{ pstd::alloc<Game::State>(&gameArena) };
 	Game::State* statePtr{ new (gameState
-	) Game::State{ .allocRegistry = allocRegistry, .gameArena = gameArena } };
+	) Game::State{ .gameArena = gameArena, .cube1 = cube1, .cube2 = cube2 } };
+
 	return statePtr;
 }
 GAME_API bool
@@ -51,27 +59,18 @@ GAME_API bool
 	if (Engine::getPhysicalKeyDown(pEngine, InputCode::S)) {
 		state->pos.z -= speed;
 	}
-	float ar{ 1920.0 / 1080.0 };
-	pstd::Mat4 perspProjMatrix{
-		pstd::calcPerspectiveMatrix(pstd::toRadians(90), ar, 0.001, 25)
-	};
-
-	pstd::Mat4 viewMatrix{
-		pstd::calcLookAtMatrix({ 0.f, 0.f, 0.f }, { 0.f, 0.f, 1.f }, pstd::UP)
-	};
 
 	pstd::Rot3 rot{ pstd::calcRotor(
 		{ 0, 1, 0 }, { 0, 0, 1 }, pstd::toRadians(0.1f) * pstd::getTicks()
 	) };
 
-	pstd::Mat4 rotMat{ pstd::calcRotationMatrix<4>(rot) };
+	Engine::Transform transform1{ .pos = state->pos, .rot = rot };
+	Engine::Transform transform2{ .pos =
+									  state->pos + pstd::Vec3{ 5.f, 0.f, 0.f },
+								  .rot = rot };
 
-	pstd::Mat4 modelMat{
-		pstd::calcTranlsated(pstd::getIdentityMatrix<4>(), state->pos)
-	};
-
-	perspProjMatrix = perspProjMatrix * viewMatrix * modelMat * rotMat;
-	Renderer::setMVPMatrix(subsystems.pRenderer, perspProjMatrix);
+	Engine::updateTransform(pEngine, state->cube1, transform1);
+	Engine::updateTransform(pEngine, state->cube2, transform2);
 
 	return !Engine::getVirtualKeyDown(pEngine, InputCode::TAB);
 }

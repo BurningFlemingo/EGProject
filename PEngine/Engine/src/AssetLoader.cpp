@@ -108,7 +108,7 @@ pstd::Array<pstd::String>
 	return newIndices;
 }
 
-pstd::OBJ pstd::loadOBJ(
+pstd::MeshData pstd::loadOBJ(
 	pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
 ) {
 	pstd::String ogObjString{
@@ -183,5 +183,5 @@ pstd::OBJ pstd::loadOBJ(
 	}
 	LOG_INFO("\n");
 
-	return OBJ{ .uniquePositions = uniquePositions, .indices = indices };
+	return MeshData{ .uniquePositions = uniquePositions, .indices = indices };
 }

@@ -25,13 +25,13 @@ void* pstd::alloc(Arena* pArena, size_t size, uint32_t alignment) {
 
 	auto baseAddress{ rcast<uintptr_t>(pArena->block) };
 
-	uint32_t alignmentPadding{
+	size_t alignmentPadding{
 		(alignment - vcast<uint32_t>((baseAddress + pArena->offset) % alignment)
 		) %
 		alignment
 	};
 
-	uint32_t alignedOffset{ pArena->offset + alignmentPadding };
+	size_t alignedOffset{ pArena->offset + alignmentPadding };
 
 	ASSERT((size + alignedOffset) <= pArena->size);
 

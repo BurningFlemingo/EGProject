@@ -7,6 +7,7 @@
 #include "Swapchain.h"
 #include "Allocation.h"
 #include "Device.h"
+#include "EngineState.h"
 
 #include <vulkan/vulkan.h>
 
@@ -14,14 +15,21 @@ struct FrameCtx {
 	Buffer vertexBuffer;
 	Buffer indexBuffer;
 	VkDeviceAddress vertexDeviceAddress;
+};
 
-	pstd::Array<uint32_t> meshNIndices;
-	pstd::Array<uint32_t> meshOffsets;
+struct Renderable {
+	uint32_t indexOffset;
+	uint32_t indexCount;
+
+	Engine::Transform transform;
 };
 
 namespace Renderer {
+
 	struct State {
-		constexpr static uint32_t maxFramesInFlight{ 1 };
+		constexpr static uint32_t maxFramesInFlight{ 3 };
+		constexpr static size_t frameArenaSize{ 1024 };
+		pstd::StaticArray<pstd::Arena, maxFramesInFlight> frameArenas;
 
 		Swapchain swapchain;
 		Device device;
@@ -44,7 +52,7 @@ namespace Renderer {
 
 		pstd::Array<FrameCtx> frameContexts;
 
-		pstd::Mat4 MVPMatrix;
+		pstd::Array<pstd::Array<Renderable>> renderables;
 
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;

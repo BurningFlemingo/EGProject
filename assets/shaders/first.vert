@@ -14,8 +14,7 @@ layout (std430, push_constant) uniform constants {
 layout (location = 0) out vec3 outFragColor;
 
 void main() {
-	uint meshVertexIndex = gl_VertexIndex;
-	vec4 pos = pushConstants.vertexBuffer.positions[meshVertexIndex];
+	vec4 pos = pushConstants.vertexBuffer.positions[gl_VertexIndex];
 	gl_Position = pushConstants.mvp * pos;
 	
 	outFragColor = vec3(0.5, 0.5, 1.0);
