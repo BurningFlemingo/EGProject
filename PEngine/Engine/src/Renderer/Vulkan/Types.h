@@ -10,8 +10,16 @@
 
 #include <vulkan/vulkan.h>
 
+struct FrameResources {
+	Buffer vertexBuffer;
+	Buffer indexBuffer;
+	VkDeviceAddress vertexDeviceAddress;
+};
+
 namespace Renderer {
 	struct State {
+		constexpr static uint32_t maxFramesInFlight{ 2 };
+
 		Swapchain swapchain;
 		Device device;
 		VkSurfaceKHR surface;
@@ -19,7 +27,6 @@ namespace Renderer {
 		VkDebugUtilsMessengerEXT debugMessenger;
 		VkPipeline graphicsPipeline;
 		VkPipelineLayout graphicsPipelineLayout;
-		uint32_t maxFramesInFlight;
 
 		VkCommandPool cmdPool;
 		VkCommandPool transientCmdPool;
@@ -30,14 +37,14 @@ namespace Renderer {
 		pstd::Array<VkFence> cmdBufferAvailableFences;
 
 		void* stagingBufferData;
-
 		Buffer stagingBuffer;
-		Buffer vertexBuffer;
-		VkDeviceAddress vertexBufferDeviceAddress;
-		Buffer indexBuffer;
+
+		pstd::Array<FrameResources> frameResources;
+
 		pstd::Mat4 MVPMatrix;
 
-		size_t nIndices;
+		pstd::Array<uint32_t> meshNIndices;
+		pstd::Array<uint32_t> meshOffsets;
 
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;

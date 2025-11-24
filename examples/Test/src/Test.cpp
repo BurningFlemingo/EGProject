@@ -21,9 +21,13 @@ namespace Game {
 	};
 }  // namespace Game
 
-GAME_API Game::State* Game::startup() {
+GAME_API Game::State* Game::startup(Engine::Subsystems subsystems) {
 	pstd::AllocationRegistry allocRegistry{ pstd::createAllocationRegistry() };
 	pstd::Arena gameArena{ pstd::allocateArena(&allocRegistry, 1024) };
+
+	Engine::UID cube{ Engine::createEntity(subsystems.pEngine) };
+
+	Engine::addModel(subsystems.pEngine, cube, ".\\assets\\models\\cube.obj");
 
 	Game::State* gameState{ pstd::alloc<Game::State>(&gameArena) };
 	Game::State* statePtr{ new (gameState
@@ -32,19 +36,19 @@ GAME_API Game::State* Game::startup() {
 }
 GAME_API bool
 	Game::update(Engine::Subsystems subsystems, State* state, float dTime) {
-	Application::State* pApp{ subsystems.pApplicationState };
+	Engine::State* pEngine{ subsystems.pEngine };
 
 	float speed{ 0.03f * dTime };
-	if (Engine::getPhysicalKeyDown(pApp, InputCode::D)) {
+	if (Engine::getPhysicalKeyDown(pEngine, InputCode::D)) {
 		state->pos.x += speed;
 	}
-	if (Engine::getPhysicalKeyDown(pApp, InputCode::A)) {
+	if (Engine::getPhysicalKeyDown(pEngine, InputCode::A)) {
 		state->pos.x -= speed;
 	}
-	if (Engine::getPhysicalKeyDown(pApp, InputCode::W)) {
+	if (Engine::getPhysicalKeyDown(pEngine, InputCode::W)) {
 		state->pos.z += speed;
 	}
-	if (Engine::getPhysicalKeyDown(pApp, InputCode::S)) {
+	if (Engine::getPhysicalKeyDown(pEngine, InputCode::S)) {
 		state->pos.z -= speed;
 	}
 	float ar{ 1920.0 / 1080.0 };
@@ -67,8 +71,8 @@ GAME_API bool
 	};
 
 	perspProjMatrix = perspProjMatrix * viewMatrix * modelMat * rotMat;
-	Renderer::setMVPMatrix(subsystems.pRendererState, perspProjMatrix);
+	Renderer::setMVPMatrix(subsystems.pRenderer, perspProjMatrix);
 
-	return !Engine::getVirtualKeyDown(pApp, InputCode::TAB);
+	return !Engine::getVirtualKeyDown(pEngine, InputCode::TAB);
 }
 GAME_API void Game::shutdown(State* state) {}

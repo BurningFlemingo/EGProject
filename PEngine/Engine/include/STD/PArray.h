@@ -56,7 +56,6 @@ namespace pstd {
 		T data[n];
 		size_t capacity{ n };
 		size_t count{ c };
-
 	};
 
 	template<typename T, typename I = size_t>

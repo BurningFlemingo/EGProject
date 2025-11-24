@@ -2,6 +2,7 @@
 #include "STD/PTypes.h"
 #include "Device.h"
 #include <vulkan/vulkan.h>
+#include "AssetLoader.h"
 
 struct Buffer {
 	VkBuffer handle;
@@ -29,5 +30,5 @@ void copyBuffer(
 	VkCommandPool pool,
 	const Buffer& srcBuffer,
 	const Buffer& dstBuffer,
-	size_t size
+	VkBufferCopy bufCopy
 );

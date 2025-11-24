@@ -18,6 +18,7 @@
 #include "STD/PMatrix.h"
 #include "STD/PMath.h"
 #include "Logging.h"
+#include "EngineState.h"
 #include "Platforms/VulkanSurface.h"
 
 #include <vulkan/vulkan.h>
@@ -26,14 +27,14 @@
 
 struct PushConstants {
 	VkDeviceAddress vertexBufferAddress;
+	uint32_t meshOffset;
 	alignas(16) pstd::Mat4 MVPMatrix;
 };
 
 Renderer::State* Renderer::startup(
 	pstd::Arena* pPersistArena,
 	pstd::Arena scratchArena,
-	const Platform::State& platformState,
-	pstd::OBJ cubeOBJ
+	const Platform::State& platformState
 ) {
 	VkInstance instance{ createInstance(*pPersistArena, scratchArena) };
 
@@ -138,31 +139,45 @@ Renderer::State* Renderer::startup(
 		1024 * 4
 	) };
 
-	Buffer vBuffer{ createBuffer(
-		device,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-			VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		1024 * 4
+	auto frameResources{ pstd::createArray<FrameResources>(
+		pPersistArena, State::maxFramesInFlight
 	) };
 
-	Buffer iBuffer{ createBuffer(
-		device,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		1024 * 4
+	for (size_t i{}; i < State::maxFramesInFlight; i++) {
+		Buffer vBuffer{ createBuffer(
+			device,
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+				VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			1024 * 4
+		) };
 
-	) };
+		Buffer iBuffer{ createBuffer(
+			device,
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			1024 * 4
 
-	VkBufferDeviceAddressInfo vAddressInfo{
-		.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-		.buffer = vBuffer.handle
-	};
+		) };
 
-	VkDeviceAddress vertexDeviceAddress{
-		vkGetBufferDeviceAddress(device.logical, &vAddressInfo)
-	};
+		VkBufferDeviceAddressInfo vAddressInfo{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+			.buffer = vBuffer.handle,
+		};
+
+		VkDeviceAddress vertexDeviceAddress{
+			vkGetBufferDeviceAddress(device.logical, &vAddressInfo)
+		};
+
+		FrameResources frameResource{ .vertexBuffer = vBuffer,
+									  .indexBuffer = iBuffer,
+									  .vertexDeviceAddress =
+										  vertexDeviceAddress };
+
+		frameResources[i] = frameResource;
+	}
 
 	void* mappedData{};
 	vkMapMemory(
@@ -173,26 +188,6 @@ Renderer::State* Renderer::startup(
 		0,
 		&mappedData
 	);
-
-	LOG_INFO(
-		"size %u, %u",
-		vBuffer.size,
-		cubeOBJ.uniquePositions.count * sizeof(cubeOBJ.uniquePositions[0])
-	);
-
-	memcpy(
-		mappedData,
-		cubeOBJ.uniquePositions.data,
-		cubeOBJ.uniquePositions.count * sizeof(cubeOBJ.uniquePositions[0])
-	);
-	copyBuffer(device, transientCmdPool, stagingBuffer, vBuffer, vBuffer.size);
-
-	memcpy(
-		mappedData,
-		cubeOBJ.indices.data,
-		cubeOBJ.indices.count * sizeof(cubeOBJ.indices[0])
-	);
-	copyBuffer(device, transientCmdPool, stagingBuffer, iBuffer, iBuffer.size);
 
 	VkCommandPoolCreateInfo cmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -215,23 +210,22 @@ Renderer::State* Renderer::startup(
 	VkFenceCreateInfo fenceCI{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 							   .flags = VK_FENCE_CREATE_SIGNALED_BIT };
 
-	const uint32_t maxFramesInFlight{ 2 };
 	auto cmdBuffers{ pstd::createArray<VkCommandBuffer>(
 		pPersistArena, swapchain.images.count
 	) };
 	auto cmdBufferAvailableFences{
-		pstd::createArray<VkFence>(pPersistArena, maxFramesInFlight)
+		pstd::createArray<VkFence>(pPersistArena, State::maxFramesInFlight)
 	};
 
 	auto imageAvailableSemaphores{
-		pstd::createArray<VkSemaphore>(pPersistArena, maxFramesInFlight)
+		pstd::createArray<VkSemaphore>(pPersistArena, State::maxFramesInFlight)
 	};
 
 	auto renderFinishedSemaphores{
 		pstd::createArray<VkSemaphore>(pPersistArena, swapchain.images.count)
 	};
 
-	for (uint32_t i{}; i < maxFramesInFlight; i++) {
+	for (uint32_t i{}; i < State::maxFramesInFlight; i++) {
 		vkAllocateCommandBuffers(
 			device.logical, &cmdBufferAllocInfo, &cmdBuffers[i]
 		);
@@ -258,7 +252,6 @@ Renderer::State* Renderer::startup(
 		.debugMessenger = debugMessenger,
 		.graphicsPipeline = graphicsPipeline,
 		.graphicsPipelineLayout = pipelineLayout,
-		.maxFramesInFlight = maxFramesInFlight,
 		.cmdPool = cmdPool,
 		.transientCmdPool = transientCmdPool,
 		.cmdBuffers = cmdBuffers,
@@ -267,16 +260,71 @@ Renderer::State* Renderer::startup(
 		.cmdBufferAvailableFences = cmdBufferAvailableFences,
 		.stagingBufferData = mappedData,
 		.stagingBuffer = stagingBuffer,
-		.vertexBuffer = vBuffer,
-		.vertexBufferDeviceAddress = vertexDeviceAddress,
-		.indexBuffer = iBuffer,
+		.frameResources = frameResources,
 		.MVPMatrix = pstd::getIdentityMatrix<4>(),
-		.nIndices = cubeOBJ.indices.count,
+		.meshNIndices = pstd::createArray<uint32_t>(pPersistArena, 10, 0),
+		.meshOffsets = pstd::createArray<uint32_t>(pPersistArena, 10, 0),
 	};
 }
 
 void Renderer::setMVPMatrix(State* pState, const pstd::Mat4& mvpMat) {
 	pState->MVPMatrix = mvpMat;
+}
+
+void Renderer::setupFrame(
+	State* pState, Engine::State* pEngine, pstd::Span<Engine::UID> entities
+) {
+	pState->meshOffsets.count = entities.count;
+	pState->meshNIndices.count = entities.count;
+
+	size_t currentIndexOffset{};
+	size_t currentVertexOffset{};
+	for (size_t i{}; i < entities.count; i++) {
+		FrameResources* pFrameResources{
+			&pState->frameResources[pState->frameInFlight]
+		};
+
+		Engine::UID entityID{ entities[i] };
+		pstd::OBJ obj{ pEngine->models[entityID] };
+
+		size_t verticesSize{ obj.uniquePositions.count *
+							 sizeof(obj.uniquePositions[0]) };
+		size_t indicesSize{ obj.indices.count * sizeof(uint32_t) };
+
+		pState->meshNIndices[i] = obj.indices.count;
+		pState->meshOffsets[i] = currentIndexOffset;
+
+		memcpy(
+			pState->stagingBufferData, obj.uniquePositions.data, verticesSize
+
+		);
+		copyBuffer(
+			pState->device,
+			pState->transientCmdPool,
+			pState->stagingBuffer,
+			pFrameResources->vertexBuffer,
+			{
+				.dstOffset = currentVertexOffset,
+				.size = verticesSize,
+			}
+		);
+
+		memcpy(pState->stagingBufferData, obj.indices.data, indicesSize);
+
+		copyBuffer(
+			pState->device,
+			pState->transientCmdPool,
+			pState->stagingBuffer,
+			pFrameResources->indexBuffer,
+			{
+				.dstOffset = currentIndexOffset,
+				.size = indicesSize,
+			}
+		);
+
+		currentVertexOffset += obj.uniquePositions.count;
+		currentIndexOffset += obj.indices.count;
+	}
 }
 
 void Renderer::render(State* state, bool windowResized) {
@@ -374,13 +422,6 @@ void Renderer::render(State* state, bool windowResized) {
 
 	VkDeviceSize offsets[] = { 0 };
 
-	vkCmdBindIndexBuffer(
-		state->cmdBuffers[state->frameInFlight],
-		state->indexBuffer.handle,
-		offsets[0],
-		VK_INDEX_TYPE_UINT32
-	);
-
 	VkViewport viewport{
 		.y = ncast<float>(state->swapchain.createInfo.imageExtent.height),
 		.width = ncast<float>(state->swapchain.createInfo.imageExtent.width),
@@ -393,21 +434,39 @@ void Renderer::render(State* state, bool windowResized) {
 	vkCmdSetViewport(state->cmdBuffers[state->frameInFlight], 0, 1, &viewport);
 	vkCmdSetScissor(state->cmdBuffers[state->frameInFlight], 0, 1, &scissor);
 
-	PushConstants pushConstants{ .vertexBufferAddress =
-									 state->vertexBufferDeviceAddress,
-								 .MVPMatrix = state->MVPMatrix };
-	vkCmdPushConstants(
-		state->cmdBuffers[state->frameInFlight],
-		state->graphicsPipelineLayout,
-		VK_SHADER_STAGE_VERTEX_BIT,
-		0,
-		sizeof(PushConstants),
-		&pushConstants
-	);
+	const FrameResources& frameResource{
+		state->frameResources[state->frameInFlight]
+	};
+	for (size_t i{}; i < state->meshOffsets.count; i++) {
+		PushConstants pushConstants{ .vertexBufferAddress =
+										 frameResource.vertexDeviceAddress,
+									 .meshOffset = state->meshOffsets[i],
+									 .MVPMatrix = state->MVPMatrix };
+		vkCmdPushConstants(
+			state->cmdBuffers[state->frameInFlight],
+			state->graphicsPipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT,
+			0,
+			sizeof(PushConstants),
+			&pushConstants
+		);
 
-	vkCmdDrawIndexed(
-		state->cmdBuffers[state->frameInFlight], state->nIndices, 1, 0, 0, 0
-	);
+		vkCmdBindIndexBuffer(
+			state->cmdBuffers[state->frameInFlight],
+			frameResource.indexBuffer.handle,
+			offsets[0],
+			VK_INDEX_TYPE_UINT32
+		);
+
+		vkCmdDrawIndexed(
+			state->cmdBuffers[state->frameInFlight],
+			state->meshNIndices[i],
+			1,
+			0,
+			0,
+			0
+		);
+	}
 
 	vkCmdEndRendering(state->cmdBuffers[state->frameInFlight]);
 
@@ -499,10 +558,24 @@ void Renderer::shutdown(State* state) {
 
 	vkUnmapMemory(state->device.logical, state->stagingBuffer.memory);
 
-	vkDestroyBuffer(state->device.logical, state->vertexBuffer.handle, nullptr);
-	vkFreeMemory(state->device.logical, state->vertexBuffer.memory, nullptr);
-	vkDestroyBuffer(state->device.logical, state->indexBuffer.handle, nullptr);
-	vkFreeMemory(state->device.logical, state->indexBuffer.memory, nullptr);
+	for (size_t i{}; i < State::maxFramesInFlight; i++) {
+		const FrameResources& frameResources{ state->frameResources[i] };
+
+		vkDestroyBuffer(
+			state->device.logical, frameResources.vertexBuffer.handle, nullptr
+		);
+		vkFreeMemory(
+			state->device.logical, frameResources.vertexBuffer.memory, nullptr
+		);
+
+		vkDestroyBuffer(
+			state->device.logical, frameResources.indexBuffer.handle, nullptr
+		);
+		vkFreeMemory(
+			state->device.logical, frameResources.indexBuffer.memory, nullptr
+		);
+	}
+
 	vkDestroyBuffer(
 		state->device.logical, state->stagingBuffer.handle, nullptr
 	);

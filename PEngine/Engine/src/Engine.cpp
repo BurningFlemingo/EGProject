@@ -4,7 +4,7 @@
 #include "Logging.h"
 #include "LoggingSetup.h"
 #include "Game.h"
-#include "AssetLoader.h"
+#include "GameObject.h"
 #include "STD/PArena.h"
 #include "STD/PMemory.h"
 #include "STD/PFileIO.h"
@@ -13,39 +13,15 @@
 #include "Platforms/Window.h"
 #include "Renderer/Renderer.h"
 #include "STD/PTime.h"
+#include "AssetLoader.h"
+#include "EngineState.h"
 
 #include <new>
 
 namespace {
-
-	struct GameDll {
-		pstd::DllHandle handle;
-		Game::API api;
-		bool isValid;
-		size_t lastWriteTime;
-	};
-
 	GameDll loadGameDll(pstd::Arena scratchArena);
 	void unloadGameDll(GameDll dll);
 }  // namespace
-
-namespace Application {
-
-	struct State {
-		pstd::AllocationRegistry allocationRegistry;
-		pstd::Arena scratchArena;
-		pstd::Arena subsystemArena;
-		GameDll gameDll;
-		Game::State* pGameState;
-		pstd::String originalDllPath;
-		const char* originalDllPathCString;
-		bool isRunning;
-
-		pstd::Array<bool, InputCode> virtualKeyState{};
-		pstd::Array<bool, InputCode> physicalKeyState{};
-	};
-
-}  // namespace Application
 
 Engine::Subsystems Engine::startup() {
 	constexpr size_t scratchSize{ 1024 * 1024 };
@@ -65,8 +41,6 @@ Engine::Subsystems Engine::startup() {
 
 	GameDll gameDll{ loadGameDll(scratchArena) };
 
-	Game::State* pGameState{ gameDll.api.startup() };
-
 	pstd::String originalDllPath{ pstd::formatString(
 		&scratchArena,
 		"%mGame.%m",
@@ -78,60 +52,51 @@ Engine::Subsystems Engine::startup() {
 		pstd::createCString(&scratchArena, originalDllPath)
 	};
 
-	Application::State* pApplicationState =
-		new (pstd::alloc<Application::State>(&subsystemArena))
-			Application::State{
-				.allocationRegistry = allocationRegistry,
-				.scratchArena = scratchArena,
-				.subsystemArena = subsystemArena,
-				.gameDll = gameDll,
-				.pGameState = pGameState,
-				.originalDllPath = originalDllPath,
-				.originalDllPathCString = originalDllPathCString,
-				.isRunning = true,
-				.virtualKeyState = pstd::createArray<bool, InputCode>(
-					&subsystemArena, ncast<size_t>(InputCode::COUNT)
-				),
-				.physicalKeyState = pstd::createArray<bool, InputCode>(
-					&subsystemArena, ncast<size_t>(InputCode::COUNT)
-				)
-			};
+	Engine::State* pEngine = new (pstd::alloc<Engine::State>(&subsystemArena)
+	) Engine::State{
+		.allocationRegistry = allocationRegistry,
+		.scratchArena = scratchArena,
+		.subsystemArena = subsystemArena,
+		.gameDll = gameDll,
+		.originalDllPath = originalDllPath,
+		.originalDllPathCString = originalDllPathCString,
+		.isRunning = true,
+		.virtualKeyState = pstd::createArray<bool, InputCode>(
+			&subsystemArena, ncast<size_t>(InputCode::COUNT)
+		),
+		.physicalKeyState = pstd::createArray<bool, InputCode>(
+			&subsystemArena, ncast<size_t>(InputCode::COUNT)
+		),
+		.models = pstd::createArray<pstd::OBJ>(&subsystemArena, 10, 0),
+		.transforms =
+			pstd::createArray<Engine::Transform>(&subsystemArena, 10, 0),
+		.entityUIDs = pstd::createArray<Engine::UID>(&subsystemArena, 10, 0),
+	};
 
-	Platform::State* pPlatformState{
+	Platform::State* pPlatform{
 		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
-	pstd::OBJ cubeOBJ{ pstd::loadOBJ(
-		&pApplicationState->subsystemArena,
-		pApplicationState->scratchArena,
-		".\\assets\\models\\cube.obj"
-	) };
-	Renderer::State* pRendererState{ Renderer::startup(
-		&subsystemArena, scratchArena, *pPlatformState, cubeOBJ
-	) };
 
-	int myThings[] = { 1, 2, 3, 4 };
-	auto myArray{ pstd::createArray<int>(myThings) };
+	Renderer::State* pRenderer{
+		Renderer::startup(&subsystemArena, scratchArena, *pPlatform)
+	};
 
 	return Engine::Subsystems{
-		.pApplicationState = pApplicationState,
-		.pRendererState = pRendererState,
-		.pPlatformState = pPlatformState,
+		.pEngine = pEngine,
+		.pRenderer = pRenderer,
+		.pPlatform = pPlatform,
 	};
 }
 
 void Engine::shutdown(const Subsystems& systems) {
-	systems.pApplicationState->gameDll.api.shutdown(
-		systems.pApplicationState->pGameState
-	);
-
-	Renderer::shutdown(systems.pRendererState);
-	Platform::shutdown(systems.pPlatformState);
+	Renderer::shutdown(systems.pRenderer);
+	Platform::shutdown(systems.pPlatform);
 }
 
 bool Engine::update(const Subsystems& systems) {
-	Renderer::State* pRenderer{ systems.pRendererState };
-	Platform::State* pPlatform{ systems.pPlatformState };
-	Application::State* pApp{ systems.pApplicationState };
+	Renderer::State* pRenderer{ systems.pRenderer };
+	Platform::State* pPlatform{ systems.pPlatform };
+	Engine::State* pApp{ systems.pEngine };
 
 	if (pApp->isRunning && Platform::isRunning(pPlatform)) {
 		Platform::update(pPlatform);
@@ -167,49 +132,81 @@ bool Engine::update(const Subsystems& systems) {
 	return pApp->isRunning;
 }
 
-void Engine::run(const Subsystems& systems) {
-	Renderer::State* pRenderer{ systems.pRendererState };
-	Platform::State* pPlatform{ systems.pPlatformState };
-	Application::State* pApp{ systems.pApplicationState };
+Engine::UID Engine::createEntity(Engine::State* pEngine) {
+	size_t uid{ pEngine->entityUIDs.count };
+	pstd::pushBack(&pEngine->entityUIDs, uid);
+	return uid;
+}
 
+void Engine::addTransform(
+	Engine::State* pEngine, const UID entityID, const Transform& transform
+) {
+	pEngine->transforms.count = max(pEngine->transforms.count, entityID);
+	pEngine->transforms[entityID];
+}
+
+void Engine::addModel(
+	Engine::State* pEngine, const UID entityID, pstd::String path
+) {
+	pstd::OBJ model{
+		pstd::loadOBJ(&pEngine->subsystemArena, pEngine->scratchArena, path)
+	};
+
+	pEngine->models.count = max(pEngine->models.count, entityID);
+	pEngine->models[entityID];
+}
+
+Engine::Transform Engine::getTransform(Engine::State* pEngine, UID uid) {
+	return pEngine->transforms[uid];
+}
+void Engine::updateTransform(
+	Engine::State* pEngine, UID uid, const Transform& transform
+) {
+	pEngine->transforms[uid] = transform;
+}
+
+void Engine::run(const Subsystems& subsystems) {
+	Renderer::State* pRenderer{ subsystems.pRenderer };
+	Platform::State* pPlatform{ subsystems.pPlatform };
+	Engine::State* pEngine{ subsystems.pEngine };
+
+	Game::State* pGameState{ pEngine->gameDll.api.startup(subsystems) };
 	float lastFrameTime{};
-	while (pApp->isRunning) {
+	while (pEngine->isRunning) {
 		float beginFrameTime{ ncast<float>(pstd::getTicks()) };
 		float dT{ beginFrameTime - lastFrameTime };
 		lastFrameTime = beginFrameTime;
 
-		pstd::reset(&pApp->scratchArena);
+		pstd::reset(&pEngine->scratchArena);
 
-		if (pstd::getLastFileWriteTime(pApp->originalDllPathCString) !=
-			pApp->gameDll.lastWriteTime) {
-			unloadGameDll(pApp->gameDll);
-			pApp->gameDll = loadGameDll(pApp->scratchArena);
+		if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
+			pEngine->gameDll.lastWriteTime) {
+			unloadGameDll(pEngine->gameDll);
+			pEngine->gameDll = loadGameDll(pEngine->scratchArena);
 		}
 
-		pApp->isRunning &= Engine::update(systems);
-		pApp->isRunning &=
-			pApp->gameDll.api.update(systems, pApp->pGameState, dT);
+		pEngine->isRunning &= Engine::update(subsystems);
+		pEngine->isRunning &=
+			pEngine->gameDll.api.update(subsystems, pGameState, dT);
 
+		Renderer::setupFrame(pRenderer, pEngine, pEngine->entityUIDs);
 		Renderer::render(pRenderer, false);
 	}
+
+	pEngine->gameDll.api.shutdown(pGameState);
 }
 
-bool Engine::getPhysicalKeyDown(
-	Application::State* pAppState, InputCode keyCode
-) {
-	bool isPressed{ pAppState->physicalKeyState[keyCode] };
+bool Engine::getPhysicalKeyDown(Engine::State* pEngine, InputCode keyCode) {
+	bool isPressed{ pEngine->physicalKeyState[keyCode] };
 	return isPressed;
 }
 
-bool Engine::getVirtualKeyDown(
-	Application::State* pAppState, InputCode keyCode
-) {
-	bool isPressed{ pAppState->virtualKeyState[keyCode] };
+bool Engine::getVirtualKeyDown(Engine::State* pEngine, InputCode keyCode) {
+	bool isPressed{ pEngine->virtualKeyState[keyCode] };
 	return isPressed;
 }
 
 namespace {
-
 	GameDll loadGameDll(pstd::Arena scratchArena) {
 		static uint32_t loadedDllSlot{};
 

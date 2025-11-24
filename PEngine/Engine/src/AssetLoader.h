@@ -16,8 +16,8 @@ namespace pstd {
 		pstd::Array<uint32_t> indices;
 	};
 
-	BMP loadBMP(pstd::Arena* pArena, const char* path);
+	BMP loadBMP(pstd::Arena* pArena, const pstd::String path);
 	OBJ loadOBJ(
-		pstd::Arena* pArena, pstd::Arena scratchArena, const char* path
+		pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
 	);
 }  // namespace pstd

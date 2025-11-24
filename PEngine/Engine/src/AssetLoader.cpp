@@ -35,7 +35,7 @@ namespace {
 		triangulate(pstd::Arena* pArena, const pstd::Array<uint32_t>& indices);
 }  // namespace
 
-pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const char* path) {
+pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const pstd::String path) {
 	pstd::Allocation rawBMP{ pstd::readFile(pArena, path) };
 
 	ASSERT(rawBMP.size != 0);
@@ -109,7 +109,7 @@ pstd::Array<pstd::String>
 }
 
 pstd::OBJ pstd::loadOBJ(
-	pstd::Arena* pArena, pstd::Arena scratchArena, const char* path
+	pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
 ) {
 	pstd::String ogObjString{
 		pstd::createString(pstd::readFile(&scratchArena, path))

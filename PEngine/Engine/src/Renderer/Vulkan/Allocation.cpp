@@ -1,5 +1,7 @@
 #include "Allocation.h"
 #include "Logging.h"
+#include "Renderer/Vulkan/Types.h"
+#include <memory>
 #include <vulkan/vulkan_core.h>
 
 uint32_t getMemoryTypeIndex(
@@ -39,12 +41,12 @@ Buffer createBuffer(
 	VkMemoryRequirements memReqs{};
 	vkGetBufferMemoryRequirements(device.logical, buffer, &memReqs);
 
-	VkPhysicalDeviceMemoryProperties memProps{};
-	vkGetPhysicalDeviceMemoryProperties(device.physical, &memProps);
+	VkPhysicalDeviceMemoryProperties physicalMemProps{};
+	vkGetPhysicalDeviceMemoryProperties(device.physical, &physicalMemProps);
 
-	uint32_t memTypeIndex{
-		getMemoryTypeIndex(memReqs.memoryTypeBits, memoryProps, memProps)
-	};
+	uint32_t memTypeIndex{ getMemoryTypeIndex(
+		memReqs.memoryTypeBits, memoryProps, physicalMemProps
+	) };
 
 	VkMemoryAllocateFlagsInfo allocFlagsInfo{
 		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
@@ -77,10 +79,10 @@ void copyBuffer(
 	VkCommandPool pool,
 	const Buffer& srcBuffer,
 	const Buffer& dstBuffer,
-	size_t size
+	VkBufferCopy bufCopy
 ) {
-	ASSERT(size <= srcBuffer.size);
-	ASSERT(size <= dstBuffer.size);
+	ASSERT((bufCopy.size + bufCopy.srcOffset) <= srcBuffer.size);
+	ASSERT((bufCopy.size + bufCopy.dstOffset) <= dstBuffer.size);
 
 	VkCommandBufferAllocateInfo cmdBufferAllocInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -91,10 +93,6 @@ void copyBuffer(
 
 	VkCommandBuffer cmdBuffer{};
 	vkAllocateCommandBuffers(device.logical, &cmdBufferAllocInfo, &cmdBuffer);
-
-	VkBufferCopy bufCopy{
-		.size = size,
-	};
 
 	VkCommandBufferBeginInfo cmdBufBI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
