@@ -29,12 +29,13 @@ GAME_API Game::State* Game::startup(
 
 	Engine::UID cube1{ Engine::createEntity(subsystems.pEngine) };
 	Engine::UID cube2{ Engine::createEntity(subsystems.pEngine) };
+	Engine::Transform transform{ .pos = pstd::Vec3{ 0.f, 0.f, 3.f } };
 
 	Engine::addModel(subsystems.pEngine, cube1, ".\\assets\\models\\cube.obj");
-	Engine::addTransform(subsystems.pEngine, cube1, {});
+	Engine::addTransform(subsystems.pEngine, cube1, transform);
 
 	Engine::addModel(subsystems.pEngine, cube2, ".\\assets\\models\\cube.obj");
-	Engine::addTransform(subsystems.pEngine, cube2, {});
+	Engine::addTransform(subsystems.pEngine, cube2, transform);
 
 	Game::State* gameState{ pstd::alloc<Game::State>(&gameArena) };
 	Game::State* statePtr{ new (gameState
@@ -45,6 +46,9 @@ GAME_API Game::State* Game::startup(
 GAME_API bool
 	Game::update(Engine::Subsystems subsystems, State* state, float dTime) {
 	Engine::State* pEngine{ subsystems.pEngine };
+
+	float gravAcc{ 0.005f };
+	state->pos.y -= gravAcc * dTime;
 
 	float speed{ 0.03f * dTime };
 	if (Engine::getPhysicalKeyDown(pEngine, InputCode::D)) {
@@ -58,6 +62,9 @@ GAME_API bool
 	}
 	if (Engine::getPhysicalKeyDown(pEngine, InputCode::S)) {
 		state->pos.z -= speed;
+	}
+	if (Engine::getVirtualKeyDown(pEngine, InputCode::SPACE)) {
+		state->pos.y += speed * 5;
 	}
 
 	pstd::Rot3 rot{ pstd::calcRotor(

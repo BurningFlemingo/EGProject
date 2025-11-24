@@ -19,7 +19,6 @@ double pstd::getTicks() {
 	LARGE_INTEGER freq{};
 	QueryPerformanceFrequency(&freq);
 
-	return ncast<double>(
-		((ticks.QuadPart - g_InitialTicks.QuadPart) * 1000) / (freq.QuadPart)
-	);
+	return ((ticks.QuadPart - g_InitialTicks.QuadPart) * 1000) /
+		ncast<double>(freq.QuadPart);
 }

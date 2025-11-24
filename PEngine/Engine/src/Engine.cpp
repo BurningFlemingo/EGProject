@@ -182,32 +182,31 @@ void Engine::run(const Subsystems& subsystems) {
 	Game::State* pGameState{
 		pEngine->gameDll.api.startup(&pEngine->allocationRegistry, subsystems)
 	};
+	Renderer::setModels(pRenderer, pEngine->scratchArena, pEngine->models);
+
 	float lastFrameTime{};
 	while (pEngine->isRunning) {
 		float beginFrameTime{ ncast<float>(pstd::getTicks()) };
 		float dT{ beginFrameTime - lastFrameTime };
 		lastFrameTime = beginFrameTime;
 
+		LOG_INFO("fps: %f\n", 1.f / (dT / 1000.f));
+
 		pstd::reset(&pEngine->scratchArena);
 
-		// if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
-		// 	pEngine->gameDll.lastWriteTime) {
-		// 	unloadGameDll(pEngine->gameDll);
-		// 	pEngine->gameDll = loadGameDll(pEngine->scratchArena);
-		// }
+		if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
+			pEngine->gameDll.lastWriteTime) {
+			unloadGameDll(pEngine->gameDll);
+			pEngine->gameDll = loadGameDll(pEngine->scratchArena);
+		}
 
 		pEngine->isRunning &= Engine::update(subsystems);
+
 		pEngine->isRunning &=
 			pEngine->gameDll.api.update(subsystems, pGameState, dT);
 
-		Engine::Transform transform{ pEngine->transforms[0] };
+		Renderer::setTransforms(pRenderer, pEngine->transforms);
 
-		Renderer::setupFrame(
-			pRenderer,
-			pEngine->scratchArena,
-			pEngine->models,
-			pEngine->transforms
-		);
 		Renderer::render(pRenderer, false);
 	}
 

@@ -281,12 +281,14 @@ Renderer::State* Renderer::startup(
 			   .renderables = renderables };
 }
 
-void Renderer::setupFrame(
+void Renderer::setModels(
 	Renderer::State* pState,
 	pstd::Arena scratchArena,
-	pstd::Span<pstd::MeshData> meshes,
-	pstd::Span<Engine::Transform> transforms
+	pstd::Span<pstd::MeshData> meshes
 ) {
+	if (meshes.count == 0) {
+		return;
+	}
 	pstd::Arena* pFrameArena{ &pState->frameArenas[pState->frameInFlight] };
 
 	auto renderables{
@@ -302,21 +304,12 @@ void Renderer::setupFrame(
 	auto vertices{ pstd::createArray<pstd::Vec4>(&scratchArena, nVertices, 0) };
 	auto indices{ pstd::createArray<uint32_t>(&scratchArena, nIndices, 0) };
 
-	vkWaitForFences(
-		pState->device.logical,
-		1,
-		&pState->cmdBufferAvailableFences[pState->frameInFlight],
-		VK_TRUE,
-		UINT64_MAX
-	);
-
 	for (size_t j{}; j < meshes.count; j++) {
 		pstd::MeshData mesh{ meshes[j] };
 		renderables[j] = {
 			.indexOffset = ncast<uint32_t>(indices.count),
 			.vertexOffset = ncast<uint32_t>(vertices.count),
 			.indexCount = ncast<uint32_t>(mesh.indices.count),
-			.transform = transforms[j],
 		};
 
 		for (size_t i{}; i < mesh.indices.count; i++) {
@@ -330,43 +323,71 @@ void Renderer::setupFrame(
 		}
 	}
 
-	const FrameCtx& frameCtx{ pState->frameContexts[pState->frameInFlight] };
-
 	size_t verticesByteSize{ vertices.count * sizeof(vertices[0]) };
 	size_t indicesByteSize{ indices.count * sizeof(indices[0]) };
 
-	memcpy(
-		pState->stagingBufferData, vertices.data, verticesByteSize
+	vkDeviceWaitIdle(pState->device.logical);
 
-	);
+	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
+		const FrameCtx& frameCtx{ pState->frameContexts[i] };
 
-	copyBuffer(
-		pState->device,
-		pState->transientCmdPool,
-		pState->stagingBuffer,
-		frameCtx.vertexBuffer,
-		{
-			.size = verticesByteSize,
-		}
-	);
+		memcpy(
+			pState->stagingBufferData, vertices.data, verticesByteSize
 
-	memcpy(pState->stagingBufferData, indices.data, indicesByteSize);
+		);
 
-	copyBuffer(
-		pState->device,
-		pState->transientCmdPool,
-		pState->stagingBuffer,
-		frameCtx.indexBuffer,
-		{
-			.size = indicesByteSize,
-		}
-	);
+		copyBuffer(
+			pState->device,
+			pState->transientCmdPool,
+			pState->stagingBuffer,
+			frameCtx.vertexBuffer,
+			{
+				.size = verticesByteSize,
+			}
+		);
 
-	pState->renderables[pState->frameInFlight] = renderables;
+		memcpy(pState->stagingBufferData, indices.data, indicesByteSize);
+
+		copyBuffer(
+			pState->device,
+			pState->transientCmdPool,
+			pState->stagingBuffer,
+			frameCtx.indexBuffer,
+			{
+				.size = indicesByteSize,
+			}
+		);
+
+		pState->renderables[i] = renderables;
+		pState->frameContexts[i] = frameCtx;
+	}
+}
+
+void Renderer::setTransforms(
+	Renderer::State* pState, pstd::Span<Engine::Transform> transforms
+) {
+	if (transforms.count == 0) {
+		return;
+	}
+	pstd::Array<Renderable>* pRenderables{
+		&pState->renderables[pState->frameInFlight]
+	};
+	for (size_t i{}; i < transforms.count; i++) {
+		Renderable* renderable{ &(*pRenderables)[i] };
+		renderable->transform = transforms[i];
+	}
 }
 
 void Renderer::render(State* state, bool windowResized) {
 	constexpr uint64_t uint64Max{ ~ncast<uint64_t>(0) };
+
+	vkWaitForFences(
+		state->device.logical,
+		1,
+		&state->cmdBufferAvailableFences[state->frameInFlight],
+		VK_TRUE,
+		UINT64_MAX
+	);
 
 	uint32_t currentImageIndex{};
 	VkResult res{ vkAcquireNextImageKHR(

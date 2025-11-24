@@ -388,6 +388,15 @@ uint32_t pstd::parse(String string) {
 	return num;
 }
 
+size_t pstd::hash(String string) {
+	size_t hash = 5381;
+	for (size_t i{}; i < string.size; i++) {
+		char ch{ string.buffer[i] };
+		hash = ((hash << 5) + hash) + ch;
+	}
+	return hash;
+}
+
 namespace {
 	String pushFloatAsString(
 		pstd::Arena* pArena, float number, uint32_t precision

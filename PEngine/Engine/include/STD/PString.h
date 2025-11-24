@@ -135,4 +135,6 @@ namespace pstd {
 
 	template<typename T>
 	T parse(String string);
+
+	size_t hash(String string);
 }  // namespace pstd
