@@ -31,6 +31,12 @@ struct PushConstants {
 	alignas(16) pstd::Mat4 MVPMatrix;
 };
 
+struct UniformBufferObject {
+	pstd::Mat4 modelMatrix;
+	pstd::Mat4 viewMatrix;
+	pstd::Mat4 projectionMatrix;
+};
+
 Renderer::State* Renderer::startup(
 	pstd::AllocationRegistry* pAllocRegistry,
 	pstd::Arena* pPersistArena,
@@ -110,8 +116,26 @@ Renderer::State* Renderer::startup(
 		pushConstantRange
 	};
 
+	VkDescriptorSetLayoutBinding descriptorLayoutBinding{
+		.binding = 0,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+	};
+
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCI{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.bindingCount = 1,
+		.pBindings = &descriptorLayoutBinding,
+	};
+
+	VkDescriptorSetLayout descriptorSetLayout{};
+	vkCreateDescriptorSetLayout(
+		device.logical, &descriptorSetLayoutCI, nullptr, &descriptorSetLayout
+	);
+
 	VkPipelineLayout pipelineLayout{
-		createPipelineLayout(device, pushConstantRanges)
+		createPipelineLayout(device, pushConstantRanges, descriptorSetLayout)
 	};
 
 	VkPipeline graphicsPipeline{ createGraphicsPipeline(

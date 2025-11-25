@@ -165,7 +165,7 @@ namespace {
 		VkPresentModeKHR presentMode{ VK_PRESENT_MODE_FIFO_KHR };
 		for (uint32_t i{}; i < presentModes.count; i++) {
 			VkPresentModeKHR availablePresentMode{ presentModes[i] };
-			if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR) {
+			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
 				presentMode = availablePresentMode;
 				break;
 			}

@@ -68,6 +68,9 @@ namespace pstd {
 		Span(StaticArray<T, n, c, I> array)
 			: data{ &array.data[0] }, count{ array.count } {}
 
+		template<size_t n>
+		Span(T (&array)[n]) : data{ &array }, count{ n } {}
+
 		const T& operator[](I index) const {
 			ASSERT(data);
 			ASSERT(count > cast<size_t>(index));

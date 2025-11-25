@@ -10,6 +10,12 @@ layout (std430, push_constant) uniform constants {
 	mat4 mvp;
 } pushConstants;
 
+layout (std140, set = 0, binding = 0) uniform UBO {
+	mat4 modelMatrix;
+	mat4 viewMatrix;
+	mat4 projectionMatrix;
+} ubo;
+
 
 layout (location = 0) out vec3 outFragColor;
 
