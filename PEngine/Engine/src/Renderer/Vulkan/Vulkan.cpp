@@ -28,11 +28,10 @@
 
 struct PushConstants {
 	VkDeviceAddress vertexBufferAddress;
-	alignas(16) pstd::Mat4 MVPMatrix;
+	alignas(16) pstd::Mat4 modelMatrix;
 };
 
 struct UniformBufferObject {
-	pstd::Mat4 modelMatrix;
 	pstd::Mat4 viewMatrix;
 	pstd::Mat4 projectionMatrix;
 };
@@ -142,6 +141,87 @@ Renderer::State* Renderer::startup(
 		device, pipelineLayout, shaderStages, colorFormats
 	) };
 
+	auto descriptorPoolSizes{ pstd::createArray<VkDescriptorPoolSize>(
+		pPersistArena, Renderer::State::maxFramesInFlight
+	) };
+
+	for (size_t i{}; i < descriptorPoolSizes.count; i++) {
+		descriptorPoolSizes[i] = { .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+								   .descriptorCount = 1 };
+	}
+
+	VkDescriptorPoolCreateInfo descriptorPoolCI{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		.maxSets = Renderer::State::maxFramesInFlight,
+		.poolSizeCount = ncast<uint32_t>(descriptorPoolSizes.count),
+		.pPoolSizes = descriptorPoolSizes.data
+	};
+
+	VkDescriptorPool descriptorPool{};
+	vkCreateDescriptorPool(
+		device.logical, &descriptorPoolCI, nullptr, &descriptorPool
+	);
+
+	auto uboBuffers{ pstd::createArray<Buffer>(
+		pPersistArena, Renderer::State::maxFramesInFlight
+	) };
+	auto mappedUBOs{ pstd::createArray<void*>(
+		pPersistArena, Renderer::State::maxFramesInFlight
+	) };
+	auto descriptorSets{ pstd::createArray<VkDescriptorSet>(
+		pPersistArena, Renderer::State::maxFramesInFlight
+	) };
+
+	for (size_t i{}; i < uboBuffers.count; i++) {
+		Buffer uboBuffer{ createBuffer(
+			device,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			sizeof(UniformBufferObject)
+		) };
+
+		void* mappedUBO{};
+		vkMapMemory(
+			device.logical, uboBuffer.memory, 0, VK_WHOLE_SIZE, 0, &mappedUBO
+		);
+
+		VkDescriptorSetAllocateInfo descriptorSetAllocInfo{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+			.descriptorPool = descriptorPool,
+			.descriptorSetCount = 1,
+			.pSetLayouts = &descriptorSetLayout,
+		};
+
+		VkDescriptorSet descriptorSet{};
+		vkAllocateDescriptorSets(
+			device.logical, &descriptorSetAllocInfo, &descriptorSet
+		);
+
+		VkDescriptorBufferInfo bufferInfo{ .buffer = uboBuffer.handle,
+										   .range =
+											   sizeof(UniformBufferObject) };
+
+		VkWriteDescriptorSet descriptorSetWrite{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = descriptorSet,
+			.dstBinding = 0,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.pBufferInfo = &bufferInfo
+		};
+
+		vkUpdateDescriptorSets(
+			device.logical, 1, &descriptorSetWrite, 0, nullptr
+		);
+
+		uboBuffers[i] = uboBuffer;
+		mappedUBOs[i] = mappedUBO;
+		descriptorSets[i] = descriptorSet;
+	}
+
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
 
@@ -161,7 +241,7 @@ Renderer::State* Renderer::startup(
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		1024 * 4
+		Renderer::State::maxRenderables * sizeof(PushConstants)
 	) };
 
 	auto frameContexts{
@@ -176,14 +256,14 @@ Renderer::State* Renderer::startup(
 				VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			1024 * 4
+			Renderer::State::maxRenderables * sizeof(pstd::Vec4)
 		) };
 
 		Buffer iBuffer{ createBuffer(
 			device,
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			1024 * 4
+			Renderer::State::maxRenderables * sizeof(uint32_t)
 
 		) };
 
@@ -301,6 +381,10 @@ Renderer::State* Renderer::startup(
 			   .cmdBufferAvailableFences = cmdBufferAvailableFences,
 			   .stagingBufferData = mappedData,
 			   .stagingBuffer = stagingBuffer,
+			   .descriptorPool = descriptorPool,
+			   .uboBuffers = uboBuffers,
+			   .mappedUBOs = mappedUBOs,
+			   .descriptorSets = descriptorSets,
 			   .frameContexts = frameContexts,
 			   .renderables = renderables };
 }
@@ -477,6 +561,7 @@ void Renderer::render(State* state, bool windowResized) {
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 		.clearValue = clearValue
 	};
+
 	VkRenderingInfo renderingInfo{
 		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
 		.renderArea =
@@ -530,13 +615,31 @@ void Renderer::render(State* state, bool windowResized) {
 		pstd::Mat4 modelMat{ pstd::calcTranlsated(
 			pstd::getIdentityMatrix<4>(), renderable.transform.pos
 		) };
+		modelMat = modelMat * rotMat;
 
-		pstd::Mat4 mvpMatrix{ perspProjMatrix * viewMatrix * modelMat *
-							  rotMat };
+		UniformBufferObject ubo{ .viewMatrix = viewMatrix,
+								 .projectionMatrix = perspProjMatrix };
+
+		memcpy(
+			state->mappedUBOs[state->frameInFlight],
+			&ubo,
+			sizeof(UniformBufferObject)
+		);
+
+		vkCmdBindDescriptorSets(
+			state->cmdBuffers[state->frameInFlight],
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			state->graphicsPipelineLayout,
+			0,
+			1,
+			&state->descriptorSets[state->frameInFlight],
+			0,
+			nullptr
+		);
 
 		PushConstants pushConstants{ .vertexBufferAddress =
 										 frameCtx.vertexDeviceAddress,
-									 .MVPMatrix = mvpMatrix };
+									 .modelMatrix = modelMat };
 		vkCmdPushConstants(
 			state->cmdBuffers[state->frameInFlight],
 			state->graphicsPipelineLayout,
