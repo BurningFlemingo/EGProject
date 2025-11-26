@@ -3,6 +3,7 @@
 #include "Renderer/Vulkan/Types.h"
 #include <memory>
 #include <vulkan/vulkan_core.h>
+#include "STD/PFunction.h"
 
 uint32_t getMemoryTypeIndex(
 	uint32_t typeBits,
@@ -74,16 +75,58 @@ Buffer createBuffer(
 	};
 }
 
-void copyBuffer(
+Image create2DImage(
 	const Device& device,
-	VkCommandPool pool,
-	const Buffer& srcBuffer,
-	const Buffer& dstBuffer,
-	VkBufferCopy bufCopy
+	VkMemoryPropertyFlags memoryProps,
+	uint32_t width,
+	uint32_t height,
+	VkFormat format,
+	VkImageUsageFlags usage,
+	VkSampleCountFlagBits samples,
+	uint32_t mipLevels
 ) {
-	ASSERT((bufCopy.size + bufCopy.srcOffset) <= srcBuffer.size);
-	ASSERT((bufCopy.size + bufCopy.dstOffset) <= dstBuffer.size);
+	// TODO: finish
+	VkImageCreateInfo imageCI{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = format,
+		.extent = { .width = width, .height = height, .depth = 1 },
+		.mipLevels = mipLevels,
+		.arrayLayers = 1,
+		.samples = samples,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage = usage,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
 
+	VkImage image{};
+	vkCreateImage(device.logical, &imageCI, nullptr, &image);
+
+	VkMemoryRequirements memReqs{};
+	vkGetImageMemoryRequirements(device.logical, image, &memReqs);
+
+	VkPhysicalDeviceMemoryProperties physicalMemProps{};
+	vkGetPhysicalDeviceMemoryProperties(device.physical, &physicalMemProps);
+
+	uint32_t memTypeIndex{ getMemoryTypeIndex(
+		memReqs.memoryTypeBits, memoryProps, physicalMemProps
+	) };
+
+	VkMemoryAllocateInfo memAllocInfo{
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.allocationSize = memReqs.size,
+		.memoryTypeIndex = memTypeIndex,
+	};
+
+	VkDeviceMemory memory{};
+	vkAllocateMemory(device.logical, &memAllocInfo, nullptr, &memory);
+	vkBindImageMemory(device.logical, image, memory, 0);
+
+	return Image{ .handle = image, .memory = memory };
+}
+
+VkCommandBuffer beginTransientCmd(const Device& device, VkCommandPool pool) {
 	VkCommandBufferAllocateInfo cmdBufferAllocInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.commandPool = pool,
@@ -100,7 +143,9 @@ void copyBuffer(
 	};
 
 	vkBeginCommandBuffer(cmdBuffer, &cmdBufBI);
-	vkCmdCopyBuffer(cmdBuffer, srcBuffer.handle, dstBuffer.handle, 1, &bufCopy);
+	return cmdBuffer;
+}
+void endTransientCmd(const Device& device, VkCommandBuffer cmdBuffer) {
 	vkEndCommandBuffer(cmdBuffer);
 
 	VkSubmitInfo submitInfo{
@@ -114,4 +159,19 @@ void copyBuffer(
 	);
 
 	vkQueueWaitIdle(device.queues[QueueFamily::transfer]);
+}
+
+void copyBuffer(
+	const Device& device,
+	VkCommandPool pool,
+	const Buffer& srcBuffer,
+	const Buffer& dstBuffer,
+	VkBufferCopy bufCopy
+) {
+	ASSERT((bufCopy.size + bufCopy.srcOffset) <= srcBuffer.size);
+	ASSERT((bufCopy.size + bufCopy.dstOffset) <= dstBuffer.size);
+
+	VkCommandBuffer cmdBuffer{ beginTransientCmd(device, pool) };
+	vkCmdCopyBuffer(cmdBuffer, srcBuffer.handle, dstBuffer.handle, 1, &bufCopy);
+	endTransientCmd(device, cmdBuffer);
 }

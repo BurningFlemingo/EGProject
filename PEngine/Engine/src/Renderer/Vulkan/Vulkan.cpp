@@ -22,6 +22,8 @@
 #include "EngineState.h"
 #include "Platforms/VulkanSurface.h"
 
+#include "AssetLoader.h"
+
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
@@ -241,7 +243,34 @@ Renderer::State* Renderer::startup(
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		Renderer::State::maxRenderables * sizeof(PushConstants)
+		1024 * 1024
+	) };
+	// change this name
+	void* mappedData{};
+	vkMapMemory(
+		device.logical,
+		stagingBuffer.memory,
+		0,
+		stagingBuffer.size,
+		0,
+		&mappedData
+	);
+
+	pstd::BMP missingTexture{
+		pstd::loadBMP(pPersistArena, "assets\\textures\\Missing_Texture.bmp")
+	};
+	size_t missingTextureSize{ missingTexture.width * missingTexture.height *
+							   sizeof(missingTexture.pPixels[0]) };
+
+	memcpy(mappedData, missingTexture.pPixels, missingTextureSize);
+
+	Image textureImage{ create2DImage(
+		device,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		swapchain.createInfo.imageExtent.width,
+		swapchain.createInfo.imageExtent.height,
+		VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_USAGE_SAMPLED_BIT
 	) };
 
 	auto frameContexts{
@@ -285,16 +314,6 @@ Renderer::State* Renderer::startup(
 
 		frameContexts[i] = frameCtx;
 	}
-
-	void* mappedData{};
-	vkMapMemory(
-		device.logical,
-		stagingBuffer.memory,
-		0,
-		stagingBuffer.size,
-		0,
-		&mappedData
-	);
 
 	VkCommandPoolCreateInfo cmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,

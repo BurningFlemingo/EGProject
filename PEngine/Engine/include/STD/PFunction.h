@@ -8,6 +8,8 @@ namespace pstd {
 
 	template<typename R, typename... Args>
 	struct Delegate<R(Args...)> {
+		Delegate() = default;
+
 		virtual R operator()(Args... args) = 0;
 	};
 
@@ -24,11 +26,11 @@ namespace pstd {
 	};
 
 	template<typename S, typename T>
-	Delegate<S>* makeDelegate(pstd::Arena* pArena, T functor) {
+	Delegate<S>* makeDelegate(pstd::Arena* pArena, T callable) {
 		auto* block{ pstd::alloc<DelegateImpl<T, S>>(pArena) };
 
 		DelegateImpl<T, S>* pDelegateImpl{ new (block)
-											   DelegateImpl<T, S>(functor) };
+											   DelegateImpl<T, S>(callable) };
 
 		return static_cast<Delegate<S>*>(pDelegateImpl);
 	}
