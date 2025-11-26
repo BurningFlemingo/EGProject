@@ -42,7 +42,9 @@ pstd::BMP pstd::loadBMP(pstd::Arena* pArena, const pstd::String path) {
 	ASSERT(rawBMP.block != nullptr);
 
 	BMPHeader* header{ rcast<BMPHeader*>(rawBMP.block) };
-	uint32_t* pPixels{ rcast<uint32_t*>(rawBMP.block) + header->pxOffset };
+	uint32_t* pPixels{
+		rcast<uint32_t*>(rcast<uint8_t*>(rawBMP.block) + header->pxOffset)
+	};
 
 	ASSERT(header->pxWidth > 0);
 	ASSERT(header->pxHeight > 0);
@@ -111,6 +113,9 @@ pstd::Array<pstd::String>
 pstd::MeshData pstd::loadOBJ(
 	pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
 ) {
+	// idea for index buffer: make a set of vertices (not streams of various
+	// vertex data), make streams of data based on the set data, use 0-count as
+	// index buffer
 	pstd::String ogObjString{
 		pstd::createString(pstd::readFile(&scratchArena, path))
 	};
@@ -118,6 +123,7 @@ pstd::MeshData pstd::loadOBJ(
 
 	uint32_t nPositions{};
 	uint32_t nIndices{};
+	uint32_t nUVs{};
 	while (objString.size > 0) {
 		pstd::String line{ pstd::readLine(&objString) };
 
@@ -129,16 +135,32 @@ pstd::MeshData pstd::loadOBJ(
 
 		if (pstd::stringsMatch(identifier, pstd::createString("v"))) {
 			nPositions++;
+		} else if (pstd::stringsMatch(identifier, pstd::createString("vt"))) {
+			nUVs++;
 		} else if (pstd::stringsMatch(identifier, pstd::createString("f"))) {
-			// TODO: make this more modular
-			nIndices += 6;
+			size_t ngonIndexCount{
+				pstd::splitLine(&scratchArena, line, " ").count
+			};
+			if (ngonIndexCount == 4) {
+				nIndices += 6;	// because of triangulation;
+			} else {
+				nIndices += 3;
+			}
+
+			ASSERT(
+				ngonIndexCount == 3 || ngonIndexCount == 4,
+				"obj has ngons that arent tris or quads"
+			);
 		}
 	}
 
 	auto uniquePositions{
-		pstd::createArray<pstd::Vec4>(pArena, nPositions, 0)
+		pstd::createArray<pstd::Vec3>(pArena, nPositions, 0)
 	};
-	auto indices{ pstd::createArray<uint32_t>(pArena, nIndices, 0) };
+	auto uniqueUVs{ pstd::createArray<pstd::Vec2>(pArena, nUVs, 0) };
+
+	auto positionIndices{ pstd::createArray<uint32_t>(pArena, nIndices, 0) };
+	auto uvIndices{ pstd::createArray<uint32_t>(pArena, nIndices, 0) };
 
 	objString = ogObjString;
 	while (objString.size > 0) {
@@ -153,35 +175,46 @@ pstd::MeshData pstd::loadOBJ(
 				triangulate(&scratchArena, pstd::makeSliced(items, 1))
 			};
 			for (size_t i{}; i < stringIndicies.count; i++) {
-				pstd::Array<pstd::String> face{
-					pstd::splitLine(&scratchArena, stringIndicies[i], "/")
-				};
-				uint32_t index{ pstd::parse<uint32_t>(face[0]) -
-								1 };  // -1 because OBJ indices are 1 indexed
+				size_t reverseI{ (stringIndicies.count - 1) -
+								 i };  // cw data -> ccw data
 
-				pstd::pushBack(&indices, index);
+				pstd::Array<pstd::String> face{ pstd::splitLine(
+					&scratchArena, stringIndicies[reverseI], "/"
+				) };
+
+				// -1 because OBJ indices are 1 indexed
+				uint32_t positionIndex{ pstd::parse<uint32_t>(face[0]) - 1 };
+				uint32_t uvIndex{ pstd::parse<uint32_t>(face[1]) - 1 };
+
+				pstd::pushBack(&positionIndices, positionIndex);
+				pstd::pushBack(&uvIndices, uvIndex);
 			}
-		}
-		if (pstd::stringsMatch(items[0], "v")) {
-			pstd::Vec4 positions{ pstd::parse<float>(items[1]),
+		} else if (pstd::stringsMatch(items[0], "v")) {
+			pstd::Vec3 positions{ pstd::parse<float>(items[1]),
 								  pstd::parse<float>(items[2]),
-								  pstd::parse<float>(items[3]),
-								  1.f };
+								  pstd::parse<float>(items[3]) };
 			pstd::pushBack(&uniquePositions, positions);
+		} else if (pstd::stringsMatch(items[0], "vt")) {
+			pstd::Vec2 uvs{ pstd::parse<float>(items[1]),
+							pstd::parse<float>(items[2]) };
+			pstd::pushBack(&uniqueUVs, uvs);
 		}
 	}
 
-	LOG_INFO("nPositions: %u, nIndices: %u \nIndices:", nPositions, nIndices);
-	for (size_t i{}; i < indices.count; i++) {
-		LOG_INFO("%u\n", indices[i]);
-	}
-	LOG_INFO("\nPositions:");
+	// LOG_INFO("nPositions: %u, nIndices: %u \nIndices:", nPositions,
+	// nIndices); for (size_t i{}; i < indices.count; i++) { 	LOG_INFO("%u\n",
+	// indices[i]);
+	// }
+	// LOG_INFO("\nPositions:");
 
-	for (size_t i{}; i < uniquePositions.count; i++) {
-		pstd::Vec4 pos{ uniquePositions[i] };
-		LOG_INFO("(%f, %f, %f)\n", pos.x, pos.y, pos.z);
-	}
-	LOG_INFO("\n");
+	// for (size_t i{}; i < uniquePositions.count; i++) {
+	// 	pstd::Vec3 pos{ uniquePositions[i] };
+	// 	LOG_INFO("(%f, %f, %f)\n", pos.x, pos.y, pos.z);
+	// }
+	// LOG_INFO("\n");
 
-	return MeshData{ .uniquePositions = uniquePositions, .indices = indices };
+	return MeshData{ .uniquePositions = uniquePositions,
+					 .uniqueUVs = uniqueUVs,
+					 .positionIndices = positionIndices,
+					 .uvIndices = uvIndices };
 }

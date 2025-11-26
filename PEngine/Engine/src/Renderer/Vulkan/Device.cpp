@@ -222,7 +222,13 @@ namespace {
 		// features
 		VkPhysicalDeviceVulkan12Features features12{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-			.bufferDeviceAddress = VK_TRUE
+			.descriptorIndexing = VK_TRUE,
+			.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+			.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
+			.shaderStorageImageArrayNonUniformIndexing = VK_TRUE,
+			.descriptorBindingPartiallyBound = VK_TRUE,
+			.runtimeDescriptorArray = VK_TRUE,
+			.bufferDeviceAddress = VK_TRUE,
 		};
 
 		VkPhysicalDeviceVulkan13Features features13{
@@ -232,9 +238,12 @@ namespace {
 			.dynamicRendering = VK_TRUE,
 		};
 
+		VkPhysicalDeviceVulkan13Features hey;
+
 		VkPhysicalDeviceFeatures2 physicalDeviceFeatures{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-			.pNext = &features13
+			.pNext = &features13,
+			.features = { .samplerAnisotropy = VK_TRUE }
 		};
 
 		VkDeviceCreateInfo deviceCI{

@@ -47,9 +47,6 @@ GAME_API bool
 	Game::update(Engine::Subsystems subsystems, State* state, float dTime) {
 	Engine::State* pEngine{ subsystems.pEngine };
 
-	float gravAcc{ 0.005f };
-	state->pos.y -= gravAcc * dTime;
-
 	float speed{ 0.03f * dTime };
 	if (Engine::getPhysicalKeyDown(pEngine, InputCode::D)) {
 		state->pos.x += speed;
@@ -68,7 +65,7 @@ GAME_API bool
 	}
 
 	pstd::Rot3 rot{ pstd::calcRotor(
-		{ 0, 1, 0 }, { 0, 0, 1 }, pstd::toRadians(0.1f) * pstd::getTicks()
+		{ 0, 1, 0 }, { 0, 0, 1 }, pstd::toRadians(0.0f) * pstd::getTicks()
 	) };
 
 	Engine::Transform transform1{ .pos = state->pos, .rot = rot };

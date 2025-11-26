@@ -1,9 +1,8 @@
 #include "Allocation.h"
 #include "Logging.h"
-#include "Renderer/Vulkan/Types.h"
-#include <memory>
+#include "Commands.h"
+
 #include <vulkan/vulkan_core.h>
-#include "STD/PFunction.h"
 
 uint32_t getMemoryTypeIndex(
 	uint32_t typeBits,
@@ -85,7 +84,6 @@ Image create2DImage(
 	VkSampleCountFlagBits samples,
 	uint32_t mipLevels
 ) {
-	// TODO: finish
 	VkImageCreateInfo imageCI{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		.imageType = VK_IMAGE_TYPE_2D,
@@ -101,7 +99,8 @@ Image create2DImage(
 	};
 
 	VkImage image{};
-	vkCreateImage(device.logical, &imageCI, nullptr, &image);
+	VkResult res{ vkCreateImage(device.logical, &imageCI, nullptr, &image) };
+	ASSERT(res == VK_SUCCESS, "could not create image resource");
 
 	VkMemoryRequirements memReqs{};
 	vkGetImageMemoryRequirements(device.logical, image, &memReqs);
@@ -123,42 +122,9 @@ Image create2DImage(
 	vkAllocateMemory(device.logical, &memAllocInfo, nullptr, &memory);
 	vkBindImageMemory(device.logical, image, memory, 0);
 
-	return Image{ .handle = image, .memory = memory };
-}
-
-VkCommandBuffer beginTransientCmd(const Device& device, VkCommandPool pool) {
-	VkCommandBufferAllocateInfo cmdBufferAllocInfo{
-		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = pool,
-		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		.commandBufferCount = 1
+	return Image{
+		.handle = image, .memory = memory, .width = width, .height = height
 	};
-
-	VkCommandBuffer cmdBuffer{};
-	vkAllocateCommandBuffers(device.logical, &cmdBufferAllocInfo, &cmdBuffer);
-
-	VkCommandBufferBeginInfo cmdBufBI{
-		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-	};
-
-	vkBeginCommandBuffer(cmdBuffer, &cmdBufBI);
-	return cmdBuffer;
-}
-void endTransientCmd(const Device& device, VkCommandBuffer cmdBuffer) {
-	vkEndCommandBuffer(cmdBuffer);
-
-	VkSubmitInfo submitInfo{
-		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-		.commandBufferCount = 1,
-		.pCommandBuffers = &cmdBuffer,
-	};
-
-	vkQueueSubmit(
-		device.queues[QueueFamily::transfer], 1, &submitInfo, nullptr
-	);
-
-	vkQueueWaitIdle(device.queues[QueueFamily::transfer]);
 }
 
 void copyBuffer(

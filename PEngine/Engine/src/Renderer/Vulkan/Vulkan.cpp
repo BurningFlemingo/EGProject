@@ -10,6 +10,7 @@
 #include "Allocation.h"
 #include "Types.h"
 #include "Pipeline.h"
+#include "Commands.h"
 
 #include "STD/PContainer.h"
 #include "STD/PFileIO.h"
@@ -36,6 +37,11 @@ struct PushConstants {
 struct UniformBufferObject {
 	pstd::Mat4 viewMatrix;
 	pstd::Mat4 projectionMatrix;
+};
+
+struct Vertex {
+	pstd::Vec3 position;
+	alignas(16) pstd::Vec2 uv;
 };
 
 Renderer::State* Renderer::startup(
@@ -117,17 +123,25 @@ Renderer::State* Renderer::startup(
 		pushConstantRange
 	};
 
-	VkDescriptorSetLayoutBinding descriptorLayoutBinding{
-		.binding = 0,
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		.descriptorCount = 1,
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+	VkDescriptorSetLayoutBinding descriptorLayoutBindings[2]{
+		{
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		},
+		{
+			.binding = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+		}
 	};
 
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCI{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.bindingCount = 1,
-		.pBindings = &descriptorLayoutBinding,
+		.bindingCount = 2,
+		.pBindings = descriptorLayoutBindings,
 	};
 
 	VkDescriptorSetLayout descriptorSetLayout{};
@@ -144,12 +158,21 @@ Renderer::State* Renderer::startup(
 	) };
 
 	auto descriptorPoolSizes{ pstd::createArray<VkDescriptorPoolSize>(
-		pPersistArena, Renderer::State::maxFramesInFlight
+		pPersistArena, Renderer::State::maxFramesInFlight * 2, 0
 	) };
 
-	for (size_t i{}; i < descriptorPoolSizes.count; i++) {
-		descriptorPoolSizes[i] = { .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-								   .descriptorCount = 1 };
+	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
+		pstd::pushBack(
+			&descriptorPoolSizes,
+			{ .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }
+		);
+	}
+	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
+		pstd::pushBack(
+			&descriptorPoolSizes,
+			{ .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			  .descriptorCount = 1 }
+		);
 	}
 
 	VkDescriptorPoolCreateInfo descriptorPoolCI{
@@ -164,9 +187,170 @@ Renderer::State* Renderer::startup(
 		device.logical, &descriptorPoolCI, nullptr, &descriptorPool
 	);
 
+	VkCommandPoolCreateInfo transientCmdPoolCI{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+		.queueFamilyIndex = device.queueFamilyIndices[QueueFamily::transfer],
+	};
+
+	VkCommandPool transientCmdPool{};
+	vkCreateCommandPool(
+		device.logical, &transientCmdPoolCI, nullptr, &transientCmdPool
+	);
+
+	Buffer stagingBuffer{ createBuffer(
+		device,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		1024 * 1024 * 4
+	) };
+
+	// change this name
+	void* mappedData{};
+	vkMapMemory(
+		device.logical,
+		stagingBuffer.memory,
+		0,
+		stagingBuffer.size,
+		0,
+		&mappedData
+	);
+
+	pstd::BMP missingTexture{
+		pstd::loadBMP(pPersistArena, "assets\\textures\\Missing_Texture.bmp")
+	};
+	size_t missingTextureSize{ missingTexture.width * missingTexture.height *
+							   sizeof(missingTexture.pPixels[0]) };
+
+	memcpy(mappedData, missingTexture.pPixels, missingTextureSize);
+
+	Image textureImage{ create2DImage(
+		device,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		missingTexture.width,
+		missingTexture.height,
+		VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+	) };
+
+	VkImageViewCreateInfo textureImageViewCI {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, 
+		.image = textureImage.handle, 
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = VK_FORMAT_R8G8B8A8_SRGB, 
+						 .subresourceRange = {
+							 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+							 .baseMipLevel = 0,
+							 .levelCount = 1,
+							 .baseArrayLayer = 0,
+							 .layerCount = 1,
+						 },
+	};
+
+	VkImageView textureImageView{};
+	res = vkCreateImageView(
+		device.logical, &textureImageViewCI, nullptr, &textureImageView
+	);
+	ASSERT(res == VK_SUCCESS);
+
+	VkPhysicalDeviceProperties deviceProps;
+	vkGetPhysicalDeviceProperties(device.physical, &deviceProps);
+	VkSamplerCreateInfo samplerCI{
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.magFilter = VK_FILTER_LINEAR,
+		.minFilter = VK_FILTER_LINEAR,
+		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+		.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		.anisotropyEnable = VK_TRUE,
+		.maxAnisotropy = deviceProps.limits.maxSamplerAnisotropy,
+		.compareOp = VK_COMPARE_OP_ALWAYS,
+		.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+	};
+	VkSampler sampler;
+	vkCreateSampler(device.logical, &samplerCI, nullptr, &sampler);
+
+	VkCommandBuffer cmdBuffer{ beginTransientCmd(device, transientCmdPool) };
+
+	VkImageMemoryBarrier2
+		transferBarrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+						 .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
+						 .srcAccessMask = VK_ACCESS_2_NONE,
+						 .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+						 .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+						 .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+						 .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						 .image = textureImage.handle,
+						 .subresourceRange = {
+							 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+							 .baseMipLevel = 0,
+							 .levelCount = 1,
+							 .baseArrayLayer = 0,
+							 .layerCount = 1,
+						 },
+
+		};
+	VkDependencyInfo transferDependency{
+		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+		.imageMemoryBarrierCount = 1,
+		.pImageMemoryBarriers = &transferBarrier,
+	};
+	vkCmdPipelineBarrier2(cmdBuffer, &transferDependency);
+	VkBufferImageCopy imageCopy {
+		.imageSubresource = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.mipLevel = 0,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		}, 
+			.imageExtent = {
+				.width = textureImage.width, 
+				.height = textureImage.height, 
+				.depth = 1
+			}
+	};
+
+	vkCmdCopyBufferToImage(
+		cmdBuffer,
+		stagingBuffer.handle,
+		textureImage.handle,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&imageCopy
+	);
+
+	VkImageMemoryBarrier2
+		samplingBarrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+						 .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+						 .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+						 .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+						 .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT, 
+						 .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						 .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+						 .image = textureImage.handle,
+						 .subresourceRange = {
+							 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+							 .baseMipLevel = 0,
+							 .levelCount = 1,
+							 .baseArrayLayer = 0,
+							 .layerCount = 1,
+						 },
+
+		};
+	VkDependencyInfo samplingDependency{
+		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+		.imageMemoryBarrierCount = 1,
+		.pImageMemoryBarriers = &samplingBarrier,
+	};
+	vkCmdPipelineBarrier2(cmdBuffer, &samplingDependency);
+
+	endTransientCmd(device, cmdBuffer);
+
 	auto uboBuffers{ pstd::createArray<Buffer>(
 		pPersistArena, Renderer::State::maxFramesInFlight
 	) };
+
 	auto mappedUBOs{ pstd::createArray<void*>(
 		pPersistArena, Renderer::State::maxFramesInFlight
 	) };
@@ -204,19 +388,33 @@ Renderer::State* Renderer::startup(
 		VkDescriptorBufferInfo bufferInfo{ .buffer = uboBuffer.handle,
 										   .range =
 											   sizeof(UniformBufferObject) };
+		VkDescriptorImageInfo imageInfo{
+			.sampler = sampler,
+			.imageView = textureImageView,
+			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		};
 
-		VkWriteDescriptorSet descriptorSetWrite{
-			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.dstSet = descriptorSet,
-			.dstBinding = 0,
-			.dstArrayElement = 0,
-			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			.pBufferInfo = &bufferInfo
+		VkWriteDescriptorSet descriptorSetWrites[] = {
+			{
+				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.dstSet = descriptorSet,
+				.dstBinding = 0,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.pBufferInfo = &bufferInfo,
+			},
+			{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			  .dstSet = descriptorSet,
+			  .dstBinding = 1,
+			  .dstArrayElement = 0,
+			  .descriptorCount = 1,
+			  .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			  .pImageInfo = &imageInfo }
 		};
 
 		vkUpdateDescriptorSets(
-			device.logical, 1, &descriptorSetWrite, 0, nullptr
+			device.logical, 2, descriptorSetWrites, 0, nullptr
 		);
 
 		uboBuffers[i] = uboBuffer;
@@ -226,52 +424,6 @@ Renderer::State* Renderer::startup(
 
 	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
-
-	VkCommandPoolCreateInfo transientCmdPoolCI{
-		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-		.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-		.queueFamilyIndex = device.queueFamilyIndices[QueueFamily::transfer],
-	};
-
-	VkCommandPool transientCmdPool{};
-	vkCreateCommandPool(
-		device.logical, &transientCmdPoolCI, nullptr, &transientCmdPool
-	);
-
-	Buffer stagingBuffer{ createBuffer(
-		device,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		1024 * 1024
-	) };
-	// change this name
-	void* mappedData{};
-	vkMapMemory(
-		device.logical,
-		stagingBuffer.memory,
-		0,
-		stagingBuffer.size,
-		0,
-		&mappedData
-	);
-
-	pstd::BMP missingTexture{
-		pstd::loadBMP(pPersistArena, "assets\\textures\\Missing_Texture.bmp")
-	};
-	size_t missingTextureSize{ missingTexture.width * missingTexture.height *
-							   sizeof(missingTexture.pPixels[0]) };
-
-	memcpy(mappedData, missingTexture.pPixels, missingTextureSize);
-
-	Image textureImage{ create2DImage(
-		device,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		swapchain.createInfo.imageExtent.width,
-		swapchain.createInfo.imageExtent.height,
-		VK_FORMAT_R8G8B8A8_SRGB,
-		VK_IMAGE_USAGE_SAMPLED_BIT
-	) };
 
 	auto frameContexts{
 		pstd::createArray<FrameCtx>(pPersistArena, State::maxFramesInFlight)
@@ -285,7 +437,7 @@ Renderer::State* Renderer::startup(
 				VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			Renderer::State::maxRenderables * sizeof(pstd::Vec4)
+			Renderer::State::maxRenderables * sizeof(Vertex)
 		) };
 
 		Buffer iBuffer{ createBuffer(
@@ -423,35 +575,28 @@ void Renderer::setModels(
 	};
 
 	size_t nVertices{};
-	size_t nIndices{};
 	for (size_t i{}; i < meshes.count; i++) {
-		nVertices += meshes[i].uniquePositions.count;
-		nIndices += meshes[i].indices.count;
+		nVertices += meshes[i].positionIndices.count;
 	}
-	auto vertices{ pstd::createArray<pstd::Vec4>(&scratchArena, nVertices, 0) };
-	auto indices{ pstd::createArray<uint32_t>(&scratchArena, nIndices, 0) };
+	auto vertices{ pstd::createArray<Vertex>(&scratchArena, nVertices, 0) };
 
 	for (size_t j{}; j < meshes.count; j++) {
 		pstd::MeshData mesh{ meshes[j] };
 		renderables[j] = {
-			.indexOffset = ncast<uint32_t>(indices.count),
+			.indexOffset = 0,
 			.vertexOffset = ncast<uint32_t>(vertices.count),
-			.indexCount = ncast<uint32_t>(mesh.indices.count),
+			.indexCount = ncast<uint32_t>(mesh.positionIndices.count),
 		};
 
-		for (size_t i{}; i < mesh.indices.count; i++) {
-			uint32_t index{ mesh.indices[i] };
-			pstd::pushBack(&indices, index);
-		}
-
-		for (size_t i{}; i < mesh.uniquePositions.count; i++) {
-			pstd::pushBack(&vertices, mesh.uniquePositions[i]);
-			pstd::Vec4 vertex{ vertices[vertices.count - 1] };
+		for (size_t i{}; i < mesh.positionIndices.count; i++) {
+			Vertex vertex{ .position =
+							   mesh.uniquePositions[mesh.positionIndices[i]],
+						   .uv = mesh.uniqueUVs[mesh.uvIndices[i]] };
+			pstd::pushBack(&vertices, vertex);
 		}
 	}
 
 	size_t verticesByteSize{ vertices.count * sizeof(vertices[0]) };
-	size_t indicesByteSize{ indices.count * sizeof(indices[0]) };
 
 	vkDeviceWaitIdle(pState->device.logical);
 
@@ -470,18 +615,6 @@ void Renderer::setModels(
 			frameCtx.vertexBuffer,
 			{
 				.size = verticesByteSize,
-			}
-		);
-
-		memcpy(pState->stagingBufferData, indices.data, indicesByteSize);
-
-		copyBuffer(
-			pState->device,
-			pState->transientCmdPool,
-			pState->stagingBuffer,
-			frameCtx.indexBuffer,
-			{
-				.size = indicesByteSize,
 			}
 		);
 
@@ -675,11 +808,10 @@ void Renderer::render(State* state, bool windowResized) {
 			VK_INDEX_TYPE_UINT32
 		);
 
-		vkCmdDrawIndexed(
+		vkCmdDraw(
 			state->cmdBuffers[state->frameInFlight],
 			renderable.indexCount,
 			1,
-			0,
 			renderable.vertexOffset,
 			0
 		);

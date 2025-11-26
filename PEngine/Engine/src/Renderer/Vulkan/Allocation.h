@@ -16,6 +16,8 @@ struct Buffer {
 struct Image {
 	VkImage handle;
 	VkDeviceMemory memory;
+	uint32_t width;
+	uint32_t height;
 };
 
 uint32_t getMemoryTypeIndex(

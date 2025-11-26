@@ -12,8 +12,11 @@ namespace pstd {
 	};
 
 	struct MeshData {
-		pstd::Array<pstd::Vec4> uniquePositions;
-		pstd::Array<uint32_t> indices;
+		pstd::Array<pstd::Vec3> uniquePositions;
+		pstd::Array<pstd::Vec2> uniqueUVs;
+
+		pstd::Array<uint32_t> positionIndices;
+		pstd::Array<uint32_t> uvIndices;
 	};
 
 	BMP loadBMP(pstd::Arena* pArena, const pstd::String path);

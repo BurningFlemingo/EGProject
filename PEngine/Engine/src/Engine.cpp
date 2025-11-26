@@ -190,7 +190,7 @@ void Engine::run(const Subsystems& subsystems) {
 		float dT{ beginFrameTime - lastFrameTime };
 		lastFrameTime = beginFrameTime;
 
-		LOG_INFO("fps: %f\n", 1.f / (dT / 1000.f));
+		// LOG_INFO("fps: %f\n", 1.f / (dT / 1000.f));
 
 		pstd::reset(&pEngine->scratchArena);
 
