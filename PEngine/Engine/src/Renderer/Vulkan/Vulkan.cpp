@@ -217,8 +217,8 @@ Renderer::State* Renderer::startup(
 		&mappedData
 	);
 
-	pstd::BMP missingTexture{
-		pstd::loadBMP(pPersistArena, "assets\\textures\\Missing_Texture.bmp")
+	Engine::TextureData missingTexture{
+		Engine::loadBMP(pPersistArena, "assets\\textures\\Missing_Texture.bmp")
 	};
 	size_t missingTextureSize{ missingTexture.width * missingTexture.height *
 							   sizeof(missingTexture.pPixels[0]) };
@@ -563,7 +563,7 @@ Renderer::State* Renderer::startup(
 void Renderer::setModels(
 	Renderer::State* pState,
 	pstd::Arena scratchArena,
-	pstd::Span<pstd::MeshData> meshes
+	pstd::Span<Engine::MeshData> meshes
 ) {
 	if (meshes.count == 0) {
 		return;
@@ -581,7 +581,7 @@ void Renderer::setModels(
 	auto vertices{ pstd::createArray<Vertex>(&scratchArena, nVertices, 0) };
 
 	for (size_t j{}; j < meshes.count; j++) {
-		pstd::MeshData mesh{ meshes[j] };
+		Engine::MeshData mesh{ meshes[j] };
 		renderables[j] = {
 			.indexOffset = 0,
 			.vertexOffset = ncast<uint32_t>(vertices.count),

@@ -32,6 +32,15 @@ namespace pstd {
 	};
 
 	template<typename T>
+	T ceil(T val) {
+		auto truncated{ ncast<size_t>(val) };
+		if (val != truncated) {
+			return ncast<T>(truncated + 1);
+		}
+		return ncast<T>(truncated);
+	}
+
+	template<typename T>
 	FirstSetBit bitscanForward(T val);
 
 };	// namespace pstd

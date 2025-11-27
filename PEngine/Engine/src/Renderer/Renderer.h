@@ -30,7 +30,7 @@ namespace Renderer {
 	void setModels(
 		Renderer::State* pState,
 		pstd::Arena scratchArena,
-		pstd::Span<pstd::MeshData> meshes
+		pstd::Span<Engine::MeshData> meshes
 	);
 
 	void render(State* state, bool windowResized);

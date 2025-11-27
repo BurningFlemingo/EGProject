@@ -25,7 +25,7 @@ namespace {
 }  // namespace
 
 Engine::Subsystems Engine::startup() {
-	constexpr size_t scratchSize{ 1024 * 1024 };
+	constexpr size_t scratchSize{ 1024 * 1024 * 8 };
 
 	Console::startup();
 
@@ -53,7 +53,7 @@ Engine::Subsystems Engine::startup() {
 		pstd::createCString(&scratchArena, originalDllPath)
 	};
 
-	auto models{ pstd::createArray<pstd::MeshData>(&subsystemArena, 10, 0) };
+	auto models{ pstd::createArray<Engine::MeshData>(&subsystemArena, 10, 0) };
 	auto transforms{
 		pstd::createArray<Engine::Transform>(&subsystemArena, 10, 0)
 	};
@@ -153,8 +153,8 @@ void Engine::addTransform(
 void Engine::addModel(
 	Engine::State* pEngine, const UID entityID, pstd::String path
 ) {
-	pstd::MeshData model{
-		pstd::loadOBJ(&pEngine->subsystemArena, pEngine->scratchArena, path)
+	Engine::MeshData model{
+		Engine::loadOBJ(&pEngine->subsystemArena, pEngine->scratchArena, path)
 	};
 
 	pEngine->models.count =

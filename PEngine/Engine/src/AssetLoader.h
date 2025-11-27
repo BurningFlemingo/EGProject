@@ -3,10 +3,10 @@
 #include "STD/PVector.h"
 #include "STD/PArena.h"
 
-namespace pstd {
-	struct BMP {
-		// 32 Bit pixels
-		uint32_t* pPixels;
+namespace Engine {
+
+	struct TextureData {
+		uint32_t* pPixels;	// r8g8b8a8
 		size_t width;
 		size_t height;
 	};
@@ -19,8 +19,8 @@ namespace pstd {
 		pstd::Array<uint32_t> uvIndices;
 	};
 
-	BMP loadBMP(pstd::Arena* pArena, const pstd::String path);
+	TextureData loadBMP(pstd::Arena* pArena, const pstd::String path);
 	MeshData loadOBJ(
 		pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
 	);
-}  // namespace pstd
+}  // namespace Engine

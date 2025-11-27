@@ -28,7 +28,7 @@ namespace Engine {
 		bool virtualKeyState[ncast<size_t>(InputCode::COUNT)];
 		bool physicalKeyState[ncast<size_t>(InputCode::COUNT)];
 
-		pstd::Array<pstd::MeshData> models;
+		pstd::Array<Engine::MeshData> models;
 		pstd::Array<Engine::Transform> transforms;
 		pstd::Array<Engine::UID> entityUIDs;
 	};
