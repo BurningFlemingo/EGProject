@@ -574,31 +574,39 @@ void Renderer::setModels(
 		pstd::createArray<Renderable>(pFrameArena, meshes.count)
 	};
 
-	size_t nVertices{};
+	uint32_t vertexCount{};
+	uint32_t indexCount{};
 	for (size_t i{}; i < meshes.count; i++) {
-		nVertices += meshes[i].positionIndices.count;
+		vertexCount += meshes[i].vertexCount;
+		indexCount += meshes[i].indexCount;
 	}
-	auto vertices{ pstd::createArray<Vertex>(&scratchArena, nVertices, 0) };
 
+	auto vertices{ pstd::createArray<Vertex>(&scratchArena, vertexCount, 0) };
+	auto indices{ pstd::createArray<uint32_t>(&scratchArena, indexCount, 0) };
+
+	uint32_t indexOffset{};
+	uint32_t vertexOffset{};
 	for (size_t j{}; j < meshes.count; j++) {
 		Engine::MeshData mesh{ meshes[j] };
 		renderables[j] = {
-			.indexOffset = 0,
-			.vertexOffset = ncast<uint32_t>(vertices.count),
-			.indexCount = ncast<uint32_t>(mesh.positionIndices.count),
+			.indexOffset = indexOffset,
+			.indexCount = ncast<uint32_t>(mesh.indexCount),
 		};
 
-		for (size_t i{}; i < mesh.positionIndices.count; i++) {
-			Vertex vertex{ .position =
-							   mesh.uniquePositions[mesh.positionIndices[i]],
-						   .uv = mesh.uniqueUVs[mesh.uvIndices[i]] };
+		for (size_t i{}; i < mesh.vertexCount; i++) {
+			Vertex vertex{ .position = mesh.pPositions[i], .uv = mesh.pUVs[i] };
 			pstd::pushBack(&vertices, vertex);
 		}
+		for (size_t i{}; i < mesh.indexCount; i++) {
+			pstd::pushBack(&indices, mesh.pIndices[i]);
+		}
+
+		indexOffset += mesh.indexCount;
+		vertexOffset += mesh.vertexCount;
 	}
 
 	size_t verticesByteSize{ vertices.count * sizeof(vertices[0]) };
-
-	vkDeviceWaitIdle(pState->device.logical);
+	size_t indicesByteSize{ indices.count * sizeof(uint32_t) };
 
 	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
 		const FrameCtx& frameCtx{ pState->frameContexts[i] };
@@ -618,6 +626,21 @@ void Renderer::setModels(
 			}
 		);
 
+		memcpy(
+			pState->stagingBufferData, indices.data, indicesByteSize
+
+		);
+
+		copyBuffer(
+			pState->device,
+			pState->transientCmdPool,
+			pState->stagingBuffer,
+			frameCtx.indexBuffer,
+			{
+				.size = indicesByteSize,
+			}
+		);
+
 		pState->renderables[i] = renderables;
 		pState->frameContexts[i] = frameCtx;
 	}
@@ -632,6 +655,7 @@ void Renderer::setTransforms(
 	pstd::Array<Renderable>* pRenderables{
 		&pState->renderables[pState->frameInFlight]
 	};
+
 	for (size_t i{}; i < transforms.count; i++) {
 		Renderable* renderable{ &(*pRenderables)[i] };
 		renderable->transform = transforms[i];
@@ -755,9 +779,17 @@ void Renderer::render(State* state, bool windowResized) {
 		pstd::calcLookAtMatrix({ 0.f, 0.f, 0.f }, { 0.f, 0.f, 1.f }, pstd::UP)
 	};
 
+	vkCmdBindIndexBuffer(
+		state->cmdBuffers[state->frameInFlight],
+		frameCtx.indexBuffer.handle,
+		0,
+		VK_INDEX_TYPE_UINT32
+	);
+
 	const pstd::Array<Renderable>& renderables{
 		state->renderables[state->frameInFlight]
 	};
+
 	for (size_t i{}; i < renderables.count; i++) {
 		const Renderable& renderable{ renderables[i] };
 
@@ -801,17 +833,11 @@ void Renderer::render(State* state, bool windowResized) {
 			&pushConstants
 		);
 
-		vkCmdBindIndexBuffer(
-			state->cmdBuffers[state->frameInFlight],
-			frameCtx.indexBuffer.handle,
-			renderable.indexOffset * sizeof(uint32_t),
-			VK_INDEX_TYPE_UINT32
-		);
-
-		vkCmdDraw(
+		vkCmdDrawIndexed(
 			state->cmdBuffers[state->frameInFlight],
 			renderable.indexCount,
 			1,
+			renderable.indexOffset,
 			renderable.vertexOffset,
 			0
 		);

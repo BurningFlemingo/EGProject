@@ -31,9 +31,6 @@ namespace {
 	};
 #pragma pack(pop)
 
-	pstd::Array<uint32_t>
-		triangulate(pstd::Arena* pArena, const pstd::Array<uint32_t>& indices);
-
 	struct OBJ {
 		pstd::Array<pstd::Vec3> uniquePositions;
 		pstd::Array<pstd::Vec2> uniqueUVs;
@@ -47,8 +44,16 @@ namespace {
 		uint32_t uvCount;
 		uint32_t vertexCount;
 	};
-
+	OBJ parseOBJ(
+		pstd::Arena* pArena, pstd::Arena scratchArena, pstd::String lines
+	);
 	OBJMetadata parseOBJMetadata(pstd::String objString);
+	void parseFace(
+		const pstd::Span<pstd::String>& contents,
+		pstd::Arena scratchArena,
+		pstd::Array<uint32_t>* pPositionIndices,
+		pstd::Array<uint32_t>* pUVIndices
+	);
 
 }  // namespace
 
@@ -102,17 +107,23 @@ Engine::TextureData
 
 	// BMP pixels are aligned to 4byte boundarys
 	size_t stride{ absWidth * (header->bitsPerPixel / 8) };
+	bool imageFlipped{ header->pxHeight < 0 };
 	stride = (stride + 3) & ~3;
-	for (int y{}; y < absHeight; y++) {
+	for (size_t dstY{}; dstY < absHeight; dstY++) {
+		size_t srcY{ dstY };
+		if (imageFlipped) {
+			srcY = absHeight - dstY - 1;
+		}
+
 		for (int x{}; x < absWidth; x++) {
-			size_t colorByteIndex{ (y * stride) +
+			size_t colorByteIndex{ (srcY * stride) +
 								   (x * (header->bitsPerPixel / 8)) };
 			uint32_t color{ *rcast<uint32_t*>(pPixels + colorByteIndex) };
 			if (header->compressionMethod == 0) {
 				color = color | 0xFF << 24;
 			}
 
-			pixelArray[(y * absWidth) + x] =
+			pixelArray[(dstY * absWidth) + x] =
 				(((color >> redShift.shift) & 0xFF) << 0) |
 				(((color >> greenShift.shift) & 0xFF) << 8) |
 				(((color >> blueShift.shift) & 0xFF) << 16) |
@@ -127,121 +138,38 @@ Engine::TextureData
 	};
 }
 
-pstd::Array<pstd::String>
-	triangulate(pstd::Arena* pArena, const pstd::Array<pstd::String>& indices) {
-	if (indices.count == 3) {
-		return indices;
-	}
-	ASSERT(indices.count == 4, "triangulating ngons n > 4 not supported");
-
-	auto newIndices{ pstd::createArray<pstd::String>(pArena, 6) };
-
-	newIndices[0] = indices[0];
-	newIndices[1] = indices[1];
-	newIndices[2] = indices[2];
-
-	newIndices[3] = indices[0];
-	newIndices[4] = indices[2];
-	newIndices[5] = indices[3];
-
-	return newIndices;
-}
-
-void parseFace(
-	const pstd::Span<pstd::String>& contents,
-	pstd::Arena scratchArena,
-	pstd::Array<uint32_t>* pPositionIndices,
-	pstd::Array<uint32_t>* pUVIndices
-) {
-	ASSERT(contents.count <= 4);
-
-	uint32_t positionIndices[4];
-	uint32_t uvIndices[4];
-
-	for (size_t i{}; i < contents.count; i++) {
-		pstd::Array<pstd::String> face{
-			pstd::split(&scratchArena, contents[i], 3, "/")
-		};
-
-		ASSERT(face.count == 3);
-
-		positionIndices[i] = pstd::parse<uint32_t>(face[0]);
-		uvIndices[i] = pstd::parse<uint32_t>(face[1]);
-	}
-
-	if (contents.count == 3) {
-		// -1 because obj is 1 indexed, reverese index to do cw -> ccw
-		pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
-		pstd::pushBack(pPositionIndices, positionIndices[1] - 1);
-		pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
-
-		pstd::pushBack(pUVIndices, uvIndices[2] - 1);
-		pstd::pushBack(pUVIndices, uvIndices[1] - 1);
-		pstd::pushBack(pUVIndices, uvIndices[0] - 1);
-	} else {
-		pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
-		pstd::pushBack(pPositionIndices, positionIndices[1] - 1);
-		pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
-
-		pstd::pushBack(pPositionIndices, positionIndices[3] - 1);
-		pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
-		pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
-
-		pstd::pushBack(pUVIndices, uvIndices[2] - 1);
-		pstd::pushBack(pUVIndices, uvIndices[1] - 1);
-		pstd::pushBack(pUVIndices, uvIndices[0] - 1);
-
-		pstd::pushBack(pUVIndices, uvIndices[3] - 1);
-		pstd::pushBack(pUVIndices, uvIndices[2] - 1);
-		pstd::pushBack(pUVIndices, uvIndices[0] - 1);
-	}
-}
-
 Engine::MeshData Engine::loadOBJ(
 	pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
 ) {
 	pstd::String lines{ pstd::createString(pstd::readFile(&scratchArena, path)
 	) };
 
-	OBJMetadata meta{ parseOBJMetadata(lines) };
-
-	auto uniquePositions{
-		pstd::createArray<pstd::Vec3>(pArena, meta.positionCount, 0)
+	OBJ obj{ parseOBJ(&scratchArena, *pArena, lines) };
+	uint32_t indexCount{
+		ncast<uint32_t>(max(obj.positionIndices.count, obj.uvIndices.count))
 	};
+	uint32_t vertexCount{ indexCount };
 
-	auto uniqueUVs{ pstd::createArray<pstd::Vec2>(pArena, meta.uvCount, 0) };
+	auto* pPositions{ pstd::alloc<pstd::Vec3>(pArena, indexCount) };
+	auto* pIndices{ pstd::alloc<uint32_t>(pArena, indexCount) };
+	auto* pUVs{ pstd::alloc<pstd::Vec2>(pArena, indexCount) };
 
-	auto positionIndices{
-		pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0)
-	};
-	auto uvIndices{ pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0) };
-
-	while (lines.size > 0) {
-		pstd::String line{ pstd::readLine(&lines) };
-		pstd::String identifier{ pstd::readToken(&line) };
-
-		pstd::Array<pstd::String> contents{
-			pstd::split(&scratchArena, line, 4)
-		};
-
-		if (identifier == "f") {
-			parseFace(contents, scratchArena, &positionIndices, &uvIndices);
-		} else if (identifier == "v") {
-			pstd::Vec3 position{ pstd::parse<float>(contents[0]),
-								 pstd::parse<float>(contents[1]),
-								 pstd::parse<float>(contents[2]) };
-			pstd::pushBack(&uniquePositions, position);
-		} else if (identifier == "vt") {
-			pstd::Vec2 uv{ pstd::parse<float>(contents[0]),
-						   pstd::parse<float>(contents[1]) };
-			pstd::pushBack(&uniqueUVs, uv);
-		}
+	for (uint32_t i{}; i < indexCount; i++) {
+		pPositions[i] = obj.uniquePositions[obj.positionIndices[i]];
+	}
+	for (uint32_t i{}; i < indexCount; i++) {
+		pUVs[i] = obj.uniqueUVs[obj.uvIndices[i]];
 	}
 
-	return MeshData{ .uniquePositions = uniquePositions,
-					 .uniqueUVs = uniqueUVs,
-					 .positionIndices = positionIndices,
-					 .uvIndices = uvIndices };
+	for (uint32_t i{}; i < indexCount; i++) {
+		pIndices[i] = i;
+	}
+
+	return Engine::MeshData{ .vertexCount = vertexCount,
+							 .indexCount = indexCount,
+							 .pPositions = pPositions,
+							 .pIndices = pIndices,
+							 .pUVs = pUVs };
 }
 
 namespace {
@@ -277,6 +205,104 @@ namespace {
 		return OBJMetadata{ .positionCount = positionCount,
 							.uvCount = uvCount,
 							.vertexCount = vertexCount };
+	}
+
+	void parseFace(
+		const pstd::Span<pstd::String>& contents,
+		pstd::Arena scratchArena,
+		pstd::Array<uint32_t>* pPositionIndices,
+		pstd::Array<uint32_t>* pUVIndices
+	) {
+		ASSERT(contents.count <= 4);
+
+		uint32_t positionIndices[4];
+		uint32_t uvIndices[4];
+
+		for (size_t i{}; i < contents.count; i++) {
+			pstd::Array<pstd::String> face{
+				pstd::split(&scratchArena, contents[i], 3, "/")
+			};
+
+			ASSERT(face.count == 3);
+
+			positionIndices[i] = pstd::parse<uint32_t>(face[0]);
+			uvIndices[i] = pstd::parse<uint32_t>(face[1]);
+		}
+
+		if (contents.count == 3) {
+			// -1 because obj is 1 indexed, reverese index to do cw -> ccw
+			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[1] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
+
+			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[1] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[0] - 1);
+		} else {
+			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[1] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
+
+			pstd::pushBack(pPositionIndices, positionIndices[3] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
+
+			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[1] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[0] - 1);
+
+			pstd::pushBack(pUVIndices, uvIndices[3] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[0] - 1);
+		}
+	}
+
+	OBJ parseOBJ(
+		pstd::Arena* pArena, pstd::Arena scratchArena, pstd::String lines
+	) {
+		OBJMetadata meta{ parseOBJMetadata(lines) };
+
+		auto uniquePositions{
+			pstd::createArray<pstd::Vec3>(pArena, meta.positionCount, 0)
+		};
+
+		auto uniqueUVs{
+			pstd::createArray<pstd::Vec2>(pArena, meta.uvCount, 0)
+		};
+
+		auto positionIndices{
+			pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0)
+		};
+		auto uvIndices{
+			pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0)
+		};
+
+		while (lines.size > 0) {
+			pstd::String line{ pstd::readLine(&lines) };
+			pstd::String identifier{ pstd::readToken(&line) };
+
+			pstd::Array<pstd::String> contents{
+				pstd::split(&scratchArena, line, 4)
+			};
+
+			if (identifier == "f") {
+				parseFace(contents, scratchArena, &positionIndices, &uvIndices);
+			} else if (identifier == "v") {
+				pstd::Vec3 position{ pstd::parse<float>(contents[0]),
+									 pstd::parse<float>(contents[1]),
+									 pstd::parse<float>(contents[2]) };
+				pstd::pushBack(&uniquePositions, position);
+			} else if (identifier == "vt") {
+				pstd::Vec2 uv{ pstd::parse<float>(contents[0]),
+							   pstd::parse<float>(contents[1]) };
+				pstd::pushBack(&uniqueUVs, uv);
+			}
+		}
+
+		return OBJ{ .uniquePositions = uniquePositions,
+					.uniqueUVs = uniqueUVs,
+					.positionIndices = positionIndices,
+					.uvIndices = uvIndices };
 	}
 
 }  // namespace

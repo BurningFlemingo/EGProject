@@ -12,11 +12,12 @@ namespace Engine {
 	};
 
 	struct MeshData {
-		pstd::Array<pstd::Vec3> uniquePositions;
-		pstd::Array<pstd::Vec2> uniqueUVs;
+		uint32_t vertexCount;
+		uint32_t indexCount;
 
-		pstd::Array<uint32_t> positionIndices;
-		pstd::Array<uint32_t> uvIndices;
+		pstd::Vec3* pPositions;
+		uint32_t* pIndices;
+		pstd::Vec2* pUVs;
 	};
 
 	TextureData loadBMP(pstd::Arena* pArena, const pstd::String path);
