@@ -30,14 +30,9 @@ namespace pstd {
 		size_t count{ capacity };
 	};
 
-	template<typename T, size_t n, size_t c = n, typename I = size_t>
+	template<typename T, size_t n, typename I = size_t>
 	struct StaticArray {  // <container type, capacity, count, index type>
 		using ElementType = T;
-
-		constexpr StaticArray() = default;
-
-		template<typename... Args>
-		constexpr StaticArray(Args... args) : data{ args... } {}
 
 		const T& operator[](I index) const {
 			ASSERT(data);
@@ -55,7 +50,7 @@ namespace pstd {
 
 		T data[n];
 		size_t capacity{ n };
-		size_t count{ c };
+		size_t count{ n };
 	};
 
 	template<typename T, typename I = size_t>
@@ -64,12 +59,15 @@ namespace pstd {
 
 		Span(Array<T, I> array) : data{ array.data }, count{ array.count } {}
 
-		template<size_t n, size_t c>
-		Span(StaticArray<T, n, c, I> array)
+		template<size_t n>
+		Span(StaticArray<T, n, I> array)
 			: data{ &array.data[0] }, count{ array.count } {}
 
 		template<size_t n>
-		Span(T (&array)[n]) : data{ &array }, count{ n } {}
+		Span(T (&array)[n]) : data{ array }, count{ n } {}
+		template<size_t n>
+		Span(T (&array)[n], size_t countParam)
+			: data{ array }, count{ countParam } {}
 
 		const T& operator[](I index) const {
 			ASSERT(data);

@@ -107,7 +107,7 @@ Renderer::State* Renderer::startup(
 	};
 
 	pstd::StaticArray<VkPipelineShaderStageCreateInfo, 2> shaderStages{
-		vertPipeCI, fragPipeCI
+		.data = { vertPipeCI, fragPipeCI }
 	};
 
 	VkPushConstantRange pushConstantRange{
@@ -116,11 +116,11 @@ Renderer::State* Renderer::startup(
 		.size = sizeof(PushConstants),
 	};
 	pstd::StaticArray<VkFormat, 1> colorFormats{
-		swapchain.createInfo.imageFormat
+		.data = { swapchain.createInfo.imageFormat }
 	};
 
 	pstd::StaticArray<VkPushConstantRange, 1> pushConstantRanges{
-		pushConstantRange
+		.data = { pushConstantRange }
 	};
 
 	VkDescriptorSetLayoutBinding descriptorLayoutBindings[2]{

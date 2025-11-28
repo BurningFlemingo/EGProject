@@ -11,13 +11,10 @@ def buildPathFromRoot(*subdirs):
 
 if __name__ == "__main__":
     preset: str = sys.argv[1]
-
     buildDir = buildPathFromRoot("build", preset)
-
-    subprocess.run(["cmake", "--preset", preset, "-S", rootDir])
-
-    os.chdir(buildDir)
-
-    subprocess.run(["ninja"])
-
-    os.chdir(rootDir)
+    
+    if not os.path.exists(os.path.join(buildDir, "CMakeCache.txt")):
+        subprocess.run(["cmake", "--preset", preset, "-S", rootDir])
+    
+    
+    subprocess.run(["cmake", "--build", buildDir])

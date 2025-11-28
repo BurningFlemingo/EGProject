@@ -8,12 +8,22 @@
 namespace pstd {
 	struct String {
 		String() = default;
+		String(const String& string);
 		String(const char* cString);
 		String(const char* buf, uint32_t bufSize);
+
+		const char& operator[](size_t index) const {
+			ASSERT(buffer);
+			ASSERT(size > index);
+
+			return buffer[index];
+		}
 
 		const char* buffer{};
 		uint32_t size{};
 	};
+
+	bool operator==(String a, String b);
 
 	constexpr uint32_t getCStringLength(const char* cString) {
 		constexpr uint32_t maxStringSize{
@@ -129,12 +139,24 @@ namespace pstd {
 		return line;
 	}
 	pstd::Array<String>
-		splitLine(pstd::Arena* pArena, String line, String delimiters);
+		split(pstd::Arena* pArena, String line, String delimiters = " ");
+
+	pstd::Array<String> split(
+		pstd::Arena* pArena,
+		String line,
+		size_t maxItemCount,
+		String delimiters = " "
+	);
 
 	float stringToFloat(String stringNum);
 
 	template<typename T>
 	T parse(String string);
+
+	char readChar(String* pString);
+	void trimLeading(String* string, const String& delimiters = " ");
+	String readToken(String* string, const String& delimiters = " ");
+	size_t countTokens(String string, const String& delimiters = " ");
 
 	size_t hash(String string);
 }  // namespace pstd

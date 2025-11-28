@@ -6,6 +6,7 @@
 #include "STD/PMath.h"
 #include "STD/PMemory.h"
 #include "Logging.h"
+#include <ranges>
 
 using namespace pstd;
 
@@ -26,14 +27,18 @@ namespace {
 	pstd::String pushLetter(pstd::Arena* pArena, char letter);
 }  // namespace
 
-pstd::String::String(const char* cString) {
-	buffer = cString;
+pstd::String::String(const String& string)
+	: buffer{ string.buffer }, size{ string.size } {}
+
+pstd::String::String(const char* cString) : buffer{ cString } {
 	size = getCStringLength(cString);
 }
 
-pstd::String::String(const char* buf, uint32_t bufSize) {
-	buffer = buf;
-	size = bufSize;
+pstd::String::String(const char* buf, uint32_t bufSize)
+	: buffer{ buf }, size{ bufSize } {}
+
+bool pstd::operator==(String a, String b) {
+	return pstd::stringsMatch(a, b);
 }
 
 String pstd::createString(pstd::Arena* pArena, const String& string) {
@@ -233,6 +238,7 @@ bool pstd::substringMatchForward(
 		if (a.buffer[i] == b.buffer[charactersMatched]) {
 			charactersMatched++;
 		} else {
+			i -= charactersMatched;
 			charactersMatched = 0;
 		}
 
@@ -287,31 +293,20 @@ String pstd::getLine(String lines) {
 }
 
 pstd::Array<String>
-	pstd::splitLine(pstd::Arena* pArena, String line, String delimiters) {
-	int nItems{ 1 };
-	for (size_t i{}; i < line.size; i++) {
-		if (pstd::substringMatchForward(line.buffer[i], delimiters)) {
-			nItems++;
+	pstd::split(pstd::Arena* pArena, String line, String delimiters) {
+	return split(pArena, line, pstd::countTokens(line, delimiters), delimiters);
+}
+
+pstd::Array<String> pstd::split(
+	pstd::Arena* pArena, String line, size_t maxItemCount, String delimiters
+) {
+	auto items{ pstd::createArray<String>(pArena, maxItemCount, 0) };
+
+	for (size_t i{}; i < maxItemCount; i++) {
+		pstd::String token{ pstd::readToken(&line, delimiters) };
+		if (token.size != 0) {
+			pstd::pushBack(&items, token);
 		}
-	}
-
-	auto items{ pstd::createArray<String>(pArena, nItems, 0) };
-
-	String currentItem(line.buffer, 0);
-	for (size_t i{}; i < line.size; i++) {
-		if (!pstd::substringMatchForward(line.buffer[i], delimiters)) {
-			currentItem.size++;
-			continue;
-		}
-		if (currentItem.size > 0) {
-			pstd::pushBack(&items, currentItem);
-		}
-
-		currentItem = String(line.buffer + i + 1, 0);
-	}
-
-	if (currentItem.size > 0) {
-		pstd::pushBack(&items, currentItem);
 	}
 
 	return items;
@@ -386,6 +381,62 @@ uint32_t pstd::parse(String string) {
 	}
 
 	return num;
+}
+
+char pstd::readChar(String* pString) {
+	if (pString->size == 0) {
+		return 0;
+	}
+
+	char ch{ (*pString)[0] };
+
+	pString->buffer++;
+	pString->size--;
+
+	return ch;
+}
+
+void pstd::trimLeading(String* pString, const pstd::String& delimiters) {
+	size_t ogStringSize{ pString->size };
+	for (size_t i{}; i < ogStringSize; i++) {
+		if (!substringMatchForward((*pString)[0], delimiters)) {
+			break;
+		}
+		pString->size--;
+		pString->buffer++;
+	}
+}
+
+String pstd::readToken(String* pString, const String& delimiters) {
+	pstd::trimLeading(pString, delimiters);
+
+	String token(pString->buffer, 0);
+
+	size_t ogStringSize{ pString->size };
+	for (size_t i{}; i < ogStringSize; i++) {
+		if (substringMatchForward((*pString)[0], delimiters)) {
+			break;
+		}
+		token.size++;
+
+		pString->size--;
+		pString->buffer++;
+	}
+
+	return token;
+}
+
+size_t pstd::countTokens(String string, const String& delimiters) {
+	size_t tokenCount{ 0 };
+
+	while (string.size > 0) {
+		String token{ readToken(&string, delimiters) };
+		if (token.size > 0) {
+			tokenCount++;
+		}
+	}
+
+	return tokenCount;
 }
 
 size_t pstd::hash(String string) {
