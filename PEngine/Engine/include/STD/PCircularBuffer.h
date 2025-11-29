@@ -82,4 +82,14 @@ namespace pstd {
 		}
 	};
 
+	template<typename T>
+	void pushBack(CircularBuffer<T>* buffer, const T val) {
+		ASSERT(buffer);
+		ASSERT(!isFull(*buffer));
+
+		buffer->block[buffer->headIndex] = val;
+
+		buffer->headIndex = (buffer->headIndex + 1) % (getCapacity(*buffer));
+	};
+
 }  // namespace pstd

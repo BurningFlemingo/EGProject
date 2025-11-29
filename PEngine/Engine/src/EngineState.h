@@ -6,6 +6,7 @@
 #include "STD/PArena.h"
 #include "Game.h"
 #include "AssetLoader.h"
+#include "Platforms/Event.h"
 
 struct GameDll {
 	pstd::DllHandle handle;
@@ -25,8 +26,12 @@ namespace Engine {
 		const char* originalDllPathCString;
 		bool isRunning;
 
-		bool virtualKeyState[ncast<size_t>(InputCode::COUNT)];
-		bool physicalKeyState[ncast<size_t>(InputCode::COUNT)];
+		Platform::CompressedKeyState
+			virtualKeyState[ncast<size_t>(KeyCode::COUNT)]{};
+		Platform::CompressedKeyState
+			physicalKeyState[ncast<size_t>(KeyCode::COUNT)]{};
+
+		Cursor cursor;
 
 		pstd::Array<Engine::MeshData> models;
 		pstd::Array<Engine::Transform> transforms;

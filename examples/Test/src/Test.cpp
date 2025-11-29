@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Cursor.h"
 #include "Game.h"
 #include "Renderer.h"
 #include "Logging.h"
@@ -19,11 +20,18 @@ namespace Game {
 		Engine::UID cube2{};
 
 		pstd::Vec3 pos;
+
+		float pitch;
+		float yaw;
+
+		bool inMenu;
 	};
 }  // namespace Game
 
+using namespace Engine;
+
 GAME_API Game::State* Game::startup(
-	pstd::AllocationRegistry* pAllocRegistry, Engine::Subsystems subsystems
+	pstd::AllocationRegistry* pAllocRegistry, Subsystems subsystems
 ) {
 	pstd::Arena gameArena{ pstd::allocateArena(pAllocRegistry, 1024) };
 
@@ -44,39 +52,64 @@ GAME_API Game::State* Game::startup(
 
 	return statePtr;
 }
-GAME_API bool
-	Game::update(Engine::Subsystems subsystems, State* state, float dTime) {
+GAME_API bool Game::update(Subsystems subsystems, State* state, float dTime) {
 	Engine::State* pEngine{ subsystems.pEngine };
+	Platform::State* pPlatform{ subsystems.pPlatform };
 
 	float speed{ 0.03f * dTime };
-	if (Engine::getPhysicalKeyDown(pEngine, InputCode::D)) {
-		state->pos.x += speed;
+	float sensitivity{ 0.003f };
+
+	pstd::Vec3 movement{};
+	if (getPKeyState(pEngine, KeyCode::D).isDown) {
+		movement.x += speed;
 	}
-	if (Engine::getPhysicalKeyDown(pEngine, InputCode::A)) {
-		state->pos.x -= speed;
+	if (getPKeyState(pEngine, KeyCode::A).isDown) {
+		movement.x -= speed;
 	}
-	if (Engine::getPhysicalKeyDown(pEngine, InputCode::W)) {
-		state->pos.z += speed;
+	if (getPKeyState(pEngine, KeyCode::W).isDown) {
+		movement.z += speed;
 	}
-	if (Engine::getPhysicalKeyDown(pEngine, InputCode::S)) {
-		state->pos.z -= speed;
+	if (getPKeyState(pEngine, KeyCode::S).isDown) {
+		movement.z -= speed;
 	}
-	if (Engine::getVirtualKeyDown(pEngine, InputCode::SPACE)) {
-		state->pos.y += speed * 5;
+	if (getPKeyState(pEngine, KeyCode::SPACE).isDown) {
+		movement.y += speed * 5;
+	}
+	if (getVKeyState(pEngine, KeyCode::ESC).wasPressed) {
+		if (!state->inMenu) {
+			Platform::showCursor(pPlatform);
+			Platform::releaseCursor(pPlatform);
+		} else {
+			Platform::hideCursor(pPlatform);
+			Platform::captureCursor(pPlatform);
+		}
+		state->inMenu = !state->inMenu;
 	}
 
-	pstd::Rot3 rot{ pstd::calcRotor(
-		{ 0, 1, 0 }, { 0, 0, 1 }, pstd::toRadians(0.0f) * pstd::getTicks()
-	) };
+	if (state->inMenu) {
+		return !Engine::getVKeyState(pEngine, KeyCode::TAB).isDown;
+	}
 
-	Engine::Transform transform1{ .pos = state->pos, .rot = rot };
-	Engine::Transform transform2{ .pos =
-									  state->pos + pstd::Vec3{ 5.f, 0.f, 0.f },
-								  .rot = rot };
+	Cursor cursor{ getCursor(pEngine) };
+	state->pitch += cursor.dy * sensitivity;
+	state->yaw += cursor.dx * sensitivity;
 
-	Engine::updateTransform(pEngine, state->cube1, transform1);
-	Engine::updateTransform(pEngine, state->cube2, transform2);
+	pstd::Rot3 pitchRot{
+		pstd::calcRotor({ 0, 0, 1 }, { 0, 1, 0 }, state->pitch)
+	};
+	pstd::Rot3 yawRot{ pstd::calcRotor({ 0, 0, 1 }, { 1, 0, 0 }, state->yaw) };
 
-	return !Engine::getVirtualKeyDown(pEngine, InputCode::TAB);
+	pstd::Rot3 rot{ pstd::composeRotor(yawRot, pitchRot) };
+
+	state->pos += pstd::calcRotated(movement, rot);
+
+	Transform transform1{ .pos = state->pos, .rot = rot };
+	Transform transform2{ .pos = state->pos + pstd::Vec3{ 5.f, 0.f, 0.f },
+						  .rot = rot };
+
+	updateTransform(pEngine, state->cube1, transform1);
+	updateTransform(pEngine, state->cube2, transform2);
+
+	return !Engine::getVKeyState(pEngine, KeyCode::TAB).isDown;
 }
 GAME_API void Game::shutdown(State* state) {}

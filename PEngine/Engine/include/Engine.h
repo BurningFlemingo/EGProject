@@ -22,20 +22,34 @@ namespace Engine {
 		Platform::State* pPlatform;
 	};
 
+	struct Cursor {
+		float dx;
+		float dy;
+	};
+
+	struct Camera {
+		Transform transform;
+	};
+
 	using UID = size_t;
 	struct ModelType;
 
-	bool getPhysicalKeyDown(Engine::State* pAppState, InputCode keyCode);
-	bool getVirtualKeyDown(Engine::State* pAppState, InputCode keyCode);
+	// virtual key state
+	KeyState getVKeyState(Engine::State* pEngineState, KeyCode keyCode);
+	// physical key state
+	KeyState getPKeyState(Engine::State* pEngineState, KeyCode keyCode);
 
-	UID createEntity(Engine::State* pApp);
+	UID createEntity(Engine::State* pEngine);
 
 	void addTransform(
-		Engine::State* pApp, UID entityID, const Transform& transform
+		Engine::State* pEngine, UID entityID, const Transform& transform
 	);
-	void addModel(Engine::State* pApp, UID entityID, pstd::String path);
-	Transform getTransform(Engine::State* pApp, UID uid);
+	void addModel(Engine::State* pEngine, UID entityID, pstd::String path);
+
+	Engine::Cursor getCursor(Engine::State* PEngine);
+
+	Transform getTransform(Engine::State* pEngine, UID uid);
 	void updateTransform(
-		Engine::State* pApp, UID entityID, const Transform& transform
+		Engine::State* pEngine, UID entityID, const Transform& transform
 	);
 }  // namespace Engine

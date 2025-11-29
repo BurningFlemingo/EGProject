@@ -65,10 +65,10 @@ Renderer::State* Renderer::startup(
 	) };
 
 	pstd::String fragShaderString{ pstd::createString(
-		pstd::readFile(&scratchArena, "shaders\\first.frag.spv")
+		pstd::readFile(&scratchArena, "generated\\shaders\\first.frag.spv")
 	) };
 	pstd::String vertShaderString{ pstd::createString(
-		pstd::readFile(&scratchArena, "shaders\\first.vert.spv")
+		pstd::readFile(&scratchArena, "generated\\shaders\\first.vert.spv")
 	) };
 
 	VkShaderModuleCreateInfo fragmentShaderModuleCI{

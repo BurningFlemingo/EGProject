@@ -20,7 +20,7 @@ if(MSVC)
         COMMAND ${CMAKE_COMMAND}
 		-DBINARY_DIR=${CMAKE_BINARY_DIR}
 		-P ${CMAKE_SOURCE_DIR}/scripts/remove_pdbs.cmake
-        COMMENT "Removing out of date PDB files..."
+        COMMENT "Removing out of date PDB files"
         VERBATIM
     )
     add_dependencies(${PROJECT_NAME} clean_pdbs)

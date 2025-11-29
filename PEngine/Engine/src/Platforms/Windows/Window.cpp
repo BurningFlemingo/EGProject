@@ -1,5 +1,8 @@
 #include "Platforms/Window.h"
+#include "Cursor.h"
 
+#include "Input.h"
+#include "Platforms/Event.h"
 #include "STD/PCircularBuffer.h"
 #include "STD/PMemory.h"
 #include "STD/PAlgorithm.h"
@@ -11,17 +14,21 @@
 #include <Windows.h>
 #include <winuser.h>
 #include <Windowsx.h>
+#include <hidusage.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
 #include "Logging.h"
 
+using Engine::KeyCode;
+using Engine::InputAction;
+
 namespace {
 	LRESULT CALLBACK
 		windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-	InputCode virtualToInputCode(const uint8_t vcode);
-	InputCode physicalToInputCode(const uint8_t scancode);
+	KeyCode virtualToKeyCode(const uint8_t vcode);
+	KeyCode physicalToKeyCode(const uint8_t scancode);
 }  // namespace
 
 Platform::State* Platform::startup(
@@ -36,8 +43,6 @@ Platform::State* Platform::startup(
 	};
 
 	HINSTANCE hInstance{ GetModuleHandle(0) };
-
-	// ShowCursor(false);
 
 	const char windowClassName[]{ "window class" };
 
@@ -96,11 +101,17 @@ Platform::State* Platform::startup(
 		&state->windowData
 	) };
 
-	if (hwnd == 0) {
-		return {};
-	}
+	ASSERT(hwnd != NULL);
 
 	ShowWindow(hwnd, SW_SHOW);
+
+	RAWINPUTDEVICE rawInputDevices[1] = { {
+		.usUsagePage = HID_USAGE_PAGE_GENERIC,
+		.usUsage = HID_USAGE_GENERIC_MOUSE,
+		.hwndTarget = hwnd,
+	} };
+
+	RegisterRawInputDevices(rawInputDevices, 1, sizeof(rawInputDevices[0]));
 
 	return new (state)
 		State{ .windowData = windowData, .hwnd = hwnd, .hInstance = hInstance };
@@ -148,146 +159,137 @@ void Platform::showCursor(State* pState) {
 }
 
 namespace {
-	InputCode virtualToInputCode(const uint8_t vcode) {
+	Engine::KeyCode virtualToKeyCode(const uint8_t vcode) {
 		if ((vcode >= 'A' && vcode <= 'Z') || (vcode >= '0' && vcode <= '9')) {
-			return (InputCode)vcode;
+			return (KeyCode)vcode;
 		}
 
-		InputCode keyCode{};
+		Engine::KeyCode keyCode{};
 		switch (vcode) {
-			case VK_BACK:
-				keyCode = InputCode::BACKSPACE;
-				break;
-			case VK_TAB:
-				keyCode = InputCode::TAB;
-				break;
-			case 0x0D:
-				keyCode = InputCode::ENTER;
-				break;
-			case VK_ESCAPE:
-				keyCode = InputCode::ESC;
-				break;
-			case VK_SPACE:
-				keyCode = InputCode::SPACE;
-				break;
-			case VK_SHIFT:
-				keyCode = InputCode::SHIFT;
-				break;
-			case VK_CONTROL:
-				keyCode = InputCode::CTRL;
-				break;
-			case VK_MENU:
-				keyCode = InputCode::ALT;
-				break;
-			case VK_LBUTTON:
-				keyCode = InputCode::LEFT_MB;
-				break;
-			case VK_RBUTTON:
-				keyCode = InputCode::RIGHT_MB;
-				break;
-			case VK_MBUTTON:
-				keyCode = InputCode::MIDDLE_MB;
-				break;
-			case VK_UP:
-				keyCode = InputCode::UP;
-				break;
-			case VK_DOWN:
-				keyCode = InputCode::DOWN;
-				break;
-			case VK_LEFT:
-				keyCode = InputCode::LEFT;
-				break;
-			case VK_RIGHT:
-				keyCode = InputCode::RIGHT;
-				break;
-			default:
-				keyCode = InputCode::INVALID;
-				break;
+		case VK_BACK:
+			keyCode = KeyCode::BACKSPACE;
+			break;
+		case VK_TAB:
+			keyCode = KeyCode::TAB;
+			break;
+		case 0x0D:
+			keyCode = KeyCode::ENTER;
+			break;
+		case VK_ESCAPE:
+			keyCode = KeyCode::ESC;
+			break;
+		case VK_SPACE:
+			keyCode = KeyCode::SPACE;
+			break;
+		case VK_SHIFT:
+			keyCode = KeyCode::SHIFT;
+			break;
+		case VK_CONTROL:
+			keyCode = KeyCode::CTRL;
+			break;
+		case VK_MENU:
+			keyCode = KeyCode::ALT;
+			break;
+		case VK_UP:
+			keyCode = KeyCode::UP;
+			break;
+		case VK_DOWN:
+			keyCode = KeyCode::DOWN;
+			break;
+		case VK_LEFT:
+			keyCode = KeyCode::LEFT;
+			break;
+		case VK_RIGHT:
+			keyCode = KeyCode::RIGHT;
+			break;
+		default:
+			keyCode = KeyCode::INVALID;
+			break;
 		}
 		return keyCode;
 	}
 
-	InputCode physicalToInputCode(const uint8_t scancode) {
-		InputCode keyCode{ InputCode::INVALID };
+	KeyCode physicalToKeyCode(const uint8_t scancode) {
+		KeyCode keyCode{ KeyCode::INVALID };
 		switch (scancode) {
-			case 0x001E:
-				keyCode = InputCode::A;
-				break;
-			case 0x0030:
-				keyCode = InputCode::B;
-				break;
-			case 0x002E:
-				keyCode = InputCode::C;
-				break;
-			case 0x0020:
-				keyCode = InputCode::D;
-				break;
-			case 0x0012:
-				keyCode = InputCode::E;
-				break;
-			case 0x0021:
-				keyCode = InputCode::F;
-				break;
-			case 0x0022:
-				keyCode = InputCode::G;
-				break;
-			case 0x0023:
-				keyCode = InputCode::H;
-				break;
-			case 0x0017:
-				keyCode = InputCode::I;
-				break;
-			case 0x0024:
-				keyCode = InputCode::J;
-				break;
-			case 0x0025:
-				keyCode = InputCode::K;
-				break;
-			case 0x0026:
-				keyCode = InputCode::L;
-				break;
-			case 0x0032:
-				keyCode = InputCode::M;
-				break;
-			case 0x0031:
-				keyCode = InputCode::N;
-				break;
-			case 0x0018:
-				keyCode = InputCode::O;
-				break;
-			case 0x0019:
-				keyCode = InputCode::P;
-				break;
-			case 0x0010:
-				keyCode = InputCode::Q;
-				break;
-			case 0x0013:
-				keyCode = InputCode::R;
-				break;
-			case 0x001F:
-				keyCode = InputCode::S;
-				break;
-			case 0x0014:
-				keyCode = InputCode::T;
-				break;
-			case 0x0016:
-				keyCode = InputCode::U;
-				break;
-			case 0x002F:
-				keyCode = InputCode::V;
-				break;
-			case 0x0011:
-				keyCode = InputCode::W;
-				break;
-			case 0x002D:
-				keyCode = InputCode::X;
-				break;
-			case 0x0015:
-				keyCode = InputCode::Y;
-				break;
-			case 0x002C:
-				keyCode = InputCode::Z;
-				break;
+		case 0x001E:
+			keyCode = KeyCode::A;
+			break;
+		case 0x0030:
+			keyCode = KeyCode::B;
+			break;
+		case 0x002E:
+			keyCode = KeyCode::C;
+			break;
+		case 0x0020:
+			keyCode = KeyCode::D;
+			break;
+		case 0x0012:
+			keyCode = KeyCode::E;
+			break;
+		case 0x0021:
+			keyCode = KeyCode::F;
+			break;
+		case 0x0022:
+			keyCode = KeyCode::G;
+			break;
+		case 0x0023:
+			keyCode = KeyCode::H;
+			break;
+		case 0x0017:
+			keyCode = KeyCode::I;
+			break;
+		case 0x0024:
+			keyCode = KeyCode::J;
+			break;
+		case 0x0025:
+			keyCode = KeyCode::K;
+			break;
+		case 0x0026:
+			keyCode = KeyCode::L;
+			break;
+		case 0x0032:
+			keyCode = KeyCode::M;
+			break;
+		case 0x0031:
+			keyCode = KeyCode::N;
+			break;
+		case 0x0018:
+			keyCode = KeyCode::O;
+			break;
+		case 0x0019:
+			keyCode = KeyCode::P;
+			break;
+		case 0x0010:
+			keyCode = KeyCode::Q;
+			break;
+		case 0x0013:
+			keyCode = KeyCode::R;
+			break;
+		case 0x001F:
+			keyCode = KeyCode::S;
+			break;
+		case 0x0014:
+			keyCode = KeyCode::T;
+			break;
+		case 0x0016:
+			keyCode = KeyCode::U;
+			break;
+		case 0x002F:
+			keyCode = KeyCode::V;
+			break;
+		case 0x0011:
+			keyCode = KeyCode::W;
+			break;
+		case 0x002D:
+			keyCode = KeyCode::X;
+			break;
+		case 0x0015:
+			keyCode = KeyCode::Y;
+			break;
+		case 0x002C:
+			keyCode = KeyCode::Z;
+			break;
 		}
 
 		return keyCode;
@@ -327,48 +329,77 @@ namespace {
 		}
 
 		switch (uMsg) {
-			case WM_CLOSE: {
-				DestroyWindow(hwnd);
+		case WM_CLOSE: {
+			DestroyWindow(hwnd);
+		}
+		case WM_DESTROY: {
+			windowData->isRunning = false;
+		} break;
+			// https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input#virtual-key-codes-described
+		case WM_KEYUP:
+		case WM_SYSKEYUP:
+		case WM_KEYDOWN:
+		case WM_SYSKEYDOWN: {
+			auto scancode{ ncast<uint8_t>((lParam >> 16) & 0xFF) };
+			auto keyWasDown{ ncast<bool>((lParam >> 30) & 0x1) };
+			auto keyIsUp{ ncast<bool>((lParam >> 31) & 0x1) };
+
+			KeyCode virtualCode{ virtualToKeyCode(wParam) };
+			KeyCode physicalCode{ physicalToKeyCode(scancode) };
+
+			Platform::CompressedKeyState keyState{ .isUp = keyIsUp,
+												   .wasDown = keyWasDown };
+
+			Platform::Event event{ .type = Platform::EventType::key,
+								   .keyEvent = { .state = keyState,
+												 .virtualCode = virtualCode,
+												 .physicalCode =
+													 physicalCode } };
+
+			pstd::pushBack(&windowData->eventBuffer, event);
+		} break;
+		case WM_INPUT: {
+			UINT dwSize;
+			GetRawInputData(
+				(HRAWINPUT)lParam,
+				RID_INPUT,
+				NULL,
+				&dwSize,
+				sizeof(RAWINPUTHEADER)
+			);
+			constexpr UINT headerSize{ 48 };
+			ASSERT(dwSize <= headerSize);
+
+			LPBYTE lpb[headerSize]{};
+			GetRawInputData(
+				(HRAWINPUT)lParam,
+				RID_INPUT,
+				lpb,
+				&dwSize,
+				sizeof(RAWINPUTHEADER)
+			);
+
+			RAWINPUT* raw{ (RAWINPUT*)lpb };
+
+			if (raw->header.dwType == RIM_TYPEMOUSE) {
+				float relXPos{ ncast<float>(raw->data.mouse.lLastX) };
+				float relYPos{ -ncast<float>(raw->data.mouse.lLastY
+				) };  // flipped because +Y is up in engine, while here -Y is up
+
+				Platform::Event event{ .type = Platform::EventType::cursor,
+									   .cursorEvent = { .dx = relXPos,
+														.dy = relYPos } };
+				pstd::pushBack(&windowData->eventBuffer, event);
 			}
-			case WM_DESTROY: {
-				windowData->isRunning = false;
-			} break;
-				// https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input#virtual-key-codes-described
-			case WM_KEYUP:
-			case WM_SYSKEYUP:
-			case WM_KEYDOWN:
-			case WM_SYSKEYDOWN: {
-				auto scancode{ ncast<uint8_t>((lParam >> 16) & 0xFF) };
-				auto keyWasDown{ ncast<bool>((lParam >> 30) & 0x1) };
-				auto keyIsUp{ ncast<bool>((lParam >> 31) & 0x1) };
-
-				InputCode virtualCode{ virtualToInputCode(wParam) };
-				InputCode physicalCode{ physicalToInputCode(scancode) };
-
-				InputAction iAction{};
-				if (keyIsUp && keyWasDown) {
-					iAction = InputAction::RELEASED;
-				} else if (!keyIsUp && !keyWasDown) {
-					iAction = InputAction::PRESSED;
-				} else {
-					break;
-				}
-
-				Platform::Event event{ .type = Platform::EventType::key,
-									   .keyEvent = { .action = iAction,
-													 .virtualCode = virtualCode,
-													 .physicalCode =
-														 physicalCode } };
-				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
-			} break;
-			case WM_SIZE: {
-				Platform::Event event{ .type = Platform::EventType::window,
-									   .windowEvent = { .resized = true } };
-				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
-			} break;
-			default: {
-				res = DefWindowProc(hwnd, uMsg, wParam, lParam);
-			}
+		} break;
+		case WM_SIZE: {
+			Platform::Event event{ .type = Platform::EventType::window,
+								   .windowEvent = { .resized = true } };
+			pstd::pushBackOverwrite(&windowData->eventBuffer, event);
+		} break;
+		default: {
+			res = DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
 		}
 
 		return res;

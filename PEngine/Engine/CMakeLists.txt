@@ -5,37 +5,7 @@ project(PEngine)
 find_package(VulkanHeaders CONFIG)
 find_package(Vulkan REQUIRED)
 
-find_program(GLSLC NAMES glslc HINTS Vulkan::glslc)
-
 set(CMAKE_CXX_STANDARD 23)
-
-set(SHADERS_SRC_DIR "${CMAKE_SOURCE_DIR}/assets/shaders")
-set(SHADERS_BIN_DIR "${CMAKE_BINARY_DIR}/shaders")
-
-file(GLOB SHADERS
-	"${SHADERS_SRC_DIR}/*.vert"
-	"${SHADERS_SRC_DIR}/*.frag"
-	"${SHADERS_SRC_DIR}/*.comp"
-	"${SHADERS_SRC_DIR}/*.geom"
-	"${SHADERS_SRC_DIR}/*.tesc"
-	"${SHADERS_SRC_DIR}/*.tese")
-
-file(MAKE_DIRECTORY "${SHADERS_BIN_DIR}")
-
-foreach(SHADER ${SHADERS})
-	get_filename_component(SHADER_NAME ${SHADER} NAME)
-	set(SHADER_BIN_NAME "${SHADERS_BIN_DIR}/${SHADER_NAME}.spv")
-	add_custom_command(
-		MAIN_DEPENDENCY "${SHADER_BIN_DIR}"
-		DEPENDS "${SHADER}"
-		OUTPUT "${SHADER_BIN_NAME}"
-		COMMAND "${GLSLC}" "${SHADER}" "-o" "${SHADER_BIN_NAME}"
-		COMMENT "Compiling ${SHADER_NAME}"
-		VERBATIM)
-	list(APPEND SPV_SHADERS "${SHADER_BIN_NAME}")
-endforeach()
-
-add_custom_target(build_shaders DEPENDS ${SPV_SHADERS})
 
 set (SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set (INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -98,4 +68,3 @@ add_custom_command(
     VERBATIM
 )
 
-add_dependencies(PEngine build_shaders)

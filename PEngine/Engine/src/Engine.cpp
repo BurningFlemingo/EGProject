@@ -1,10 +1,12 @@
 #include "Core.h"
 #include "Engine.h"
 #include "Input.h"
+#include "Cursor.h"
 #include "Logging.h"
 #include "LoggingSetup.h"
 #include "Game.h"
 #include "GameObject.h"
+#include "Platforms/Event.h"
 #include "STD/PArena.h"
 #include "STD/PMemory.h"
 #include "STD/PFileIO.h"
@@ -99,44 +101,43 @@ void Engine::shutdown(const Subsystems& systems) {
 bool Engine::update(const Subsystems& systems) {
 	Renderer::State* pRenderer{ systems.pRenderer };
 	Platform::State* pPlatform{ systems.pPlatform };
-	Engine::State* pApp{ systems.pEngine };
+	Engine::State* pEngine{ systems.pEngine };
 
-	if (pApp->isRunning && Platform::isRunning(pPlatform)) {
+	pEngine->cursor.dx = 0;
+	pEngine->cursor.dy = 0;
+
+	if (pEngine->isRunning && Platform::isRunning(pPlatform)) {
 		Platform::update(pPlatform);
 
 		Platform::Event event{};
 		bool windowResized{};
 		while (Platform::popEvent(pPlatform, &event)) {
 			switch (event.type) {
-				case Platform::EventType::key: {
-					if (event.keyEvent.action == InputAction::PRESSED) {
-						pApp->virtualKeyState[ncast<size_t>(event.keyEvent
-																.virtualCode)] =
-							true;
-						pApp->physicalKeyState[ncast<size_t>(
-							event.keyEvent.physicalCode
-						)] = true;
-					} else if (event.keyEvent.action == InputAction::RELEASED) {
-						pApp->virtualKeyState[ncast<size_t>(event.keyEvent
-																.virtualCode)] =
-							false;
-						pApp->physicalKeyState[ncast<size_t>(
-							event.keyEvent.physicalCode
-						)] = false;
-					}
-				} break;
-				case Platform::EventType::window: {
-					if (event.windowEvent.resized) {
-						windowResized = true;
-					}
-				} break;
-				default:
-					break;
+			case Platform::EventType::key: {
+				Platform::CompressedKeyState keyState{ event.keyEvent.state };
+				size_t virtualCode{ ncast<size_t>(event.keyEvent.virtualCode) };
+				size_t physicalCode{ ncast<size_t>(event.keyEvent.physicalCode
+				) };
+
+				pEngine->virtualKeyState[virtualCode] = keyState;
+				pEngine->physicalKeyState[physicalCode] = keyState;
+			} break;
+			case Platform::EventType::cursor: {
+				pEngine->cursor.dx += event.cursorEvent.dx;
+				pEngine->cursor.dy += event.cursorEvent.dy;
+			}
+			case Platform::EventType::window: {
+				if (event.windowEvent.resized) {
+					windowResized = true;
+				}
+			} break;
+			default:
+				break;
 			}
 		}
 	}
 
-	return pApp->isRunning;
+	return pEngine->isRunning;
 }
 
 Engine::UID Engine::createEntity(Engine::State* pEngine) {
@@ -169,6 +170,11 @@ void Engine::addModel(
 Engine::Transform Engine::getTransform(Engine::State* pEngine, UID uid) {
 	return pEngine->transforms[uid];
 }
+
+Engine::Cursor Engine::getCursor(Engine::State* pEngine) {
+	return pEngine->cursor;
+}
+
 void Engine::updateTransform(
 	Engine::State* pEngine, UID uid, const Transform& transform
 ) {
@@ -181,10 +187,6 @@ void Engine::run(const Subsystems& subsystems) {
 	Renderer::State* pRenderer{ subsystems.pRenderer };
 	Platform::State* pPlatform{ subsystems.pPlatform };
 	Engine::State* pEngine{ subsystems.pEngine };
-
-	if (pEngine->virtualKeyState[(size_t)InputCode::SPACE]) {
-		Platform::showCursor(pPlatform);
-	}
 
 	Game::State* pGameState{
 		pEngine->gameDll.api.startup(&pEngine->allocationRegistry, subsystems)
@@ -220,14 +222,30 @@ void Engine::run(const Subsystems& subsystems) {
 	pEngine->gameDll.api.shutdown(pGameState);
 }
 
-bool Engine::getPhysicalKeyDown(Engine::State* pEngine, InputCode keyCode) {
-	bool isPressed{ pEngine->physicalKeyState[ncast<size_t>(keyCode)] };
-	return isPressed;
+Engine::KeyState Engine::getPKeyState(Engine::State* pEngine, KeyCode keyCode) {
+	Platform::CompressedKeyState keyState{
+		pEngine->physicalKeyState[(size_t)keyCode]
+	};
+
+	return Engine::KeyState{
+		.wasPressed = !keyState.isUp && !keyState.wasDown,
+		.wasReleased = keyState.isUp && keyState.wasDown,
+		.isDown = !keyState.isUp,
+		.isUp = keyState.isUp,
+	};
 }
 
-bool Engine::getVirtualKeyDown(Engine::State* pEngine, InputCode keyCode) {
-	bool isPressed{ pEngine->virtualKeyState[ncast<size_t>(keyCode)] };
-	return isPressed;
+Engine::KeyState Engine::getVKeyState(Engine::State* pEngine, KeyCode keyCode) {
+	Platform::CompressedKeyState keyState{
+		pEngine->virtualKeyState[(size_t)keyCode]
+	};
+
+	return Engine::KeyState{
+		.wasPressed = !keyState.isUp && !keyState.wasDown,
+		.wasReleased = keyState.isUp && keyState.wasDown,
+		.isDown = !keyState.isUp,
+		.isUp = keyState.isUp,
+	};
 }
 
 namespace {

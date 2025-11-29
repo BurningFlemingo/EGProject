@@ -4,26 +4,10 @@
 #include "STD/PArena.h"
 #include "STD/PCircularBuffer.h"
 
-#include "Input.h"
+#include "Event.h"
 
 namespace Platform {
 	struct State;
-
-	enum class EventType { key, window, COUNT };
-
-	struct Event {
-		EventType type;
-		union {
-			struct {
-				InputAction action;
-				InputCode virtualCode;
-				InputCode physicalCode;
-			} keyEvent;
-			struct {
-				bool resized;
-			} windowEvent;
-		};
-	};
 
 	size_t getSizeofState();
 
@@ -37,12 +21,6 @@ namespace Platform {
 	bool popEvent(
 		State* state, Event* eventOut
 	);	// returns true if an event was popped
-
-	void captureCursor(State* pState);
-	void releaseCursor(State* pState);
-
-	void hideCursor(State* pState);
-	void showCursor(State* pState);
 
 	bool isRunning(State* state);
 

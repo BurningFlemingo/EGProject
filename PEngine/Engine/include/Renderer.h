@@ -3,6 +3,4 @@
 
 namespace Renderer {
 	struct State;
-
-	void setMVPMatrix(State* pState, const pstd::Mat4& mvpMat);
 }  // namespace Renderer
