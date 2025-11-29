@@ -62,6 +62,9 @@ namespace Renderer {
 
 		pstd::Array<pstd::Array<Renderable>> renderables;
 
+		pstd::Mat4 viewMatrix;
+		pstd::Mat4 projectionMatrix;
+
 		uint32_t frameInFlight;
 		pstd::DArray<pstd::Delegate<void()>*> deleters;
 

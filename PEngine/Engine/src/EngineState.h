@@ -17,6 +17,13 @@ struct GameDll {
 
 namespace Engine {
 
+	struct KeyTransitionState {
+		bool keyWasUp;
+		bool keyWasDown;
+	};
+
+	struct KeyCurrentState {};
+
 	struct State {
 		pstd::AllocationRegistry allocationRegistry;
 		pstd::Arena scratchArena;
@@ -26,10 +33,11 @@ namespace Engine {
 		const char* originalDllPathCString;
 		bool isRunning;
 
-		Platform::CompressedKeyState
-			virtualKeyState[ncast<size_t>(KeyCode::COUNT)]{};
-		Platform::CompressedKeyState
-			physicalKeyState[ncast<size_t>(KeyCode::COUNT)]{};
+		KeyTransitionState physicalKeyTransition[ncast<size_t>(KeyCode::COUNT)];
+		KeyTransitionState virtualKeyTransition[ncast<size_t>(KeyCode::COUNT)];
+
+		bool physicalKeyDown[ncast<size_t>(KeyCode::COUNT)];
+		bool virtualKeyDown[ncast<size_t>(KeyCode::COUNT)];
 
 		Cursor cursor;
 

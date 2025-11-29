@@ -1,7 +1,6 @@
-#include "Engine.h"
+#include "Camera.h"
 #include "Cursor.h"
 #include "Game.h"
-#include "Renderer.h"
 #include "Logging.h"
 #include "STD/PArena.h"
 #include "STD/PMemory.h"
@@ -18,6 +17,7 @@ namespace Game {
 		pstd::Arena gameArena;
 		Engine::UID cube1{};
 		Engine::UID cube2{};
+		Renderer::Camera camera;
 
 		pstd::Vec3 pos;
 
@@ -46,9 +46,19 @@ GAME_API Game::State* Game::startup(
 	Engine::addModel(subsystems.pEngine, cube2, ".\\assets\\models\\cube.obj");
 	Engine::addTransform(subsystems.pEngine, cube2, transform);
 
+	Renderer::Camera camera{
+		.transform = Transform{ .pos{ 0, 0, 5 }, .rot = { 0, 0, 0, 1 } },
+		.fovRadians = pstd::toRadians(90),
+		.nearPlane = 0.1,
+		.farPlane = 100.0,
+	};
+	Renderer::setCamera(subsystems.pRenderer, camera);
+
 	Game::State* gameState{ pstd::alloc<Game::State>(&gameArena) };
-	Game::State* statePtr{ new (gameState
-	) Game::State{ .gameArena = gameArena, .cube1 = cube1, .cube2 = cube2 } };
+	Game::State* statePtr{ new (gameState) Game::State{ .gameArena = gameArena,
+														.cube1 = cube1,
+														.cube2 = cube2,
+														.camera = camera } };
 
 	return statePtr;
 }
@@ -101,11 +111,12 @@ GAME_API bool Game::update(Subsystems subsystems, State* state, float dTime) {
 
 	pstd::Rot3 rot{ pstd::composeRotor(yawRot, pitchRot) };
 
-	state->pos += pstd::calcRotated(movement, rot);
+	state->pos -= pstd::calcRotated(movement, rot);
 
-	Transform transform1{ .pos = state->pos, .rot = rot };
-	Transform transform2{ .pos = state->pos + pstd::Vec3{ 5.f, 0.f, 0.f },
-						  .rot = rot };
+	state->camera.transform = Transform{ .pos = state->pos, .rot = rot };
+
+	Transform transform1{ .pos = { 0, 0, 1 } };
+	Transform transform2{ .pos = { 2, 0, 1 } };
 
 	updateTransform(pEngine, state->cube1, transform1);
 	updateTransform(pEngine, state->cube2, transform2);

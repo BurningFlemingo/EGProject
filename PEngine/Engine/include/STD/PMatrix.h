@@ -185,5 +185,6 @@ namespace pstd {
 	);
 
 	Mat4 calcLookAtMatrix(const Vec3& from, const Vec3& to, Vec3 up);
+	Mat4 calcLookAtMatrix(const Vec3& eye, const Rot3& rot);
 
 }  // namespace pstd

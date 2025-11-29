@@ -331,7 +331,7 @@ namespace {
 		switch (uMsg) {
 		case WM_CLOSE: {
 			DestroyWindow(hwnd);
-		}
+		} break;
 		case WM_DESTROY: {
 			windowData->isRunning = false;
 		} break;
@@ -344,11 +344,17 @@ namespace {
 			auto keyWasDown{ ncast<bool>((lParam >> 30) & 0x1) };
 			auto keyIsUp{ ncast<bool>((lParam >> 31) & 0x1) };
 
+			if (keyWasDown && !keyIsUp) {
+				// not handling repeating, repeate event can come after last
+				// keyup, causing issues like sticky keys;
+				break;
+			}
+
 			KeyCode virtualCode{ virtualToKeyCode(wParam) };
 			KeyCode physicalCode{ physicalToKeyCode(scancode) };
 
-			Platform::CompressedKeyState keyState{ .isUp = keyIsUp,
-												   .wasDown = keyWasDown };
+			Platform::CompressedKeyState keyState{ .isDown = !keyIsUp,
+												   .wasUp = !keyWasDown };
 
 			Platform::Event event{ .type = Platform::EventType::key,
 								   .keyEvent = { .state = keyState,
@@ -392,10 +398,15 @@ namespace {
 				pstd::pushBack(&windowData->eventBuffer, event);
 			}
 		} break;
+		case WM_KILLFOCUS: {
+			Platform::Event event{ .type = Platform::EventType::window,
+								   .windowEvent = { .lostFocus = true } };
+			pstd::pushBack(&windowData->eventBuffer, event);
+		} break;
 		case WM_SIZE: {
 			Platform::Event event{ .type = Platform::EventType::window,
 								   .windowEvent = { .resized = true } };
-			pstd::pushBackOverwrite(&windowData->eventBuffer, event);
+			pstd::pushBack(&windowData->eventBuffer, event);
 		} break;
 		default: {
 			res = DefWindowProc(hwnd, uMsg, wParam, lParam);

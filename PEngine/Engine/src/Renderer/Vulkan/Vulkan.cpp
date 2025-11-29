@@ -1,6 +1,6 @@
 #include "STD/PMemory.h"
 #include "STD/PVector.h"
-#include "Renderer.h"
+#include "Camera.h"
 #include "Renderer/Renderer.h"
 
 #include "DebugMessenger.h"
@@ -25,6 +25,7 @@
 
 #include "AssetLoader.h"
 
+#include <ranges>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
@@ -560,6 +561,21 @@ Renderer::State* Renderer::startup(
 			   .renderables = renderables };
 }
 
+void Renderer::setCamera(State* pState, const Camera& camera) {
+	float ar{ ncast<float>(pState->swapchain.createInfo.imageExtent.width) /
+			  ncast<float>(pState->swapchain.createInfo.imageExtent.height) };
+	pstd::Mat4 perspProjMatrix{ pstd::calcPerspectiveMatrix(
+		camera.fovRadians, ar, camera.nearPlane, camera.farPlane
+	) };
+
+	pstd::Mat4 viewMatrix{
+		pstd::calcLookAtMatrix(camera.transform.pos, camera.transform.rot)
+	};
+
+	pState->projectionMatrix = perspProjMatrix;
+	pState->viewMatrix = viewMatrix;
+}
+
 void Renderer::setModels(
 	Renderer::State* pState,
 	pstd::Arena scratchArena,
@@ -771,16 +787,6 @@ void Renderer::render(State* state, bool windowResized) {
 
 	const FrameCtx& frameCtx{ state->frameContexts[state->frameInFlight] };
 
-	float ar{ ncast<float>(state->swapchain.createInfo.imageExtent.width) /
-			  ncast<float>(state->swapchain.createInfo.imageExtent.height) };
-	pstd::Mat4 perspProjMatrix{
-		pstd::calcPerspectiveMatrix(pstd::toRadians(90), ar, 0.001, 25)
-	};
-
-	pstd::Mat4 viewMatrix{
-		pstd::calcLookAtMatrix({ 0.f, 0.f, 0.f }, { 0.f, 0.f, 1.f }, pstd::UP)
-	};
-
 	vkCmdBindIndexBuffer(
 		state->cmdBuffers[state->frameInFlight],
 		frameCtx.indexBuffer.handle,
@@ -792,8 +798,8 @@ void Renderer::render(State* state, bool windowResized) {
 		state->renderables[state->frameInFlight]
 	};
 
-	UniformBufferObject ubo{ .viewMatrix = viewMatrix,
-							 .projectionMatrix = perspProjMatrix };
+	UniformBufferObject ubo{ .viewMatrix = state->viewMatrix,
+							 .projectionMatrix = state->projectionMatrix };
 
 	memcpy(
 		state->mappedUBOs[state->frameInFlight],

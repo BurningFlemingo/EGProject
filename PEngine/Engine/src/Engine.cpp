@@ -24,6 +24,7 @@
 namespace {
 	GameDll loadGameDll(pstd::Arena scratchArena);
 	void unloadGameDll(GameDll dll);
+	void resetKeyState(Engine::State* pEngine);
 }  // namespace
 
 Engine::Subsystems Engine::startup() {
@@ -109,26 +110,51 @@ bool Engine::update(const Subsystems& systems) {
 	if (pEngine->isRunning && Platform::isRunning(pPlatform)) {
 		Platform::update(pPlatform);
 
+		memset(
+			pEngine->virtualKeyTransition,
+			0,
+			sizeof(pEngine->virtualKeyTransition)
+		);
+		memset(
+			pEngine->physicalKeyTransition,
+			0,
+			sizeof(pEngine->physicalKeyTransition)
+		);
+
 		Platform::Event event{};
 		bool windowResized{};
 		while (Platform::popEvent(pPlatform, &event)) {
 			switch (event.type) {
 			case Platform::EventType::key: {
 				Platform::CompressedKeyState keyState{ event.keyEvent.state };
+
 				size_t virtualCode{ ncast<size_t>(event.keyEvent.virtualCode) };
 				size_t physicalCode{ ncast<size_t>(event.keyEvent.physicalCode
 				) };
 
-				pEngine->virtualKeyState[virtualCode] = keyState;
-				pEngine->physicalKeyState[physicalCode] = keyState;
+				pEngine->virtualKeyTransition[virtualCode].keyWasUp |=
+					keyState.wasUp;
+				pEngine->virtualKeyTransition[virtualCode].keyWasDown |=
+					!keyState.wasUp;
+
+				pEngine->physicalKeyTransition[physicalCode].keyWasUp |=
+					keyState.wasUp;
+				pEngine->physicalKeyTransition[physicalCode].keyWasDown |=
+					!keyState.wasUp;
+
+				pEngine->virtualKeyDown[virtualCode] = keyState.isDown;
+				pEngine->physicalKeyDown[physicalCode] = keyState.isDown;
 			} break;
 			case Platform::EventType::cursor: {
 				pEngine->cursor.dx += event.cursorEvent.dx;
 				pEngine->cursor.dy += event.cursorEvent.dy;
-			}
+			} break;
 			case Platform::EventType::window: {
 				if (event.windowEvent.resized) {
 					windowResized = true;
+				}
+				if (event.windowEvent.lostFocus) {
+					resetKeyState(pEngine);
 				}
 			} break;
 			default:
@@ -223,31 +249,32 @@ void Engine::run(const Subsystems& subsystems) {
 }
 
 Engine::KeyState Engine::getPKeyState(Engine::State* pEngine, KeyCode keyCode) {
-	Platform::CompressedKeyState keyState{
-		pEngine->physicalKeyState[(size_t)keyCode]
+	KeyTransitionState transitionState{
+		pEngine->physicalKeyTransition[(size_t)keyCode]
 	};
+	bool isDown{ pEngine->physicalKeyDown[(size_t)keyCode] };
 
 	return Engine::KeyState{
-		.wasPressed = !keyState.isUp && !keyState.wasDown,
-		.wasReleased = keyState.isUp && keyState.wasDown,
-		.isDown = !keyState.isUp,
-		.isUp = keyState.isUp,
+		.wasPressed = transitionState.keyWasUp,
+		.wasReleased = transitionState.keyWasDown,
+		.isDown = isDown,
+		.isUp = !isDown,
 	};
 }
 
 Engine::KeyState Engine::getVKeyState(Engine::State* pEngine, KeyCode keyCode) {
-	Platform::CompressedKeyState keyState{
-		pEngine->virtualKeyState[(size_t)keyCode]
+	KeyTransitionState transitionState{
+		pEngine->virtualKeyTransition[(size_t)keyCode]
 	};
+	bool isDown{ pEngine->virtualKeyDown[(size_t)keyCode] };
 
 	return Engine::KeyState{
-		.wasPressed = !keyState.isUp && !keyState.wasDown,
-		.wasReleased = keyState.isUp && keyState.wasDown,
-		.isDown = !keyState.isUp,
-		.isUp = keyState.isUp,
+		.wasPressed = transitionState.keyWasUp,
+		.wasReleased = transitionState.keyWasDown,
+		.isDown = isDown,
+		.isUp = !isDown,
 	};
 }
-
 namespace {
 	GameDll loadGameDll(pstd::Arena scratchArena) {
 		static uint32_t loadedDllSlot{};
@@ -313,5 +340,10 @@ namespace {
 		if (dll.handle) {
 			pstd::unloadDll(dll.handle);
 		}
+	}
+
+	void resetKeyState(Engine::State* pEngine) {
+		memset(pEngine->physicalKeyDown, 0, sizeof(pEngine->physicalKeyDown));
+		memset(pEngine->virtualKeyDown, 0, sizeof(pEngine->virtualKeyDown));
 	}
 }  // namespace

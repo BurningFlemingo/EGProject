@@ -6,8 +6,8 @@ namespace Platform {
 	enum class EventType { key, cursor, window, COUNT };
 
 	struct CompressedKeyState {
-		bool isUp{ true };
-		bool wasDown;
+		bool isDown;
+		bool wasUp;
 	};
 
 	struct Event {
@@ -24,6 +24,7 @@ namespace Platform {
 			} cursorEvent;
 			struct {
 				bool resized;
+				bool lostFocus;
 			} windowEvent;
 		};
 	};

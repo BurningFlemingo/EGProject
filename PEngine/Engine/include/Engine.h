@@ -7,9 +7,11 @@
 
 #include "Input.h"
 
-#include "Renderer.h"
-
 namespace Platform {
+	struct State;
+}
+
+namespace Renderer {
 	struct State;
 }
 
@@ -25,10 +27,6 @@ namespace Engine {
 	struct Cursor {
 		float dx;
 		float dy;
-	};
-
-	struct Camera {
-		Transform transform;
 	};
 
 	using UID = size_t;

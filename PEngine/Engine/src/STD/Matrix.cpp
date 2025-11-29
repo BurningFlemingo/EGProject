@@ -117,6 +117,22 @@ Mat4 pstd::calcLookAtMatrix(const Vec3& from, const Vec3& to, Vec3 up) {
 	};
 }
 
+Mat4 pstd::calcLookAtMatrix(const Vec3& eye, const Rot3& rot) {
+	Vec3 x_basis{ pstd::calcNormalized(pstd::calcRotated(pstd::RIGHT, rot)) };
+	Vec3 y_basis{ pstd::calcNormalized(pstd::calcRotated(pstd::UP, rot)) };
+	Vec3 z_basis{ pstd::calcNormalized(pstd::calcRotated(pstd::FORWARD, rot)) };
+
+	return Mat4{
+		.col1{ .x = x_basis.x, .y = y_basis.x, .z = z_basis.x, .w = 0.0 },
+		.col2{ .x = x_basis.y, .y = y_basis.y, .z = z_basis.y, .w = 0.0 },
+		.col3{ .x = x_basis.z, .y = y_basis.z, .z = z_basis.z, .w = 0.0 },
+		.col4{ .x = -dot(x_basis, eye),
+			   .y = -dot(y_basis, eye),
+			   .z = -dot(z_basis, eye),
+			   .w = 1.0 },
+	};
+}
+
 #define INIT_FUNCTIONS(n)                                                    \
 	template Vec<n> pstd::operator*(const Mat<n>& mat, const Vec<n>& vec);   \
 	template Mat<n> pstd::operator*(const Mat<n>& mat1, const Mat<n>& mat2); \
