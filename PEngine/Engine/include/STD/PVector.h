@@ -79,7 +79,7 @@ namespace pstd {
 
 	constexpr Vec3 UP{ .y = 1.f };
 	constexpr Vec3 RIGHT{ .x = 1.f };
-	constexpr Vec3 FORWARD{ .z = 1.f };	 // vulkan points into the screen
+	constexpr Vec3 FORWARD{ .z = 1.f };
 
 	template<uint32_t n>
 	Vec<n> operator+(const Vec<n>& a, const Vec<n>& b);

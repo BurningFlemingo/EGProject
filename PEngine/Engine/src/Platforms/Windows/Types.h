@@ -11,6 +11,9 @@ struct WindowData {
 	bool isRunning;
 	static constexpr size_t eventBufferCapacity{ 1024 };
 	pstd::CircularBuffer<Platform::Event> eventBuffer;
+
+	int xMousePosition;
+	int yMousePosition;
 };
 
 namespace Platform {

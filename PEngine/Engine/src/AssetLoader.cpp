@@ -4,6 +4,7 @@
 #include "STD/PFileIO.h"
 #include "STD/PAlgorithm.h"
 #include "STD/PString.h"
+#include "STD/PHashMap.h"
 
 namespace {
 #pragma pack(push, 1)
@@ -54,6 +55,11 @@ namespace {
 		pstd::Array<uint32_t>* pPositionIndices,
 		pstd::Array<uint32_t>* pUVIndices
 	);
+
+	struct OBJKey {
+		uint32_t positionIndex;
+		uint32_t uvIndex;
+	};
 
 }  // namespace
 
@@ -145,6 +151,7 @@ Engine::MeshData Engine::loadOBJ(
 	) };
 
 	OBJ obj{ parseOBJ(&scratchArena, *pArena, lines) };
+
 	uint32_t indexCount{
 		ncast<uint32_t>(max(obj.positionIndices.count, obj.uvIndices.count))
 	};

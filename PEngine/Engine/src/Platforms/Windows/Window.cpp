@@ -10,6 +10,7 @@
 
 #include <Windows.h>
 #include <winuser.h>
+#include <Windowsx.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
@@ -23,14 +24,6 @@ namespace {
 	InputCode physicalToInputCode(const uint8_t scancode);
 }  // namespace
 
-size_t Platform::getSizeofState() {
-	size_t stateTypeSize{ sizeof(State) };
-	size_t bufferSize{ sizeof(Event) * WindowData::eventBufferCapacity };
-	size_t padding{ 16 };  // for alignment
-	size_t totalSize{ stateTypeSize + bufferSize + padding };
-	return totalSize;
-}
-
 Platform::State* Platform::startup(
 	pstd::Arena* pPersistArena,
 	const char* windowName,
@@ -43,6 +36,8 @@ Platform::State* Platform::startup(
 	};
 
 	HINSTANCE hInstance{ GetModuleHandle(0) };
+
+	// ShowCursor(false);
 
 	const char windowClassName[]{ "window class" };
 
@@ -106,6 +101,15 @@ Platform::State* Platform::startup(
 	}
 
 	ShowWindow(hwnd, SW_SHOW);
+
+	SetCapture(hwnd);
+
+	RECT rect;
+	GetClientRect(hwnd, &rect);
+	ClientToScreen(hwnd, (POINT*)&rect.left);
+	ClientToScreen(hwnd, (POINT*)&rect.right);
+
+	ClipCursor(&rect);
 
 	return new (state)
 		State{ .windowData = windowData, .hwnd = hwnd, .hInstance = hInstance };
@@ -278,6 +282,20 @@ namespace {
 		return keyCode;
 	}
 
+	struct Dimensions {
+		int width;
+		int height;
+	};
+
+	Dimensions calcClientDimensions(HWND hwnd) {
+		RECT clientRect{};
+		GetClientRect(hwnd, &clientRect);
+		int width{ clientRect.right - clientRect.left };
+		int height{ clientRect.bottom - clientRect.top };
+
+		return { .width = width, .height = height };
+	}
+
 	LRESULT CALLBACK
 		windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		LRESULT res{};
@@ -331,6 +349,29 @@ namespace {
 													 .physicalCode =
 														 physicalCode } };
 				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
+			} break;
+			case WM_MOUSEMOVE: {
+				int xPos = GET_X_LPARAM(lParam);
+				int yPos = GET_Y_LPARAM(lParam);
+
+				RECT rect;
+				GetClientRect(hwnd, &rect);
+				ClientToScreen(hwnd, (POINT*)&rect.left);
+				ClientToScreen(hwnd, (POINT*)&rect.right);
+
+				int width{ rect.right - rect.left };
+				int height{ rect.bottom - rect.top };
+
+				int centerX{ width / 2 };
+				int centerY{ height / 2 };
+
+				int dxPos{ xPos - centerX };
+				int dyPos{ yPos - centerY };
+
+				SetCursorPos(0, 0);
+
+				// LOG_INFO("(%i, %i)\n", dxPos, dyPos);
+				LOG_INFO("%i %i \n", width, height);
 			} break;
 			case WM_SIZE: {
 				Platform::Event event{ .type = Platform::EventType::window,

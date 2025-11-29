@@ -139,7 +139,7 @@ namespace pstd {
 		mat->col4.z += offset.z;
 	}
 
-	inline Mat4 calcTranlsated(const Mat4& mat, const Vec3& offset) {
+	inline Mat4 calcTranslated(const Mat4& mat, const Vec3& offset) {
 		Mat4 res{ mat };
 		translate(&res, offset);
 		return res;

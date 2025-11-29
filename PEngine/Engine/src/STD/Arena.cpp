@@ -35,8 +35,8 @@ void* pstd::alloc(Arena* pArena, size_t size, uint32_t alignment) {
 
 	ASSERT((size + alignedOffset) <= pArena->size);
 
-	uintptr_t alignedOffsetAddress{ baseAddress + alignedOffset };
-	pArena->offset = alignedOffset + size;
+	void* alignedOffsetAddress{ rcast<void*>(baseAddress + alignedOffset) };
 
-	return rcast<void*>(alignedOffsetAddress);
+	pArena->offset = alignedOffset + size;
+	return alignedOffsetAddress;
 }

@@ -590,6 +590,7 @@ void Renderer::setModels(
 		Engine::MeshData mesh{ meshes[j] };
 		renderables[j] = {
 			.indexOffset = indexOffset,
+			.vertexOffset = vertexOffset,
 			.indexCount = ncast<uint32_t>(mesh.indexCount),
 		};
 
@@ -770,7 +771,8 @@ void Renderer::render(State* state, bool windowResized) {
 
 	const FrameCtx& frameCtx{ state->frameContexts[state->frameInFlight] };
 
-	float ar{ 1920.0 / 1080.0 };
+	float ar{ ncast<float>(state->swapchain.createInfo.imageExtent.width) /
+			  ncast<float>(state->swapchain.createInfo.imageExtent.height) };
 	pstd::Mat4 perspProjMatrix{
 		pstd::calcPerspectiveMatrix(pstd::toRadians(90), ar, 0.001, 25)
 	};
@@ -790,36 +792,36 @@ void Renderer::render(State* state, bool windowResized) {
 		state->renderables[state->frameInFlight]
 	};
 
+	UniformBufferObject ubo{ .viewMatrix = viewMatrix,
+							 .projectionMatrix = perspProjMatrix };
+
+	memcpy(
+		state->mappedUBOs[state->frameInFlight],
+		&ubo,
+		sizeof(UniformBufferObject)
+	);
+
+	vkCmdBindDescriptorSets(
+		state->cmdBuffers[state->frameInFlight],
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		state->graphicsPipelineLayout,
+		0,
+		1,
+		&state->descriptorSets[state->frameInFlight],
+		0,
+		nullptr
+	);
+
 	for (size_t i{}; i < renderables.count; i++) {
 		const Renderable& renderable{ renderables[i] };
 
 		pstd::Mat4 rotMat{ pstd::calcRotationMatrix<4>(renderable.transform.rot
 		) };
 
-		pstd::Mat4 modelMat{ pstd::calcTranlsated(
+		pstd::Mat4 modelMat{ pstd::calcTranslated(
 			pstd::getIdentityMatrix<4>(), renderable.transform.pos
 		) };
 		modelMat = modelMat * rotMat;
-
-		UniformBufferObject ubo{ .viewMatrix = viewMatrix,
-								 .projectionMatrix = perspProjMatrix };
-
-		memcpy(
-			state->mappedUBOs[state->frameInFlight],
-			&ubo,
-			sizeof(UniformBufferObject)
-		);
-
-		vkCmdBindDescriptorSets(
-			state->cmdBuffers[state->frameInFlight],
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			state->graphicsPipelineLayout,
-			0,
-			1,
-			&state->descriptorSets[state->frameInFlight],
-			0,
-			nullptr
-		);
 
 		PushConstants pushConstants{ .vertexBufferAddress =
 										 frameCtx.vertexDeviceAddress,
