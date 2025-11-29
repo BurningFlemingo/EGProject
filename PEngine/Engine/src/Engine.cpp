@@ -67,6 +67,9 @@ Engine::Subsystems Engine::startup() {
 		&allocationRegistry, &subsystemArena, scratchArena, *pPlatform
 	) };
 
+	Platform::hideCursor(pPlatform);
+	Platform::captureCursor(pPlatform);
+
 	Engine::State* pEngine =
 		new (pstd::alloc<Engine::State>(&subsystemArena)) Engine::State{
 			.allocationRegistry = allocationRegistry,
@@ -178,6 +181,10 @@ void Engine::run(const Subsystems& subsystems) {
 	Renderer::State* pRenderer{ subsystems.pRenderer };
 	Platform::State* pPlatform{ subsystems.pPlatform };
 	Engine::State* pEngine{ subsystems.pEngine };
+
+	if (pEngine->virtualKeyState[(size_t)InputCode::SPACE]) {
+		Platform::showCursor(pPlatform);
+	}
 
 	Game::State* pGameState{
 		pEngine->gameDll.api.startup(&pEngine->allocationRegistry, subsystems)

@@ -1,4 +1,4 @@
-file(GLOB oldPDBs "${CMAKE_BINARY_DIR}/Game_*.pdb")
-foreach(pdb ${oldPDBs})
+file(GLOB old_pdbs "${BINARY_DIR}/Game_*.pdb")
+foreach(pdb ${old_pdbs})
     file(REMOVE "${pdb}")
 endforeach()

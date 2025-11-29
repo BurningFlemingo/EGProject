@@ -31,6 +31,7 @@ GAME_API Game::State* Game::startup(
 	Engine::UID cube2{ Engine::createEntity(subsystems.pEngine) };
 	Engine::Transform transform{ .pos = pstd::Vec3{ 0.f, 0.f, 3.f } };
 
+	// heyyy
 	Engine::addModel(subsystems.pEngine, cube1, ".\\assets\\models\\cube.obj");
 	Engine::addTransform(subsystems.pEngine, cube1, transform);
 

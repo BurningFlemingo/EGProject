@@ -15,17 +15,23 @@ add_library(${PROJ_NAME} SHARED ${SRC_FILES})
 target_link_libraries(${PROJ_NAME} PRIVATE PEngine)
 target_compile_definitions(${PROJ_NAME} PRIVATE GAME_PROJECT LOG_LEVEL_INFO LOG_LEVEL_WARN LOG_LEVEL_ERROR)
 
-string(TIMESTAMP PDB_TIMESTAMP "%Y%m%d_%H%M%S")
-set_target_properties(${PROJ_NAME} PROPERTIES
-	LINK_FLAGS "/PDB:Game_${PDB_TIMESTAMP}.pdb" DEPENDS cleanPdbs
-)
-
-file(GLOB old_pdbs "${CMAKE_BINARY_DIR}/Game_*.pdb")
-foreach(pdb ${old_pdbs})
-    file(REMOVE "${pdb}")
-endforeach()
-
-add_custom_command(TARGET ${PROJ_NAME} PRE_BUILD
-   COMMAND ${CMAKE_COMMAND} -E echo "Cleaning old PDBs..."
-   COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/scripts/remove_pdbs.cmake || true
-)
+if(MSVC)
+	add_custom_target(clean_pdbs
+        COMMAND ${CMAKE_COMMAND}
+		-DBINARY_DIR=${CMAKE_BINARY_DIR}
+		-P ${CMAKE_SOURCE_DIR}/scripts/remove_pdbs.cmake
+        COMMENT "Removing out of date PDB files..."
+        VERBATIM
+    )
+    add_dependencies(${PROJECT_NAME} clean_pdbs)
+	
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+		-DPDB_FILE=$<TARGET_PDB_FILE:${PROJECT_NAME}>
+		-DBINARY_DIR=$<TARGET_FILE_DIR:${PROJECT_NAME}>
+		-DPROJ_NAME=${PROJECT_NAME}
+		-P ${CMAKE_SOURCE_DIR}/scripts/timestamp_pdb.cmake
+        COMMENT "Creating timestamped PDB"
+        VERBATIM
+    )
+endif()

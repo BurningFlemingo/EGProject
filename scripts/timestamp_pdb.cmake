@@ -1,0 +1,6 @@
+string(TIMESTAMP CURRENT_TIME "%Y%m%d_%H%M%S")
+
+file(RENAME
+	${PDB_FILE}
+	${BINARY_DIR}/${PROJ_NAME}_${CURRENT_TIME}.pdb
+)

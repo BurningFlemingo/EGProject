@@ -102,15 +102,6 @@ Platform::State* Platform::startup(
 
 	ShowWindow(hwnd, SW_SHOW);
 
-	SetCapture(hwnd);
-
-	RECT rect;
-	GetClientRect(hwnd, &rect);
-	ClientToScreen(hwnd, (POINT*)&rect.left);
-	ClientToScreen(hwnd, (POINT*)&rect.right);
-
-	ClipCursor(&rect);
-
 	return new (state)
 		State{ .windowData = windowData, .hwnd = hwnd, .hInstance = hInstance };
 }
@@ -134,6 +125,26 @@ bool Platform::isRunning(Platform::State* state) {
 
 bool Platform::popEvent(Platform::State* state, Event* outEvent) {
 	return pstd::popBack(&state->windowData.eventBuffer, outEvent);
+}
+
+void Platform::captureCursor(State* pState) {
+	RECT rect;
+	GetClientRect(pState->hwnd, &rect);
+
+	ClientToScreen(pState->hwnd, rcast<POINT*>(&rect.left));
+	ClientToScreen(pState->hwnd, rcast<POINT*>(&rect.right));
+
+	ClipCursor(&rect);
+}
+void Platform::releaseCursor(State* pState) {
+	ClipCursor(NULL);
+}
+
+void Platform::hideCursor(State* pState) {
+	ShowCursor(FALSE);
+}
+void Platform::showCursor(State* pState) {
+	ShowCursor(TRUE);
 }
 
 namespace {
@@ -349,29 +360,6 @@ namespace {
 													 .physicalCode =
 														 physicalCode } };
 				pstd::pushBackOverwrite(&windowData->eventBuffer, event);
-			} break;
-			case WM_MOUSEMOVE: {
-				int xPos = GET_X_LPARAM(lParam);
-				int yPos = GET_Y_LPARAM(lParam);
-
-				RECT rect;
-				GetClientRect(hwnd, &rect);
-				ClientToScreen(hwnd, (POINT*)&rect.left);
-				ClientToScreen(hwnd, (POINT*)&rect.right);
-
-				int width{ rect.right - rect.left };
-				int height{ rect.bottom - rect.top };
-
-				int centerX{ width / 2 };
-				int centerY{ height / 2 };
-
-				int dxPos{ xPos - centerX };
-				int dyPos{ yPos - centerY };
-
-				SetCursorPos(0, 0);
-
-				// LOG_INFO("(%i, %i)\n", dxPos, dyPos);
-				LOG_INFO("%i %i \n", width, height);
 			} break;
 			case WM_SIZE: {
 				Platform::Event event{ .type = Platform::EventType::window,

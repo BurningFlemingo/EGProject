@@ -21,3 +21,12 @@ target_compile_definitions(PEngineRuntime PRIVATE LOG_LEVEL_INFO LOG_LEVEL_WARN 
 target_include_directories(PEngineRuntime
 	PRIVATE ${SRC_DIR} ${ENGINE_SRC_DIR}
 )
+
+add_custom_target(copy_assets ALL
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+	${CMAKE_SOURCE_DIR}/assets
+	${CMAKE_BINARY_DIR}/assets
+	COMMENT "Updating binary assets folder"
+)
+
+add_dependencies(PEngineRuntime copy_assets)

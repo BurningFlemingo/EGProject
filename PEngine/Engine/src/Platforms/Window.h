@@ -38,6 +38,12 @@ namespace Platform {
 		State* state, Event* eventOut
 	);	// returns true if an event was popped
 
+	void captureCursor(State* pState);
+	void releaseCursor(State* pState);
+
+	void hideCursor(State* pState);
+	void showCursor(State* pState);
+
 	bool isRunning(State* state);
 
 	void update(State* state);
