@@ -5,9 +5,13 @@
 
 namespace Engine {
 
-	Subsystems startup();
-	bool update(const Subsystems& state);
-	void run(const Subsystems& state);
+	Subsystems startup(pstd::AllocationRegistry* pAllocRegistry);
+	bool update(
+		pstd::AllocationRegistry* pAllocRegistry, const Subsystems& state
+	);
+	// returns isRunning
+	bool
+		tick(pstd::AllocationRegistry* pAllocRegistry, const Subsystems& state);
 	void shutdown(const Subsystems& state);
 
 }  // namespace Engine

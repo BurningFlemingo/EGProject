@@ -67,7 +67,7 @@ namespace pstd {
 	};
 
 	struct Rot3 {  // rotor
-		float scalar;
+		float scalar{ 1 };
 		float xy;
 		float yz;
 		float zx;

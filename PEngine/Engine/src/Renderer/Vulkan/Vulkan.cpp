@@ -25,7 +25,6 @@
 
 #include "AssetLoader.h"
 
-#include <ranges>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
@@ -51,7 +50,7 @@ Renderer::State* Renderer::startup(
 	pstd::Arena scratchArena,
 	const Platform::State& platformState
 ) {
-	VkInstance instance{ createInstance(*pPersistArena, scratchArena) };
+	VkInstance instance{ createInstance(scratchArena) };
 
 	VkDebugUtilsMessengerEXT debugMessenger{ createDebugMessenger(instance) };
 
@@ -218,9 +217,9 @@ Renderer::State* Renderer::startup(
 		&mappedData
 	);
 
-	Engine::TextureData missingTexture{
-		Engine::loadBMP(pPersistArena, "assets\\textures\\Missing_Texture.bmp")
-	};
+	Engine::TextureData missingTexture{ Engine::loadTexture(
+		pPersistArena, "generated\\textures\\Missing_Texture.texture"
+	) };
 	size_t missingTextureSize{ missingTexture.width * missingTexture.height *
 							   sizeof(missingTexture.pPixels[0]) };
 
@@ -564,6 +563,7 @@ Renderer::State* Renderer::startup(
 void Renderer::setCamera(State* pState, const Camera& camera) {
 	float ar{ ncast<float>(pState->swapchain.createInfo.imageExtent.width) /
 			  ncast<float>(pState->swapchain.createInfo.imageExtent.height) };
+
 	pstd::Mat4 perspProjMatrix{ pstd::calcPerspectiveMatrix(
 		camera.fovRadians, ar, camera.nearPlane, camera.farPlane
 	) };
@@ -796,6 +796,16 @@ void Renderer::render(State* state, bool windowResized) {
 
 	const pstd::Array<Renderable>& renderables{
 		state->renderables[state->frameInFlight]
+	};
+
+	float ar{ ncast<float>(state->swapchain.createInfo.imageExtent.width) /
+
+			  ncast<float>(state->swapchain.createInfo.imageExtent.height) };
+
+	pstd::Mat4 perspProjMatrix{
+
+		pstd::calcPerspectiveMatrix(pstd::toRadians(90), ar, 0.001, 25)
+
 	};
 
 	UniformBufferObject ubo{ .viewMatrix = state->viewMatrix,

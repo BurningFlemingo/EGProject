@@ -27,20 +27,17 @@ namespace {
 	void resetKeyState(Engine::State* pEngine);
 }  // namespace
 
-Engine::Subsystems Engine::startup() {
+Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 	constexpr size_t scratchSize{ 1024 * 1024 * 8 };
 
 	Console::startup();
 
-	pstd::AllocationRegistry allocationRegistry{ pstd::createAllocationRegistry(
-	) };
-
 	pstd::Arena scratchArena{
-		pstd::allocateArena(&allocationRegistry, scratchSize)
+		pstd::allocateArena(pAllocRegistry, scratchSize)
 	};
 
 	pstd::Arena subsystemArena{
-		pstd::allocateArena(&allocationRegistry, scratchSize * 2)
+		pstd::allocateArena(pAllocRegistry, scratchSize * 2)
 	};
 
 	GameDll gameDll{ loadGameDll(scratchArena) };
@@ -67,15 +64,11 @@ Engine::Subsystems Engine::startup() {
 	};
 
 	Renderer::State* pRenderer{ Renderer::startup(
-		&allocationRegistry, &subsystemArena, scratchArena, *pPlatform
+		pAllocRegistry, &subsystemArena, scratchArena, *pPlatform
 	) };
-
-	Platform::hideCursor(pPlatform);
-	Platform::captureCursor(pPlatform);
 
 	Engine::State* pEngine =
 		new (pstd::alloc<Engine::State>(&subsystemArena)) Engine::State{
-			.allocationRegistry = allocationRegistry,
 			.scratchArena = scratchArena,
 			.subsystemArena = subsystemArena,
 			.gameDll = gameDll,
@@ -87,19 +80,31 @@ Engine::Subsystems Engine::startup() {
 			.entityUIDs = entityUIDs,
 		};
 
-	return Engine::Subsystems{
+	Engine::Subsystems subsystems{
 		.pEngine = pEngine,
 		.pRenderer = pRenderer,
 		.pPlatform = pPlatform,
 	};
+
+	Game::State* pGameState{
+		pEngine->gameDll.api.startup(pAllocRegistry, subsystems)
+	};
+	pEngine->pGameState = pGameState;
+
+	Renderer::setModels(pRenderer, pEngine->scratchArena, pEngine->models);
+
+	return subsystems;
 }
 
 void Engine::shutdown(const Subsystems& systems) {
+	systems.pEngine->gameDll.api.shutdown(systems.pEngine->pGameState);
 	Renderer::shutdown(systems.pRenderer);
 	Platform::shutdown(systems.pPlatform);
 }
 
-bool Engine::update(const Subsystems& systems) {
+bool Engine::update(
+	pstd::AllocationRegistry* pAllocRegistry, const Subsystems& systems
+) {
 	Renderer::State* pRenderer{ systems.pRenderer };
 	Platform::State* pPlatform{ systems.pPlatform };
 	Engine::State* pEngine{ systems.pEngine };
@@ -184,7 +189,7 @@ void Engine::addModel(
 	Engine::State* pEngine, const UID entityID, pstd::String path
 ) {
 	Engine::MeshData model{
-		Engine::loadOBJ(&pEngine->subsystemArena, pEngine->scratchArena, path)
+		Engine::loadMesh(&pEngine->subsystemArena, pEngine->scratchArena, path)
 	};
 
 	pEngine->models.count =
@@ -209,43 +214,39 @@ void Engine::updateTransform(
 	pEngine->transforms[uid] = transform;
 }
 
-void Engine::run(const Subsystems& subsystems) {
+bool Engine::tick(
+	pstd::AllocationRegistry* pAllocRegistry, const Subsystems& subsystems
+) {
 	Renderer::State* pRenderer{ subsystems.pRenderer };
 	Platform::State* pPlatform{ subsystems.pPlatform };
 	Engine::State* pEngine{ subsystems.pEngine };
 
-	Game::State* pGameState{
-		pEngine->gameDll.api.startup(&pEngine->allocationRegistry, subsystems)
-	};
-	Renderer::setModels(pRenderer, pEngine->scratchArena, pEngine->models);
-
-	float lastFrameTime{};
-	while (pEngine->isRunning) {
+	if (pEngine->isRunning) {
 		float beginFrameTime{ ncast<float>(pstd::getTicks()) };
-		float dT{ beginFrameTime - lastFrameTime };
-		lastFrameTime = beginFrameTime;
+		float dT{ beginFrameTime - pEngine->lastFrameTime };
+		pEngine->lastFrameTime = beginFrameTime;
 
 		// LOG_INFO("fps: %f\n", 1.f / (dT / 1000.f));
 
 		pstd::reset(&pEngine->scratchArena);
 
-		if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
-			pEngine->gameDll.lastWriteTime) {
-			unloadGameDll(pEngine->gameDll);
-			pEngine->gameDll = loadGameDll(pEngine->scratchArena);
-		}
+		// if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
+		// 	pEngine->gameDll.lastWriteTime) {
+		// 	unloadGameDll(pEngine->gameDll);
+		// 	pEngine->gameDll = loadGameDll(pEngine->scratchArena);
+		// }
 
-		pEngine->isRunning &= Engine::update(subsystems);
+		pEngine->isRunning &= Engine::update(pAllocRegistry, subsystems);
 
 		pEngine->isRunning &=
-			pEngine->gameDll.api.update(subsystems, pGameState, dT);
+			pEngine->gameDll.api.update(subsystems, pEngine->pGameState, dT);
 
 		Renderer::setTransforms(pRenderer, pEngine->transforms);
 
 		Renderer::render(pRenderer, false);
 	}
 
-	pEngine->gameDll.api.shutdown(pGameState);
+	return pEngine->isRunning;
 }
 
 Engine::KeyState Engine::getPKeyState(Engine::State* pEngine, KeyCode keyCode) {

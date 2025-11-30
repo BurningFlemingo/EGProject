@@ -7,9 +7,6 @@ namespace pstd {
 	size_t hash(T val);
 
 	template<typename K, typename T>
-	struct HashMap;
-
-	template<typename K, typename T>
 	struct HashMap {
 		struct Slot {
 			K key;
@@ -38,7 +35,7 @@ namespace pstd {
 			}
 
 			ASSERT(false, "key does not exist in map");
-			return {};
+			return pSlots[0].value;
 		}
 
 		T& operator[](K key) {
@@ -47,7 +44,6 @@ namespace pstd {
 			size_t hash{ pstd::hash(key) };
 			uint8_t byteHash{ ncast<uint8_t>(hash & 0b01111111) };
 
-			size_t slot{};
 			for (size_t i{}; i < capacity; i++) {
 				size_t slot{ (hash + i) % capacity };
 

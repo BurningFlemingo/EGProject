@@ -40,6 +40,7 @@ set (VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
 
 set(SRC_FILES
 	${SRC_DIR}/Main.cpp
+	${SRC_DIR}/AssetCooker.cpp
 	)
 
 add_executable(PEngineRuntime ${SRC_FILES})

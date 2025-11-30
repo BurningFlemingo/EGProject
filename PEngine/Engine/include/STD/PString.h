@@ -155,7 +155,10 @@ namespace pstd {
 
 	char readChar(String* pString);
 	void trimLeading(String* string, const String& delimiters = " ");
+	void trimTrailing(String* string, const String& delimiters = " ");
+	void trim(String* string, const String& delimiters = " ");
 	String readToken(String* string, const String& delimiters = " ");
+	String readLastToken(String* pString, const String& delimiters = " ");
 	size_t countTokens(String string, const String& delimiters = " ");
 
 	size_t hash(String string);

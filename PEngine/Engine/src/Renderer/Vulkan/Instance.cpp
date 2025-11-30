@@ -9,52 +9,43 @@
 #include "STD/PMemory.h"
 #include "Logging.h"
 #include "Platforms/VulkanSurface.h"
+#include "STD/PAssert.h"
 
 #include <vulkan/vulkan_core.h>
 
-VkInstance
-	createInstance(pstd::Arena scratchArena1, pstd::Arena scratchArena2) {
+VkInstance createInstance(pstd::Arena scratchArena) {
 	uint32_t extensionCount{};
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 	auto extensionProps{
-		pstd::createArray<VkExtensionProperties>(&scratchArena1, extensionCount)
+		pstd::createArray<VkExtensionProperties>(&scratchArena, extensionCount)
 	};
 
 	vkEnumerateInstanceExtensionProperties(
 		nullptr, &extensionCount, extensionProps.data
 	);
 
-	auto requiredExtensions{
-		pstd::createArray<const char*>(&scratchArena1, 2, 0)
+#ifdef DEBUG_BUILD
+	pstd::String requiredExtensions[]{ Platform::getPlatformSurfaceExtension(),
+									   VK_KHR_SURFACE_EXTENSION_NAME,
+									   VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+#else
+	pstd::String requiredExtensions[]{ Platform::getPlatformSurfaceExtension(),
+									   VK_KHR_SURFACE_EXTENSION_NAME };
+#endif
+
+	pstd::Array<const char*> foundExtensions{
+		findExtensions(&scratchArena, requiredExtensions, extensionProps)
 	};
 
-	pstd::pushBack(
-		&requiredExtensions, Platform::getPlatformSurfaceExtension()
-	);
-
-	pstd::pushBack(
-		&requiredExtensions, ncast<const char*>(VK_KHR_SURFACE_EXTENSION_NAME)
-	);
-
-	auto optionalExtensions{ getDebugExtensions() };
-
-	pstd::Array<const char*> foundExtensions{ takeFoundExtensions(
-		&scratchArena1,
-		scratchArena2,
-		extensionProps,
-		&requiredExtensions,
-		&optionalExtensions
-	) };
-
 	pstd::Array<const char*> foundValidationLayers{
-		findValidationLayers(&scratchArena1)
+		findValidationLayers(&scratchArena)
 	};
 
 	VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 							   .pApplicationName = "APPNAME",
 							   .applicationVersion =
 								   VK_MAKE_API_VERSION(0, 1, 0, 0),
-							   .pEngineName = "NA",
+							   .pEngineName = "PEngine",
 							   .engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
 							   .apiVersion = VK_API_VERSION_1_3 };
 
@@ -74,9 +65,8 @@ VkInstance
 
 	VkInstance instance{};
 	VkResult res{ vkCreateInstance(&vkInstanceCI, nullptr, &instance) };
-	if (res != VK_SUCCESS) {
-		LOG_ERROR("could not create vulkan instance: %i", (int)res);
-	}
+
+	ASSERT(res == VK_SUCCESS, "could not create vulkan instance");
 
 	return instance;
 }

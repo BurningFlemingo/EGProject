@@ -13,12 +13,13 @@ namespace {
 		0, GENERIC_READ, GENERIC_WRITE, GENERIC_READ | GENERIC_WRITE
 	};
 
-	constexpr uint64_t fileShareWin32Flags[(size_t)pstd::FileShare::COUNT]{
+	constexpr uint64_t fileShareWin32Flags[(size_t)pstd::FileAccess::COUNT]{
 		0, FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE
 	};
 
 	constexpr uint64_t fileCreateWin32Flags[(size_t)pstd::FileCreate::COUNT]{
-		0, CREATE_NEW, CREATE_ALWAYS, OPEN_EXISTING, OPEN_ALWAYS
+		0,			 CREATE_NEW,	   CREATE_ALWAYS, OPEN_EXISTING,
+		OPEN_ALWAYS, TRUNCATE_EXISTING
 	};
 
 	using FileHandleImpl = HANDLE;
@@ -28,11 +29,11 @@ namespace {
 pstd::FileHandle pstd::openFile(
 	const char* filepath,
 	const FileAccess& accessFlags,
-	const FileShare& shareFlags,
+	const FileAccess& shareFlags,
 	const FileCreate& createFlags
 ) {
 	ASSERT(accessFlags < pstd::FileAccess::COUNT);
-	ASSERT(shareFlags < pstd::FileShare::COUNT);
+	ASSERT(shareFlags < pstd::FileAccess::COUNT);
 	ASSERT(createFlags < pstd::FileCreate::COUNT);
 
 	uint64_t fileAccessFlags{ fileAccessWin32Flags[(size_t)accessFlags] };
@@ -129,6 +130,7 @@ size_t pstd::getLastFileWriteTime(const char* filename) {
 
 pstd::Allocation pstd::readFile(pstd::Arena* pArena, pstd::FileHandle pHandle) {
 	auto hFile{ rcast<FileHandleImpl>(pHandle) };
+
 	DWORD bytesRead{};
 	OVERLAPPED ol{};
 
@@ -144,4 +146,20 @@ pstd::Allocation pstd::readFile(pstd::Arena* pArena, pstd::FileHandle pHandle) {
 	}
 
 	return pstd::Allocation{ .block = fileBuffer, .size = bytesRead };
+}
+
+bool pstd::writeFile(
+	pstd::FileHandle pHandle, void* buf, uint32_t nBytesToWrite
+) {
+	auto hFile{ rcast<FileHandleImpl>(pHandle) };
+
+	DWORD nBytesWritten{};
+	BOOL succeeded{
+		WriteFile(hFile, buf, nBytesToWrite, &nBytesWritten, NULL)
+	};
+	return succeeded && (nBytesWritten == nBytesToWrite);
+}
+
+void pstd::createDirectory(const char* lastDirectory) {
+	CreateDirectory(lastDirectory, NULL);
 }

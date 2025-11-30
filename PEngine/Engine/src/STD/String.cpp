@@ -134,17 +134,17 @@ String pstd::formatString(pstd::Arena* pArena, const String& format, T val) {
 	) };
 
 	switch (controlCharacter) {
-		case 'i': {
-			concat(&string, pushInt64AsString(pArena, ncast<int64_t>(val)));
-		} break;
-		case 'u': {
-			concat(&string, pushInt64AsString(pArena, ncast<uint64_t>(val)));
-		} break;
-		case 'f': {
-			concat(&string, pushFloatAsString(pArena, ncast<float>(val)));
-		} break;
-		default:
-			ASSERT(false);
+	case 'i': {
+		concat(&string, pushInt64AsString(pArena, ncast<int64_t>(val)));
+	} break;
+	case 'u': {
+		concat(&string, pushInt64AsString(pArena, ncast<uint64_t>(val)));
+	} break;
+	case 'f': {
+		concat(&string, pushFloatAsString(pArena, ncast<float>(val)));
+	} break;
+	default:
+		ASSERT(false);
 	}
 	if (formatCharactersProccessed < format.size) {
 		String restOfFormat(
@@ -407,6 +407,22 @@ void pstd::trimLeading(String* pString, const pstd::String& delimiters) {
 	}
 }
 
+void pstd::trimTrailing(String* pString, const pstd::String& delimiters) {
+	size_t ogStringSize{ pString->size };
+	for (size_t i{}; i < ogStringSize; i++) {
+		size_t reverseI{ ogStringSize - 1 - i };
+		if (!substringMatchForward((*pString)[reverseI], delimiters)) {
+			pString->size = reverseI;
+			break;
+		}
+	}
+}
+
+void pstd::trim(String* pString, const pstd::String& delimiters) {
+	trimTrailing(pString);
+	trimLeading(pString, delimiters);
+}
+
 String pstd::readToken(String* pString, const String& delimiters) {
 	pstd::trimLeading(pString, delimiters);
 
@@ -421,6 +437,26 @@ String pstd::readToken(String* pString, const String& delimiters) {
 
 		pString->size--;
 		pString->buffer++;
+	}
+
+	return token;
+}
+
+String pstd::readLastToken(String* pString, const String& delimiters) {
+	pstd::trimTrailing(pString, delimiters);
+
+	String token(pString->buffer + pString->size, 0);
+
+	size_t ogStringSize{ pString->size };
+	for (size_t i{}; i < ogStringSize; i++) {
+		size_t reverseI{ ogStringSize - 1 - i };
+		if (substringMatchForward((*pString)[reverseI], delimiters)) {
+			break;
+		}
+		token.size++;
+		token.buffer--;
+
+		pString->size--;
 	}
 
 	return token;

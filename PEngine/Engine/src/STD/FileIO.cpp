@@ -22,7 +22,7 @@ pstd::Allocation pstd::readFile(pstd::Arena* pArena, const char* filePath) {
 	pstd::FileHandle fileHandle{ pstd::openFile(
 		filePath,
 		pstd::FileAccess::read,
-		pstd::FileShare::read,
+		pstd::FileAccess::read,
 		pstd::FileCreate::openExisting
 	) };
 
@@ -37,7 +37,7 @@ pstd::Allocation pstd::readFile(pstd::Arena* pArena, pstd::String filePath) {
 		pArena,
 		filePath,
 		pstd::FileAccess::read,
-		pstd::FileShare::read,
+		pstd::FileAccess::read,
 		pstd::FileCreate::openExisting
 	) };
 

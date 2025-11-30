@@ -12,6 +12,12 @@ set (INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 set (VENDOR_DIR "${CMAKE_SOURCE_DIR}/vendor")
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+	set(BUILD_TYPE Release)
+else()
+	set(BUILD_TYPE Debug)
+endif()
+
 set(SRC_FILES
 	${SRC_DIR}/Engine.cpp
 	${SRC_DIR}/Logging.cpp
@@ -19,9 +25,6 @@ set(SRC_FILES
 	${SRC_DIR}/Platforms/Windows/Window.cpp
 	${SRC_DIR}/Platforms/Windows/VulkanSurface.cpp
 	${SRC_DIR}/Renderer/Vulkan/Vulkan.cpp
-	${SRC_DIR}/Renderer/Vulkan/Debug/ValidationLayers.cpp
-	${SRC_DIR}/Renderer/Vulkan/Debug/Extensions.cpp
-	${SRC_DIR}/Renderer/Vulkan/Debug/DebugMessenger.cpp
 	${SRC_DIR}/Renderer/Vulkan/Extensions.cpp
 	${SRC_DIR}/Renderer/Vulkan/Instance.cpp
 	${SRC_DIR}/Renderer/Vulkan/Device.cpp
@@ -29,6 +32,10 @@ set(SRC_FILES
 	${SRC_DIR}/Renderer/Vulkan/Allocation.cpp
 	${SRC_DIR}/Renderer/Vulkan/Pipeline.cpp
 	${SRC_DIR}/Renderer/Vulkan/Commands.cpp
+	
+	${SRC_DIR}/Renderer/Vulkan/${BUILD_TYPE}/ValidationLayers.cpp
+	${SRC_DIR}/Renderer/Vulkan/${BUILD_TYPE}/Extensions.cpp
+	${SRC_DIR}/Renderer/Vulkan/${BUILD_TYPE}/DebugMessenger.cpp
 
 	${SRC_DIR}/STD/Platforms/Windows/Entry.cpp
 	${SRC_DIR}/STD/Platforms/Windows/Time.cpp
@@ -45,7 +52,8 @@ set(SRC_FILES
 	${SRC_DIR}/STD/Matrix.cpp
 	${SRC_DIR}/STD/Math.cpp
 	${SRC_DIR}/STD/FileIO.cpp
-	)
+)
+
 
 add_library(PEngine ${SRC_FILES})
 

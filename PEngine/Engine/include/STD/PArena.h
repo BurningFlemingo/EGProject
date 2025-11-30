@@ -55,6 +55,14 @@ namespace pstd {
 		return rcast<T*>(alloc(pArena, allocSize, alignof(T)));
 	}
 
+	template<typename T>
+	T* alloc(Arena* pArena, size_t count, size_t alignment) {
+		ASSERT(pArena);
+
+		size_t allocSize{ count * sizeof(T) };
+		return rcast<T*>(alloc(pArena, allocSize, alignment));
+	}
+
 	// inline Allocation makeShallowCopy(
 	// 	Arena* pArena, const Allocation& b, uint32_t alignment
 	// ) {

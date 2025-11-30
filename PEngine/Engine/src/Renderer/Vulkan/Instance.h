@@ -5,4 +5,4 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-VkInstance createInstance(pstd::Arena scratchArena1, pstd::Arena scratchArena2);
+VkInstance createInstance(pstd::Arena scratchArena);

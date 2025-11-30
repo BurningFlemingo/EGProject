@@ -25,10 +25,10 @@ namespace Engine {
 	struct KeyCurrentState {};
 
 	struct State {
-		pstd::AllocationRegistry allocationRegistry;
 		pstd::Arena scratchArena;
 		pstd::Arena subsystemArena;
 		GameDll gameDll;
+		Game::State* pGameState;
 		pstd::String originalDllPath;
 		const char* originalDllPathCString;
 		bool isRunning;
@@ -44,6 +44,8 @@ namespace Engine {
 		pstd::Array<Engine::MeshData> models;
 		pstd::Array<Engine::Transform> transforms;
 		pstd::Array<Engine::UID> entityUIDs;
+
+		float lastFrameTime;
 	};
 
 }  // namespace Engine

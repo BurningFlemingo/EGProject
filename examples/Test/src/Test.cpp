@@ -37,14 +37,26 @@ GAME_API Game::State* Game::startup(
 
 	Engine::UID cube1{ Engine::createEntity(subsystems.pEngine) };
 	Engine::UID cube2{ Engine::createEntity(subsystems.pEngine) };
-	Engine::Transform transform{ .pos = pstd::Vec3{ 0.f, 0.f, 3.f } };
+	Engine::Transform transform{ .pos = pstd::Vec3{ 0.f, 0.f, 10.f } };
 
-	// heyyy
-	Engine::addModel(subsystems.pEngine, cube1, ".\\assets\\models\\cube.obj");
+	Engine::addModel(
+		subsystems.pEngine, cube1, ".\\generated\\models\\cube.mesh"
+	);
 	Engine::addTransform(subsystems.pEngine, cube1, transform);
 
-	Engine::addModel(subsystems.pEngine, cube2, ".\\assets\\models\\cube.obj");
+	Engine::addModel(
+		subsystems.pEngine, cube2, ".\\generated\\models\\cube.mesh"
+	);
 	Engine::addTransform(subsystems.pEngine, cube2, transform);
+
+	Transform transform1{ .pos = { 0, 0, 5 } };
+	Transform transform2{ .pos = pstd::Vec3{ 5, 0, 5 } };
+
+	updateTransform(subsystems.pEngine, cube1, transform1);
+	updateTransform(subsystems.pEngine, cube2, transform2);
+
+	Platform::hideCursor(subsystems.pPlatform);
+	Platform::captureCursor(subsystems.pPlatform);
 
 	Renderer::Camera camera{
 		.transform = Transform{ .pos{ 0, 0, 5 }, .rot = { 0, 0, 0, 1 } },
@@ -82,8 +94,11 @@ GAME_API bool Game::update(Subsystems subsystems, State* state, float dTime) {
 	if (getPKeyState(pEngine, KeyCode::S).isDown) {
 		movement.z -= speed;
 	}
-	if (getPKeyState(pEngine, KeyCode::SPACE).isDown) {
-		movement.y += speed * 5;
+	if (getVKeyState(pEngine, KeyCode::SPACE).isDown) {
+		movement.y += speed;
+	}
+	if (getVKeyState(pEngine, KeyCode::CTRL).isDown) {
+		movement.y -= speed;
 	}
 	if (getVKeyState(pEngine, KeyCode::ESC).wasPressed) {
 		if (!state->inMenu) {
@@ -102,24 +117,22 @@ GAME_API bool Game::update(Subsystems subsystems, State* state, float dTime) {
 
 	Cursor cursor{ getCursor(pEngine) };
 	state->pitch += cursor.dy * sensitivity;
+	state->pitch = min(state->pitch, pstd::toRadians(89));
+	state->pitch = max(state->pitch, -pstd::toRadians(89));
 	state->yaw += cursor.dx * sensitivity;
 
 	pstd::Rot3 pitchRot{
 		pstd::calcRotor({ 0, 0, 1 }, { 0, 1, 0 }, state->pitch)
 	};
+
 	pstd::Rot3 yawRot{ pstd::calcRotor({ 0, 0, 1 }, { 1, 0, 0 }, state->yaw) };
 
 	pstd::Rot3 rot{ pstd::composeRotor(yawRot, pitchRot) };
 
-	state->pos -= pstd::calcRotated(movement, rot);
+	state->pos += pstd::calcRotated(movement, yawRot);
 
 	state->camera.transform = Transform{ .pos = state->pos, .rot = rot };
-
-	Transform transform1{ .pos = { 0, 0, 1 } };
-	Transform transform2{ .pos = { 2, 0, 1 } };
-
-	updateTransform(pEngine, state->cube1, transform1);
-	updateTransform(pEngine, state->cube2, transform2);
+	Renderer::setCamera(subsystems.pRenderer, state->camera);
 
 	return !Engine::getVKeyState(pEngine, KeyCode::TAB).isDown;
 }

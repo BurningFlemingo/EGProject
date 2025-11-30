@@ -8,20 +8,20 @@ namespace pstd {
 	using DllHandle = void*;
 
 	enum class FileAccess : uint32_t { none, read, write, readwrite, COUNT };
-	enum class FileShare : uint32_t { none, read, write, readwrite, COUNT };
 	enum class FileCreate : uint32_t {
 		none,
 		createNew,
 		createAlways,
 		openExisting,
 		openAlways,
+		replace,
 		COUNT
 	};
 
 	FileHandle openFile(
 		const char* filepath,
 		const FileAccess& accessFlags,
-		const FileShare& shareFlags,
+		const FileAccess& shareFlags,
 		const FileCreate& createFlags
 	);
 
@@ -29,7 +29,7 @@ namespace pstd {
 		Arena* pArena,
 		const String& filepath,
 		const FileAccess& accessFlags,
-		const FileShare& shareFlags,
+		const FileAccess& shareFlags,
 		const FileCreate& createFlags
 	) {
 		return pstd::openFile(
@@ -60,4 +60,7 @@ namespace pstd {
 	Allocation readFile(Arena* pArena, FileHandle handle);
 	Allocation readFile(Arena* pArena, const char* filePath);
 	Allocation readFile(Arena* pArena, pstd::String filePath);
+
+	bool writeFile(pstd::FileHandle pHandle, void* buf, uint32_t nBytesToWrite);
+	void createDirectory(const char* lastDirectory);
 }  // namespace pstd

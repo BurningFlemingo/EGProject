@@ -1,3 +1,1 @@
 #include "Renderer/Vulkan/Extensions.h"
-
-#include <vulkan/vulkan.h>

@@ -21,34 +21,30 @@ pstd::Array<const char*> findValidationLayers(pstd::Arena* pPersistArena) {
 
 	vkEnumerateInstanceLayerProperties(&layerCount, layerProps.data);
 
-	const char* requiredLayersBuffer[]{ "VK_LAYER_KHRONOS_validation" };
-	auto requiredLayers{ pstd::createArray<const char*>(requiredLayersBuffer) };
+	pstd::StaticArray<pstd::String, 1> requiredLayers{
+		"VK_LAYER_KHRONOS_validation",
+	};
 
-	auto foundLayers{ pstd::createArray<const char*>(pPersistArena, 1, 0) };
+	auto foundLayers{
+		pstd::createArray<const char*>(pPersistArena, requiredLayers.count, 0)
+	};
 
-	for (int i{}; i < layerCount; i++) {
-		if (requiredLayers.count == 0) {
-			break;
+	for (size_t i{}; i < requiredLayers.count; i++) {
+		pstd::String queriedLayer{ requiredLayers[i] };
+		bool layerFound{};
+		for (size_t j{}; j < layerProps.count; j++) {
+			const char* availableLayer{ layerProps[j].layerName };
+			if (queriedLayer == availableLayer) {
+				pstd::pushBack(&foundLayers, availableLayer);
+				layerFound = true;
+				break;
+			}
 		}
-		char* avaliableLayer{ layerProps[i].layerName };
-		size_t foundIndex{};
-		auto matchFunction{ [&](const char* requiredLayer) {
-			return pstd::stringsMatch(avaliableLayer, requiredLayer);
-		} };
-
-		if (pstd::find(requiredLayers, matchFunction, &foundIndex)) {
-			pstd::pushBack(
-				&foundLayers, requiredLayers[foundIndex]
-			);	// ptr to string literal
-			pstd::compactRemove(&requiredLayers, foundIndex);
+		if (layerFound) {
+			LOG_INFO("found %m\n", queriedLayer);
+		} else {
+			LOG_WARN("could not find %m\n", queriedLayer);
 		}
-	}
-	for (int i{}; i < requiredLayers.count; i++) {
-		LOG_ERROR("could not find %m\n", requiredLayers[i]);
-	}
-
-	for (int i{}; i < foundLayers.count; i++) {
-		LOG_INFO("found %m\n", foundLayers[i]);
 	}
 
 	return foundLayers;
