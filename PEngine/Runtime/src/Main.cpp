@@ -1,3 +1,4 @@
+#include "Camera.h"
 #include "Engine.h"
 #include "Core.h"
 #include "EngineState.h"

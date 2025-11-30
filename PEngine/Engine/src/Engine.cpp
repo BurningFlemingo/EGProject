@@ -182,7 +182,7 @@ void Engine::addTransform(
 ) {
 	pEngine->transforms.count =
 		max(pEngine->transforms.count, pEngine->entityUIDs.count);
-	pEngine->transforms[entityID];
+	pEngine->transforms[entityID] = transform;
 }
 
 void Engine::addModel(
@@ -230,11 +230,11 @@ bool Engine::tick(
 
 		pstd::reset(&pEngine->scratchArena);
 
-		// if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
-		// 	pEngine->gameDll.lastWriteTime) {
-		// 	unloadGameDll(pEngine->gameDll);
-		// 	pEngine->gameDll = loadGameDll(pEngine->scratchArena);
-		// }
+		if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
+			pEngine->gameDll.lastWriteTime) {
+			unloadGameDll(pEngine->gameDll);
+			pEngine->gameDll = loadGameDll(pEngine->scratchArena);
+		}
 
 		pEngine->isRunning &= Engine::update(pAllocRegistry, subsystems);
 
