@@ -42,6 +42,7 @@ namespace Engine {
 	struct Entity {
 		size_t uid;
 		ComponentTypeFlags typeFlags;
+		size_t archetypeIndex;
 
 		bool operator==(Entity other) { return uid == other.uid; }
 	};
@@ -61,8 +62,9 @@ namespace Engine {
 
 	Entity getEntity(Engine::State* pEngine, pstd::String name);
 
+	// storing this pointer is dangerous, dont do it, you've been warned
 	template<typename T>
-	T getComponent(Engine::State* pEngine, Entity entity);
+	T* getComponent(Engine::State* pEngine, Entity entity);
 
 	template<typename T>
 	void setComponent(Engine::State* pEngine, Entity entity, T component);

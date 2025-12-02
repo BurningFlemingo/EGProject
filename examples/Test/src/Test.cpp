@@ -41,11 +41,9 @@ GAME_API Game::State* Game::startup(
 	Entity cube2{
 		createEntity(pEngine, "cube2", TransformComponent | ModelComponent)
 	};
-	Entity cube3{ createEntity(
-		pEngine,
-		"cube3",
-		TransformComponent | ModelComponent | RigidbodyComponent
-	) };
+	Entity cube3{
+		createEntity(pEngine, "cube3", TransformComponent | ModelComponent)
+	};
 
 	setComponent<Transform>(pEngine, cube1, { .pos{ 0, 0, 5 } });
 	setComponent<Transform>(pEngine, cube2, { .pos{ 5, 0, 5 } });

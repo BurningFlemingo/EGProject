@@ -2,6 +2,7 @@
 #include "Engine.h"
 #include "STD/PHashMap.h"
 #include "AssetLoader.h"
+#include "STD/PString.h"
 
 namespace Engine {
 	// only the arrays corresponding to componentFlags will be allocated
@@ -12,7 +13,7 @@ namespace Engine {
 		pstd::HashMap<UID, size_t> uidToIndex;
 
 		pstd::Array<Transform> transforms;
-		pstd::Array<MeshData> models;
+		pstd::Array<Model> models;
 	};
 
 	Archetype createArchetype(
@@ -21,10 +22,7 @@ namespace Engine {
 		size_t maxEntityCount
 	);
 
-	pstd::Array<Archetype*> getMatchingArchetypes(
-		pstd::Arena* pArena,
-		pstd::Array<Archetype>* pArchetypes,
-		uint32_t componentFlags
-	);
+	pstd::String stringify(pstd::Arena* pArena, Engine::Entity entity);
+	pstd::String stringify(pstd::Arena* pArena, Engine::Archetype archetype);
 
 }  // namespace Engine

@@ -9,82 +9,109 @@ Engine::Entity Engine::getEntity(Engine::State* pEngine, pstd::String name) {
 Engine::Entity Engine::createEntity(
 	Engine::State* pEngine, pstd::String name, ComponentTypeFlags componentFlags
 ) {
-	Entity entity{ .uid = pstd::hash(name), .typeFlags = componentFlags };
-	pEngine->nameToEntity[name] = entity;
+	static size_t uid{};
+	uid++;
 
+	Archetype* pArchetype{};
+	size_t archetypeIndex{ ncast<size_t>(-1) };
+	bool found{};
 	for (size_t i{}; i < pEngine->archetypes.count; i++) {
-		Archetype* pArchetype{ &pEngine->archetypes[i] };
+		pArchetype = &pEngine->archetypes[i];
 		if (pArchetype->componentFlags == componentFlags) {
-			size_t index{ pArchetype->uidToIndex.count };
-			pArchetype->uidToIndex[entity.uid] = index;
-
-			if (componentFlags & TransformComponent) {
-				pstd::pushBack(&pArchetype->transforms, {});
-			}
-			if (componentFlags & ModelComponent) {
-				pstd::pushBack(&pArchetype->models, {});
-			}
-
-			return entity;
+			archetypeIndex = i;
+			found = true;
+			break;
 		}
 	}
+	if (!found) {
+		archetypeIndex = pEngine->archetypes.count;
 
-	Archetype archetype{ createArchetype(
-		&pEngine->subsystemArena, componentFlags, Engine::maxEntityCount
-	) };
-	pstd::pushBack(&pEngine->archetypes, archetype);
+		Archetype archetype{ createArchetype(
+			&pEngine->subsystemArena, componentFlags, Engine::maxEntityCount
+		) };
 
-	return createEntity(pEngine, name, componentFlags);
+		pstd::pushBack(&pEngine->archetypes, archetype);
+		pArchetype = &pEngine->archetypes[archetypeIndex];
+	}
+
+	if (componentFlags & TransformComponent) {
+		pstd::pushBack(&pArchetype->transforms, {});
+	}
+	if (componentFlags & ModelComponent) {
+		pstd::pushBack(&pArchetype->models, {});
+	}
+
+	pArchetype->uidToIndex[uid] = pArchetype->uidToIndex.count;
+	Entity entity{
+		.uid = uid,
+		.typeFlags = componentFlags,
+		.archetypeIndex = archetypeIndex,
+	};
+
+	ASSERT(
+		!pstd::exists(pEngine->nameToEntity, name), "component already created"
+	);
+
+	pEngine->nameToEntity[name] = entity;
+
+	return entity;
 }
 
 template<>
-Engine::Transform Engine::getComponent<Engine::Transform>(
+Engine::Transform* Engine::getComponent<Engine::Transform>(
 	Engine::State* pEngine, Entity entity
 ) {
-	for (size_t i{}; i < pEngine->archetypes.count; i++) {
-		Archetype* pArchetype{ &pEngine->archetypes[i] };
-		if (pArchetype->componentFlags == entity.typeFlags) {
-			size_t index{ pArchetype->uidToIndex[entity.uid] };
-			return pArchetype->transforms[index];
-		}
-	}
-	ASSERT(false, "entity archetype not initialized");
-	return {};
+	Archetype* pArchetype{ &pEngine->archetypes[entity.archetypeIndex] };
+
+	ASSERT(
+		entity.typeFlags & TransformComponent,
+		"entity does not have correct component"
+	);
+	ASSERT(
+		pArchetype->componentFlags & TransformComponent,
+		"entity tied to wrong archetype"
+	);
+
+	size_t index{ pArchetype->uidToIndex[entity.uid] };
+	return &pArchetype->transforms[index];
 }
 
 template<>
 void Engine::setComponent(
 	Engine::State* pEngine, Entity entity, Engine::Transform transform
 ) {
-	for (size_t i{}; i < pEngine->archetypes.count; i++) {
-		Archetype* pArchetype{ &pEngine->archetypes[i] };
-		if (pArchetype->componentFlags == entity.typeFlags) {
-			size_t index{ pArchetype->uidToIndex[entity.uid] };
-			pArchetype->transforms[index] = transform;
-			return;
-		}
-	}
+	Archetype* pArchetype{ &pEngine->archetypes[entity.archetypeIndex] };
+	size_t index{ pArchetype->uidToIndex[entity.uid] };
 
-	ASSERT(false, "entity archetype not initialized");
+	ASSERT(
+		entity.typeFlags & TransformComponent,
+		"entity does not have correct component"
+	);
+	ASSERT(
+		pArchetype->componentFlags & TransformComponent,
+		"entity tied to wrong archetype"
+	);
+
+	pArchetype->transforms[index] = transform;
 }
 
 template<>
 void Engine::setComponent(
 	Engine::State* pEngine, Entity entity, Engine::Model model
 ) {
-	Engine::MeshData meshData{
-		Engine::loadMesh(&pEngine->subsystemArena, pEngine->scratchArena, model)
-	};
-	for (size_t i{}; i < pEngine->archetypes.count; i++) {
-		Archetype* pArchetype{ &pEngine->archetypes[i] };
-		if (pArchetype->componentFlags == entity.typeFlags) {
-			size_t index{ pArchetype->uidToIndex[entity.uid] };
-			pArchetype->models[index] = meshData;
-			return;
-		}
-	}
+	Archetype* pArchetype{ &pEngine->archetypes[entity.archetypeIndex] };
+	size_t index{ pArchetype->uidToIndex[entity.uid] };
 
-	ASSERT(false, "entity archetype not initialized");
+	ASSERT(
+		entity.typeFlags & ModelComponent,
+		"entity does not have correct component"
+	);
+	ASSERT(
+		pArchetype->componentFlags & ModelComponent,
+		"entity tied to wrong archetype"
+	);
+
+	pArchetype->models[index] = model;
 }
 
 Engine::Archetype Engine::createArchetype(
@@ -103,30 +130,31 @@ Engine::Archetype Engine::createArchetype(
 			pstd::createArray<Transform>(pArena, maxEntityCount, 0);
 	}
 	if (componentFlags & ModelComponent) {
-		archetype.models =
-			pstd::createArray<MeshData>(pArena, maxEntityCount, 0);
+		archetype.models = pstd::createArray<Model>(pArena, maxEntityCount, 0);
 	}
 
 	return archetype;
 }
 
-pstd::Array<Engine::Archetype*> Engine::getMatchingArchetypes(
-	pstd::Arena* pArena,
-	pstd::Array<Archetype>* pArchetypes,
-	uint32_t componentFlags
-) {
-	auto matchedArchetypes{
-		pstd::createArray<Archetype*>(pArena, Engine::maxArchetypeCount, 0)
-	};
+pstd::String Engine::stringify(pstd::Arena* pArena, Entity entity) {
+	return pstd::formatString(
+		pArena,
+		"Entity{ UID = %u, ComponentTypeFlags = %u, ArchetypeIndex = %u}\n",
+		entity.uid,
+		(uint32_t)entity.typeFlags,
+		entity.archetypeIndex
+	);
+}
 
-	for (size_t i{}; i < pArchetypes->count; i++) {
-		Archetype* pArchetype{ &(*pArchetypes)[i] };
-		if ((pArchetype->componentFlags & componentFlags) == componentFlags) {
-			for (int j{}; j < pArchetype->uidToIndex.count; j++) {
-				pstd::pushBack(&matchedArchetypes, pArchetype);
-			}
-		}
-	}
-
-	return matchedArchetypes;
+pstd::String Engine::stringify(pstd::Arena* pArena, Archetype archetype) {
+	return pstd::formatString(
+		pArena,
+		"Archetype{ ComponentTypeFlags = %u, SparseMapCount = %u, "
+		"SparseMapCapacity = %u, TransformsCount = %u, ModelsCount = %u}\n",
+		archetype.componentFlags,
+		archetype.uidToIndex.count,
+		archetype.uidToIndex.capacity,
+		archetype.transforms.count,
+		archetype.models.count
+	);
 }

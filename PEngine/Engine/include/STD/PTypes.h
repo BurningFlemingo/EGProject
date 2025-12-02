@@ -19,8 +19,6 @@ using int64_t = long long;
 using size_t = uint64_t;
 using uintptr_t = size_t;
 
-#define UINT32_MAX ~U0
-
 #define KIB 1024ll
 #define MIB (KIB * KIB)
 #define GIB (MIB * KIB)

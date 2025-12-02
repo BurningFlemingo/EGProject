@@ -3,6 +3,12 @@
 #include "Logging.h"
 
 namespace pstd {
+	template<typename K, typename T>
+	struct Pair {
+		K key;
+		T value;
+	};
+
 	template<typename T>
 	size_t hash(T val);
 
@@ -25,7 +31,6 @@ namespace pstd {
 
 			for (size_t i{}; i < capacity; i++) {
 				size_t slot{ (hash + i) % capacity };
-				uint8_t slotHash{ pControls[slot] };
 
 				if (pControls[slot] == byteHash) {
 					if (pSlots[slot].key == key) {
@@ -90,6 +95,32 @@ namespace pstd {
 							  .pSlots = pSlots,
 							  .count = 0,
 							  .capacity = slotCount };
+	}
+
+	template<typename K, typename T>
+	bool exists(const HashMap<K, T>& hashmap, K key) {
+		using ControlByte = typename HashMap<K, T>::ControlByte;
+
+		size_t hash{ pstd::hash(key) };
+		uint8_t byteHash{ ncast<uint8_t>(hash & 0b01111111) };
+
+		for (size_t i{}; i < hashmap.capacity; i++) {
+			size_t slot{ (hash + i) % hashmap.capacity };
+			uint8_t slotHash{ hashmap.pControls[slot] };
+
+			if (slotHash == ControlByte::CB_EMPTY) {
+				break;
+			}
+
+			if (slotHash == byteHash) {
+				if (hashmap.pSlots[slot].key == key) {
+					LOG_INFO("%m", key);
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 }  // namespace pstd

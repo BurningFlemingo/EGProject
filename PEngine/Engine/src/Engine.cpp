@@ -104,19 +104,25 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 	};
 	pEngine->pGameState = pGameState;
 
-	auto models{ pstd::createArray<MeshData>(
+	auto meshes{ pstd::createArray<MeshData>(
 		&pEngine->scratchArena, Engine::maxEntityCount, 0
 	) };
+
 	for (size_t i{}; i < pEngine->archetypes.count; i++) {
 		Archetype archetype{ pEngine->archetypes[i] };
 		uint32_t renderableFlags{ TransformComponent | ModelComponent };
 		if ((archetype.componentFlags & renderableFlags) == renderableFlags) {
 			for (int j{}; j < archetype.models.count; j++) {
-				pstd::pushBack(&models, archetype.models[j]);
+				MeshData mesh{ loadMesh(
+					&pEngine->subsystemArena,
+					pEngine->scratchArena,
+					archetype.models[j]
+				) };
+				pstd::pushBack(&meshes, mesh);
 			}
 		}
 	}
-	Renderer::setModels(pRenderer, pEngine->scratchArena, models);
+	Renderer::setModels(pRenderer, pEngine->scratchArena, meshes);
 
 	return subsystems;
 }
