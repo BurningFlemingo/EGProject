@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine.h"
 #include "STD/PMemory.h"
 #include "STD/PString.h"
 #include "STD/PArray.h"
@@ -7,6 +8,8 @@
 #include "Game.h"
 #include "AssetLoader.h"
 #include "Platforms/Event.h"
+#include "STD/PHashMap.h"
+#include "ECS.h"
 
 struct GameDll {
 	pstd::DllHandle handle;
@@ -22,7 +25,7 @@ namespace Engine {
 		bool keyWasDown;
 	};
 
-	struct KeyCurrentState {};
+	static constexpr size_t maxEntityCount{ 1024 };
 
 	struct State {
 		pstd::Arena scratchArena;
@@ -41,9 +44,9 @@ namespace Engine {
 
 		Cursor cursor;
 
-		pstd::Array<Engine::MeshData> models;
-		pstd::Array<Engine::Transform> transforms;
-		pstd::Array<Engine::UID> entityUIDs;
+		pstd::Array<Archetype> archetypes;
+
+		pstd::HashMap<pstd::String, Entity> nameToEntity{};
 
 		float lastFrameTime;
 	};

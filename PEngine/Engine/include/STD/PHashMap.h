@@ -65,12 +65,13 @@ namespace pstd {
 			}
 
 			ASSERT(false, "hashmap full, cant add new item");
+			return pSlots[0].value;
 		}
 
 		uint8_t* pControls;
 		Slot* pSlots;
 		size_t count;
-		const size_t capacity;
+		size_t capacity;
 	};
 
 	template<typename K, typename T>

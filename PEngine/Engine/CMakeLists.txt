@@ -20,6 +20,7 @@ endif()
 
 set(SRC_FILES
 	${SRC_DIR}/Engine.cpp
+	${SRC_DIR}/ECS.cpp
 	${SRC_DIR}/Logging.cpp
 	${SRC_DIR}/AssetLoader.cpp
 	${SRC_DIR}/Platforms/Windows/Window.cpp
@@ -44,6 +45,7 @@ set(SRC_FILES
 	${SRC_DIR}/STD/Platforms/Windows/Console.cpp
 	${SRC_DIR}/STD/Platforms/Windows/FileIO.cpp
 	${SRC_DIR}/STD/Platforms/Windows/Assert.cpp
+	${SRC_DIR}/STD/HashMap.cpp
 	${SRC_DIR}/STD/Algorithm.cpp
 	${SRC_DIR}/STD/String.cpp
 	${SRC_DIR}/STD/Arena.cpp

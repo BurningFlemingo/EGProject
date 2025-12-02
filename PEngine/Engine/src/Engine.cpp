@@ -1,5 +1,6 @@
 #include "Core.h"
 #include "Engine.h"
+#include "ECS.h"
 #include "Input.h"
 #include "Cursor.h"
 #include "Logging.h"
@@ -8,6 +9,8 @@
 #include "GameObject.h"
 #include "Platforms/Event.h"
 #include "STD/PArena.h"
+#include "STD/PArray.h"
+#include "STD/PHashMap.h"
 #include "STD/PMemory.h"
 #include "STD/PFileIO.h"
 #include "STD/PString.h"
@@ -25,6 +28,7 @@ namespace {
 	GameDll loadGameDll(pstd::Arena scratchArena);
 	void unloadGameDll(GameDll dll);
 	void resetKeyState(Engine::State* pEngine);
+
 }  // namespace
 
 Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
@@ -53,18 +57,28 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 		pstd::createCString(&scratchArena, originalDllPath)
 	};
 
-	auto models{ pstd::createArray<Engine::MeshData>(&subsystemArena, 10, 0) };
-	auto transforms{
-		pstd::createArray<Engine::Transform>(&subsystemArena, 10, 0)
-	};
-	auto entityUIDs{ pstd::createArray<Engine::UID>(&subsystemArena, 10, 0) };
-
 	Platform::State* pPlatform{
 		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
 
 	Renderer::State* pRenderer{ Renderer::startup(
 		pAllocRegistry, &subsystemArena, scratchArena, *pPlatform
+	) };
+
+	Archetype renderableArchetype{ createArchetype(
+		&subsystemArena,
+		TransformComponent | ModelComponent,
+		Engine::maxEntityCount
+	) };
+
+	pstd::Array<Archetype> archetypes{ pstd::createArray<Archetype>(
+		&subsystemArena, Engine::maxArchetypeCount, 0
+	) };
+
+	pstd::pushBack(&archetypes, renderableArchetype);
+
+	auto nameToEntity{ pstd::createHashMap<pstd::String, Entity>(
+		&subsystemArena, Engine::maxEntityCount
 	) };
 
 	Engine::State* pEngine =
@@ -75,9 +89,8 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 			.originalDllPath = originalDllPath,
 			.originalDllPathCString = originalDllPathCString,
 			.isRunning = true,
-			.models = models,
-			.transforms = transforms,
-			.entityUIDs = entityUIDs,
+			.archetypes = archetypes,
+			.nameToEntity = nameToEntity,
 		};
 
 	Engine::Subsystems subsystems{
@@ -91,7 +104,19 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 	};
 	pEngine->pGameState = pGameState;
 
-	Renderer::setModels(pRenderer, pEngine->scratchArena, pEngine->models);
+	auto models{ pstd::createArray<MeshData>(
+		&pEngine->scratchArena, Engine::maxEntityCount, 0
+	) };
+	for (size_t i{}; i < pEngine->archetypes.count; i++) {
+		Archetype archetype{ pEngine->archetypes[i] };
+		uint32_t renderableFlags{ TransformComponent | ModelComponent };
+		if ((archetype.componentFlags & renderableFlags) == renderableFlags) {
+			for (int j{}; j < archetype.models.count; j++) {
+				pstd::pushBack(&models, archetype.models[j]);
+			}
+		}
+	}
+	Renderer::setModels(pRenderer, pEngine->scratchArena, models);
 
 	return subsystems;
 }
@@ -171,47 +196,8 @@ bool Engine::update(
 	return pEngine->isRunning;
 }
 
-Engine::UID Engine::createEntity(Engine::State* pEngine) {
-	size_t uid{ pEngine->entityUIDs.count };
-	pstd::pushBack(&pEngine->entityUIDs, uid);
-	return uid;
-}
-
-void Engine::addTransform(
-	Engine::State* pEngine, const UID entityID, const Transform& transform
-) {
-	pEngine->transforms.count =
-		max(pEngine->transforms.count, pEngine->entityUIDs.count);
-	pEngine->transforms[entityID] = transform;
-}
-
-void Engine::addModel(
-	Engine::State* pEngine, const UID entityID, pstd::String path
-) {
-	Engine::MeshData model{
-		Engine::loadMesh(&pEngine->subsystemArena, pEngine->scratchArena, path)
-	};
-
-	pEngine->models.count =
-		max(pEngine->models.count, pEngine->entityUIDs.count);
-
-	pEngine->models[entityID] = model;
-}
-
-Engine::Transform Engine::getTransform(Engine::State* pEngine, UID uid) {
-	return pEngine->transforms[uid];
-}
-
 Engine::Cursor Engine::getCursor(Engine::State* pEngine) {
 	return pEngine->cursor;
-}
-
-void Engine::updateTransform(
-	Engine::State* pEngine, UID uid, const Transform& transform
-) {
-	pEngine->transforms.count =
-		max(pEngine->transforms.count, pEngine->entityUIDs.count);
-	pEngine->transforms[uid] = transform;
 }
 
 bool Engine::tick(
@@ -241,7 +227,29 @@ bool Engine::tick(
 		pEngine->isRunning &=
 			pEngine->gameDll.api.update(subsystems, pEngine->pGameState, dT);
 
-		Renderer::setTransforms(pRenderer, pEngine->transforms);
+		for (size_t i{}; i < pEngine->archetypes.count; i++) {
+			Archetype archetype{ pEngine->archetypes[i] };
+			uint32_t renderableFlags{ TransformComponent | ModelComponent };
+			if ((archetype.componentFlags & renderableFlags) ==
+				renderableFlags) {
+				Renderer::setTransforms(pRenderer, archetype.transforms);
+			}
+		}
+
+		auto transforms{ pstd::createArray<Transform>(
+			&pEngine->scratchArena, Engine::maxEntityCount, 0
+		) };
+		for (size_t i{}; i < pEngine->archetypes.count; i++) {
+			Archetype archetype{ pEngine->archetypes[i] };
+			uint32_t renderableFlags{ TransformComponent | ModelComponent };
+			if ((archetype.componentFlags & renderableFlags) ==
+				renderableFlags) {
+				for (int j{}; j < archetype.transforms.count; j++) {
+					pstd::pushBack(&transforms, archetype.transforms[j]);
+				}
+			}
+		}
+		Renderer::setTransforms(pRenderer, transforms);
 
 		Renderer::render(pRenderer, false);
 	}
@@ -276,6 +284,7 @@ Engine::KeyState Engine::getVKeyState(Engine::State* pEngine, KeyCode keyCode) {
 		.isUp = !isDown,
 	};
 }
+
 namespace {
 	GameDll loadGameDll(pstd::Arena scratchArena) {
 		static uint32_t loadedDllSlot{};
@@ -347,4 +356,5 @@ namespace {
 		memset(pEngine->physicalKeyDown, 0, sizeof(pEngine->physicalKeyDown));
 		memset(pEngine->virtualKeyDown, 0, sizeof(pEngine->virtualKeyDown));
 	}
+
 }  // namespace

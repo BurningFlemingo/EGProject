@@ -1,5 +1,6 @@
 #include "Camera.h"
 #include "Cursor.h"
+#include "Engine.h"
 #include "Game.h"
 #include "Logging.h"
 #include "STD/PArena.h"
@@ -15,8 +16,6 @@
 namespace Game {
 	struct State {
 		pstd::Arena gameArena;
-		Engine::UID cube1{};
-		Engine::UID cube2{};
 		Renderer::Camera camera;
 
 		pstd::Vec3 pos;
@@ -33,27 +32,28 @@ using namespace Engine;
 GAME_API Game::State* Game::startup(
 	pstd::AllocationRegistry* pAllocRegistry, Subsystems subsystems
 ) {
+	Engine::State* pEngine{ subsystems.pEngine };
 	pstd::Arena gameArena{ pstd::allocateArena(pAllocRegistry, 1024) };
 
-	Engine::UID cube1{ Engine::createEntity(subsystems.pEngine) };
-	Engine::UID cube2{ Engine::createEntity(subsystems.pEngine) };
-	Engine::Transform transform{ .pos = pstd::Vec3{ 0.f, 0.f, 10.f } };
+	Entity cube1{
+		createEntity(pEngine, "cube1", TransformComponent | ModelComponent)
+	};
+	Entity cube2{
+		createEntity(pEngine, "cube2", TransformComponent | ModelComponent)
+	};
+	Entity cube3{ createEntity(
+		pEngine,
+		"cube3",
+		TransformComponent | ModelComponent | RigidbodyComponent
+	) };
 
-	Engine::addModel(
-		subsystems.pEngine, cube1, ".\\generated\\models\\cube.mesh"
-	);
-	Engine::addTransform(subsystems.pEngine, cube1, transform);
+	setComponent<Transform>(pEngine, cube1, { .pos{ 0, 0, 5 } });
+	setComponent<Transform>(pEngine, cube2, { .pos{ 5, 0, 5 } });
+	setComponent<Transform>(pEngine, cube3, { .pos{ 5, 0, 10 } });
 
-	Engine::addModel(
-		subsystems.pEngine, cube2, ".\\generated\\models\\cube.mesh"
-	);
-	Engine::addTransform(subsystems.pEngine, cube2, transform);
-
-	Transform transform1{ .pos = { 0, 0, 5 } };
-	Transform transform2{ .pos = pstd::Vec3{ 5, 0, 5 } };
-
-	updateTransform(subsystems.pEngine, cube1, transform1);
-	updateTransform(subsystems.pEngine, cube2, transform2);
+	setComponent<Model>(pEngine, cube1, ".\\generated\\models\\cube.mesh");
+	setComponent<Model>(pEngine, cube2, ".\\generated\\models\\cube.mesh");
+	setComponent<Model>(pEngine, cube3, ".\\generated\\models\\cube.mesh");
 
 	Platform::hideCursor(subsystems.pPlatform);
 	Platform::captureCursor(subsystems.pPlatform);
@@ -68,8 +68,6 @@ GAME_API Game::State* Game::startup(
 
 	Game::State* gameState{ pstd::alloc<Game::State>(&gameArena) };
 	Game::State* statePtr{ new (gameState) Game::State{ .gameArena = gameArena,
-														.cube1 = cube1,
-														.cube2 = cube2,
 														.camera = camera } };
 
 	return statePtr;

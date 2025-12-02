@@ -24,30 +24,46 @@ namespace Engine {
 		Platform::State* pPlatform;
 	};
 
+	using UID = size_t;
+
 	struct Cursor {
 		float dx;
 		float dy;
 	};
 
-	using UID = size_t;
-	struct ModelType;
+	using ComponentTypeFlags = uint32_t;
+	enum ComponentType : uint32_t {
+		TransformComponent = 0b1,
+		ModelComponent = 0b10,
+		RigidbodyComponent = 0b100
+	};
+	using Model = pstd::String;
+
+	struct Entity {
+		size_t uid;
+		ComponentTypeFlags typeFlags;
+
+		bool operator==(Entity other) { return uid == other.uid; }
+	};
 
 	// virtual key state
 	KeyState getVKeyState(Engine::State* pEngineState, KeyCode keyCode);
 	// physical key state
 	KeyState getPKeyState(Engine::State* pEngineState, KeyCode keyCode);
 
-	UID createEntity(Engine::State* pEngine);
+	Engine::Cursor getCursor(Engine::State* pEngine);
 
-	void addTransform(
-		Engine::State* pEngine, UID entityID, const Transform& transform
+	Entity createEntity(
+		Engine::State* pEngine,
+		pstd::String name,
+		ComponentTypeFlags componentTypes
 	);
-	void addModel(Engine::State* pEngine, UID entityID, pstd::String path);
 
-	Engine::Cursor getCursor(Engine::State* PEngine);
+	Entity getEntity(Engine::State* pEngine, pstd::String name);
 
-	Transform getTransform(Engine::State* pEngine, UID uid);
-	void updateTransform(
-		Engine::State* pEngine, UID entityID, const Transform& transform
-	);
+	template<typename T>
+	T getComponent(Engine::State* pEngine, Entity entity);
+
+	template<typename T>
+	void setComponent(Engine::State* pEngine, Entity entity, T component);
 }  // namespace Engine
