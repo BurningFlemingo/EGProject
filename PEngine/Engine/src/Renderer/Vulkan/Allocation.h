@@ -15,6 +15,7 @@ struct Buffer {
 
 struct Image {
 	VkImage handle;
+	VkImageView view;
 	VkDeviceMemory memory;
 	uint32_t width;
 	uint32_t height;
@@ -39,6 +40,7 @@ Image create2DImage(
 	uint32_t width,
 	uint32_t height,
 	VkFormat format,
+	VkImageAspectFlags aspect,
 	VkImageUsageFlags usage,
 	VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
 	uint32_t mipLevels = 1

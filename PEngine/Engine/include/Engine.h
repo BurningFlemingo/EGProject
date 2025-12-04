@@ -15,11 +15,16 @@ namespace Renderer {
 	struct State;
 }
 
+namespace AssetManager {
+	struct State;
+}
+
 namespace Engine {
 	struct State;
 
 	struct Subsystems {
 		Engine::State* pEngine;
+		AssetManager::State* pAssetManager;
 		Renderer::State* pRenderer;
 		Platform::State* pPlatform;
 	};
@@ -34,10 +39,9 @@ namespace Engine {
 	using ComponentTypeFlags = uint32_t;
 	enum ComponentType : uint32_t {
 		TransformComponent = 0b1,
-		ModelComponent = 0b10,
+		AssetComponent = 0b10,
 		RigidbodyComponent = 0b100
 	};
-	using Model = pstd::String;
 
 	struct Entity {
 		size_t uid;
@@ -59,6 +63,8 @@ namespace Engine {
 		pstd::String name,
 		ComponentTypeFlags componentTypes
 	);
+	Entity
+		createEntity(Engine::State* pEngine, ComponentTypeFlags componentTypes);
 
 	Entity getEntity(Engine::State* pEngine, pstd::String name);
 

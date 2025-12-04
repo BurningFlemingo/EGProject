@@ -30,6 +30,8 @@ namespace Engine {
 		alignas(8) uint8_t data[];
 		// indices
 		// positions
+		// normals
+		// tangents
 		// uvs
 	};
 
@@ -40,7 +42,7 @@ namespace Engine {
 		uint32_t version;
 		uint32_t width;
 		uint32_t height;
-		alignas(8) uint8_t data[1];
+		alignas(8) uint8_t data[];
 		// pixels
 	};
 
@@ -55,12 +57,13 @@ namespace Engine {
 		uint32_t indexCount;
 
 		uint32_t* pIndices;
+
 		pstd::Vec3* pPositions;
+		pstd::Vec3* pNormals;
+		pstd::Vec3* pTangents;
 		pstd::Vec2* pUVs;
 	};
 
 	TextureData loadTexture(pstd::Arena* pArena, const pstd::String path);
-	MeshData loadMesh(
-		pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
-	);
+	MeshData loadMesh(pstd::Arena* pArena, const pstd::String path);
 }  // namespace Engine

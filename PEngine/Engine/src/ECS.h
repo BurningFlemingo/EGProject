@@ -3,17 +3,18 @@
 #include "STD/PHashMap.h"
 #include "AssetLoader.h"
 #include "STD/PString.h"
+#include "AssetManager.h"
 
 namespace Engine {
-	// only the arrays corresponding to componentFlags will be allocated
 	static constexpr size_t maxArchetypeCount{ 16 };
 
+	// only the arrays corresponding to componentFlags will be allocated
 	struct Archetype {
 		ComponentTypeFlags componentFlags;
 		pstd::HashMap<UID, size_t> uidToIndex;
 
 		pstd::Array<Transform> transforms;
-		pstd::Array<Model> models;
+		pstd::Array<AssetManager::UID> assetIDs;
 	};
 
 	Archetype createArchetype(

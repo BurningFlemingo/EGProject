@@ -29,9 +29,9 @@ struct Renderable {
 namespace Renderer {
 
 	struct State {
-		constexpr static uint32_t maxRenderables{ 1024 };
+		constexpr static uint32_t maxRenderables{ 1024 * 4 };
 		constexpr static uint32_t maxFramesInFlight{ 2 };
-		constexpr static size_t frameArenaSize{ 1024 };
+		constexpr static size_t frameArenaSize{ 1024 * 1024 };
 		pstd::StaticArray<pstd::Arena, maxFramesInFlight> frameArenas;
 
 		Swapchain swapchain;
@@ -61,6 +61,8 @@ namespace Renderer {
 		pstd::Array<FrameCtx> frameContexts;
 
 		pstd::Array<pstd::Array<Renderable>> renderables;
+
+		Image depthImage;
 
 		pstd::Mat4 viewMatrix;
 		pstd::Mat4 projectionMatrix;

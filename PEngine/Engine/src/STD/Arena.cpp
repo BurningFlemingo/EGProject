@@ -12,6 +12,10 @@ Arena pstd::allocateArena(AllocationRegistry* pAllocRegistry, size_t size) {
 	return Arena{ .block = heapAlloc(pAllocRegistry, size), .size = size };
 }
 
+Arena pstd::createArena(Arena* pArena, size_t size) {
+	return Arena{ .block = alloc(pArena, size, 8), .size = size };
+}
+
 void pstd::freeArena(AllocationRegistry* pAllocRegistry, Arena* pArena) {
 	heapFree(pAllocRegistry, &pArena->block);
 	pArena = {};

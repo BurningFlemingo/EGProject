@@ -66,6 +66,24 @@ namespace pstd {
 		};
 	};
 
+	template<size_t n>
+	bool operator==(const Vec<n>& a, const Vec<n>& b) {
+		for (size_t i{}; i < n; i++) {
+			if (a[i] != b[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	template<size_t n>
+	Vec<n> operator*(Vec<n> v, float val) {
+		for (size_t i{}; i < n; i++) {
+			v[i] *= val;
+		}
+		return v;
+	}
+
 	struct Rot3 {  // rotor
 		float scalar{ 1 };
 		float xy;

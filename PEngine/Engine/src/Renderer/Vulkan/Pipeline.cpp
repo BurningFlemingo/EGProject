@@ -71,6 +71,14 @@ VkPipeline createGraphicsPipeline(
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 		.colorAttachmentCount = ncast<uint32_t>(colorFormats.count),
 		.pColorAttachmentFormats = colorFormats.data,
+		.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT
+	};
+
+	VkPipelineDepthStencilStateCreateInfo depthStencilCI{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.depthTestEnable = VK_TRUE,
+		.depthWriteEnable = VK_TRUE,
+		.depthCompareOp = VK_COMPARE_OP_LESS,
 	};
 
 	VkGraphicsPipelineCreateInfo pipelineCI{
@@ -83,7 +91,7 @@ VkPipeline createGraphicsPipeline(
 		.pViewportState = &viewportCI,
 		.pRasterizationState = &rasterizerCI,
 		.pMultisampleState = &multisampleCI,
-		.pDepthStencilState = nullptr,
+		.pDepthStencilState = &depthStencilCI,
 		.pColorBlendState = &colorBlendCI,
 		.pDynamicState = &dynamicCI,
 		.layout = layout,

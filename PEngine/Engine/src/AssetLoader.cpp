@@ -22,9 +22,8 @@ Engine::TextureData
 								.pPixels = pixelArray };
 }
 
-Engine::MeshData Engine::loadMesh(
-	pstd::Arena* pArena, pstd::Arena scratchArena, const pstd::String path
-) {
+Engine::MeshData
+	Engine::loadMesh(pstd::Arena* pArena, const pstd::String path) {
 	pstd::Allocation rawMesh{ pstd::readFile(pArena, path) };
 
 	Engine::MeshHeader* meshHeader{ rcast<Engine::MeshHeader*>(rawMesh.block) };
@@ -32,11 +31,15 @@ Engine::MeshData Engine::loadMesh(
 
 	auto* pIndices{ rcast<uint32_t*>(meshHeader->data) };
 	auto* pPositions{ rcast<pstd::Vec3*>(pIndices + meshHeader->indexCount) };
-	auto* pUVs{ rcast<pstd::Vec2*>(pPositions + meshHeader->vertexCount) };
+	auto* pNormals{ rcast<pstd::Vec3*>(pPositions + meshHeader->vertexCount) };
+	auto* pTangents{ rcast<pstd::Vec3*>(pNormals + meshHeader->vertexCount) };
+	auto* pUVs{ rcast<pstd::Vec2*>(pTangents + meshHeader->vertexCount) };
 
 	return Engine::MeshData{ .vertexCount = meshHeader->vertexCount,
 							 .indexCount = meshHeader->indexCount,
 							 .pIndices = pIndices,
 							 .pPositions = pPositions,
+							 .pNormals = pNormals,
+							 .pTangents = pTangents,
 							 .pUVs = pUVs };
 }

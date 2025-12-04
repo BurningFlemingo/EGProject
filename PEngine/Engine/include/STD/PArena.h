@@ -24,6 +24,7 @@ namespace pstd {
 	}
 
 	Arena allocateArena(AllocationRegistry* pAllocRegistry, size_t size);
+	Arena createArena(Arena* pArena, size_t size);
 
 	void freeArena(AllocationRegistry* pAllocRegistry, Arena* pArena);
 

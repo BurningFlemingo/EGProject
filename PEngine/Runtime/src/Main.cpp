@@ -15,8 +15,12 @@ int main() {
 	};
 
 	cookBMP(primaryScratchArena, "assets\\textures\\Missing_Texture.bmp");
+	cookBMP(primaryScratchArena, "assets\\textures\\Cobblestone.bmp");
 	cookOBJ(
 		primaryScratchArena, secondaryScratchArena, "assets\\models\\cube.obj"
+	);
+	cookOBJ(
+		primaryScratchArena, secondaryScratchArena, "assets\\models\\quad.obj"
 	);
 
 	Engine::Subsystems subsystems{ Engine::startup(&allocRegistry) };

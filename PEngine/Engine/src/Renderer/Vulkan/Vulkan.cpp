@@ -41,7 +41,9 @@ struct UniformBufferObject {
 
 struct Vertex {
 	pstd::Vec3 position;
-	alignas(16) pstd::Vec2 uv;
+	float u;
+	pstd::Vec3 normal;
+	float v;
 };
 
 Renderer::State* Renderer::startup(
@@ -203,7 +205,7 @@ Renderer::State* Renderer::startup(
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		1024 * 1024 * 4
+		1024 * 1024 * 256
 	) };
 
 	// change this name
@@ -218,12 +220,18 @@ Renderer::State* Renderer::startup(
 	);
 
 	Engine::TextureData missingTexture{ Engine::loadTexture(
-		pPersistArena, "generated\\textures\\Missing_Texture.texture"
+		pPersistArena, "generated\\textures\\Cobblestone.texture"
 	) };
+
 	size_t missingTextureSize{ missingTexture.width * missingTexture.height *
 							   sizeof(missingTexture.pPixels[0]) };
 
 	memcpy(mappedData, missingTexture.pPixels, missingTextureSize);
+	uint32_t r{ missingTexture.pPixels[0] & 0xFF };
+	uint32_t g{ missingTexture.pPixels[0] >> 8 & 0xFF };
+	uint32_t b{ missingTexture.pPixels[0] >> 16 & 0xFF };
+	uint32_t a{ missingTexture.pPixels[0] >> 24 & 0xFF };
+	LOG_INFO("(%u, %u, %u, %u)\n", r, g, b, a);
 
 	Image textureImage{ create2DImage(
 		device,
@@ -231,35 +239,26 @@ Renderer::State* Renderer::startup(
 		missingTexture.width,
 		missingTexture.height,
 		VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_ASPECT_COLOR_BIT,
 		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
 	) };
 
-	VkImageViewCreateInfo textureImageViewCI {
-		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, 
-		.image = textureImage.handle, 
-		.viewType = VK_IMAGE_VIEW_TYPE_2D,
-		.format = VK_FORMAT_R8G8B8A8_SRGB, 
-						 .subresourceRange = {
-							 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-							 .baseMipLevel = 0,
-							 .levelCount = 1,
-							 .baseArrayLayer = 0,
-							 .layerCount = 1,
-						 },
-	};
-
-	VkImageView textureImageView{};
-	res = vkCreateImageView(
-		device.logical, &textureImageViewCI, nullptr, &textureImageView
-	);
-	ASSERT(res == VK_SUCCESS);
+	Image depthImage{ create2DImage(
+		device,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		swapchain.createInfo.imageExtent.width,
+		swapchain.createInfo.imageExtent.height,
+		VK_FORMAT_D32_SFLOAT,
+		VK_IMAGE_ASPECT_DEPTH_BIT,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+	) };
 
 	VkPhysicalDeviceProperties deviceProps;
 	vkGetPhysicalDeviceProperties(device.physical, &deviceProps);
 	VkSamplerCreateInfo samplerCI{
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-		.magFilter = VK_FILTER_LINEAR,
-		.minFilter = VK_FILTER_LINEAR,
+		.magFilter = VK_FILTER_NEAREST,
+		.minFilter = VK_FILTER_NEAREST,
 		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
 		.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
 		.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -296,7 +295,9 @@ Renderer::State* Renderer::startup(
 		.imageMemoryBarrierCount = 1,
 		.pImageMemoryBarriers = &transferBarrier,
 	};
+
 	vkCmdPipelineBarrier2(cmdBuffer, &transferDependency);
+
 	VkBufferImageCopy imageCopy {
 		.imageSubresource = {
 			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -390,7 +391,7 @@ Renderer::State* Renderer::startup(
 											   sizeof(UniformBufferObject) };
 		VkDescriptorImageInfo imageInfo{
 			.sampler = sampler,
-			.imageView = textureImageView,
+			.imageView = textureImage.view,
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		};
 
@@ -557,7 +558,8 @@ Renderer::State* Renderer::startup(
 			   .mappedUBOs = mappedUBOs,
 			   .descriptorSets = descriptorSets,
 			   .frameContexts = frameContexts,
-			   .renderables = renderables };
+			   .renderables = renderables,
+			   .depthImage = depthImage };
 }
 
 void Renderer::setCamera(State* pState, const Camera& camera) {
@@ -611,7 +613,12 @@ void Renderer::setModels(
 		};
 
 		for (size_t i{}; i < mesh.vertexCount; i++) {
-			Vertex vertex{ .position = mesh.pPositions[i], .uv = mesh.pUVs[i] };
+			Vertex vertex{
+				.position = mesh.pPositions[i],
+				.u = mesh.pUVs[i].x,
+				.normal = mesh.pNormals[i],
+				.v = mesh.pUVs[i].y,
+			};
 			pstd::pushBack(&vertices, vertex);
 		}
 		for (size_t i{}; i < mesh.indexCount; i++) {
@@ -707,14 +714,21 @@ void Renderer::render(State* state, bool windowResized) {
 
 	vkResetCommandBuffer(state->cmdBuffers[state->frameInFlight], 0);
 	vkBeginCommandBuffer(state->cmdBuffers[state->frameInFlight], &cmdBufferBI);
-	VkImageMemoryBarrier
-		colorAttachmentFormatBarrier{ .sType =
-										  VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+
+	const uint32_t nMemoryBarriers{ 2 };
+	VkImageMemoryBarrier2
+		preFormatBarriers[nMemoryBarriers]{ {.sType =
+										  VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+									  .srcStageMask =
+										  VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+									  .dstStageMask =
+										  VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
 									  .dstAccessMask =
-										  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+										  VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
 									  .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 									  .newLayout =
 										  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
 									  .srcQueueFamilyIndex =
 										  state->device.queueFamilyIndices
 											  [QueueFamily::graphics],
@@ -728,23 +742,48 @@ void Renderer::render(State* state, bool windowResized) {
 											  VK_IMAGE_ASPECT_COLOR_BIT,
 										  .levelCount = 1,
 										  .layerCount = 1,
-									  } };
+									  }},  {.sType =
+										  VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+									  .srcStageMask =
+										  VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+									  .dstStageMask =
+										  VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+									  .dstAccessMask =
+										  VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR,
+									  .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+									  .newLayout =
+										  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 
-	vkCmdPipelineBarrier(
-		state->cmdBuffers[state->frameInFlight],
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		0,
-		0,
-		nullptr,
-		0,
-		nullptr,
-		1,
-		&colorAttachmentFormatBarrier
+									  .srcQueueFamilyIndex =
+										  state->device.queueFamilyIndices
+											  [QueueFamily::graphics],
+									  .dstQueueFamilyIndex =
+										  state->device.queueFamilyIndices
+											  [QueueFamily::graphics],
+									  .image = state->depthImage.handle,
+									  .subresourceRange = {
+										  .aspectMask =
+											  VK_IMAGE_ASPECT_DEPTH_BIT,
+										  .levelCount = 1,
+										  .layerCount = 1,
+									  }} };
+
+	VkDependencyInfo preRenderDependency{
+		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+		.imageMemoryBarrierCount = 2,
+		.pImageMemoryBarriers = preFormatBarriers,
+	};
+
+	vkCmdPipelineBarrier2(
+		state->cmdBuffers[state->frameInFlight], &preRenderDependency
 	);
 
-	VkClearValue clearValue{ .color =
-								 VkClearColorValue{ { 0.f, 0.f, 0.f, 1.f } } };
+	constexpr VkClearValue colorClearValue{
+		.color =
+			VkClearColorValue{ { 135 / 255.f, 206 / 255.f, 235 / 255.f, 1.f } }
+	};
+	VkClearValue depthClearValue{ .depthStencil = VkClearDepthStencilValue{
+									  .depth = 1.f, .stencil = 1 } };
 
 	VkRenderingAttachmentInfo colorAttachmentInfo{
 		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -752,7 +791,15 @@ void Renderer::render(State* state, bool windowResized) {
 		.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.clearValue = clearValue
+		.clearValue = colorClearValue
+	};
+	VkRenderingAttachmentInfo depthAttachmentInfo{
+		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+		.imageView = state->depthImage.view,
+		.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.clearValue = depthClearValue
 	};
 
 	VkRenderingInfo renderingInfo{
@@ -761,7 +808,8 @@ void Renderer::render(State* state, bool windowResized) {
 			VkRect2D{ .extent = state->swapchain.createInfo.imageExtent },
 		.layerCount = 1,
 		.colorAttachmentCount = 1,
-		.pColorAttachments = &colorAttachmentInfo
+		.pColorAttachments = &colorAttachmentInfo,
+		.pDepthAttachment = &depthAttachmentInfo,
 	};
 
 	vkCmdBeginRendering(
@@ -834,10 +882,15 @@ void Renderer::render(State* state, bool windowResized) {
 		pstd::Mat4 rotMat{ pstd::calcRotationMatrix<4>(renderable.transform.rot
 		) };
 
-		pstd::Mat4 modelMat{ pstd::calcTranslated(
+		pstd::Mat4 scaleMat{
+			pstd::calcDiagonalMatrix<4>(renderable.transform.scale)
+		};
+
+		pstd::Mat4 translationMat{ pstd::calcTranslated(
 			pstd::getIdentityMatrix<4>(), renderable.transform.pos
 		) };
-		modelMat = modelMat * rotMat;
+
+		pstd::Mat4 modelMat{ translationMat * scaleMat * rotMat };
 
 		PushConstants pushConstants{ .vertexBufferAddress =
 										 frameCtx.vertexDeviceAddress,

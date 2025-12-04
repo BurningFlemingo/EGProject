@@ -2,10 +2,12 @@
 #include "Cursor.h"
 #include "Engine.h"
 #include "Game.h"
+#include "Assets.h"
 #include "Logging.h"
 #include "STD/PArena.h"
 #include "STD/PMemory.h"
 #include "STD/PCircularBuffer.h"
+#include "STD/PString.h"
 #include "STD/PVector.h"
 #include "STD/PMatrix.h"
 #include "STD/PMath.h"
@@ -29,35 +31,41 @@ namespace Game {
 
 using namespace Engine;
 
+void makeCube(const Subsystems& subsystems, pstd::Vec3 pos) {
+	Engine::State* pEngine{ subsystems.pEngine };
+	AssetManager::State* pAssetManager{ subsystems.pAssetManager };
+
+	Entity cube{ createEntity(pEngine, TransformComponent | AssetComponent) };
+
+	setComponent<Transform>(pEngine, cube, { .pos = pos });
+	AssetManager::UID assetUID{
+		AssetManager::load(pAssetManager, ".\\generated\\models\\cube.mesh")
+	};
+
+	setComponent<AssetManager::UID>(pEngine, cube, assetUID);
+}
+
 GAME_API Game::State* Game::startup(
 	pstd::AllocationRegistry* pAllocRegistry, Subsystems subsystems
 ) {
 	Engine::State* pEngine{ subsystems.pEngine };
 	pstd::Arena gameArena{ pstd::allocateArena(pAllocRegistry, 1024) };
 
-	Entity cube1{
-		createEntity(pEngine, "cube1", TransformComponent | ModelComponent)
-	};
-	Entity cube2{
-		createEntity(pEngine, "cube2", TransformComponent | ModelComponent)
-	};
-	Entity cube3{
-		createEntity(pEngine, "cube3", TransformComponent | ModelComponent)
-	};
+	constexpr size_t floorHeight{ 3 };
+	constexpr size_t floorWidth{ 3 };
+	for (size_t i{}; i < floorHeight; i++) {
+		for (size_t j{}; j < floorWidth; j++) {
+			makeCube(subsystems, { (float)j, 0, (float)i });
+		}
+	}
 
-	setComponent<Transform>(pEngine, cube1, { .pos{ 0, 0, 5 } });
-	setComponent<Transform>(pEngine, cube2, { .pos{ 5, 0, 5 } });
-	setComponent<Transform>(pEngine, cube3, { .pos{ 5, 0, 10 } });
-
-	setComponent<Model>(pEngine, cube1, ".\\generated\\models\\cube.mesh");
-	setComponent<Model>(pEngine, cube2, ".\\generated\\models\\cube.mesh");
-	setComponent<Model>(pEngine, cube3, ".\\generated\\models\\cube.mesh");
+	makeCube(subsystems, { 0, 5, 3 });
 
 	Platform::hideCursor(subsystems.pPlatform);
 	Platform::captureCursor(subsystems.pPlatform);
 
 	Renderer::Camera camera{
-		.transform = Transform{ .pos{ 0, 0, 5 }, .rot = { 0, 0, 0, 1 } },
+		.transform = Transform{ .pos{ 0, 0, 0 }, .rot = { 0, 0, 0, 1 } },
 		.fovRadians = pstd::toRadians(90),
 		.nearPlane = 0.1,
 		.farPlane = 100.0,

@@ -15,26 +15,28 @@ namespace {
 	) {
 		const char* severityString{};
 		switch (messageSeverity) {
-			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-				severityString = "[VULKAN VERBOSE]";
-				break;
-			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-				severityString = "[VULKAN INFO]";
-				break;
-			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-				severityString = "[VULKAN WARNING]";
-				break;
-			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-				severityString = "[VULKAN ERROR]";
-				break;
-			default:
-				severityString = "[VULKAN ??]";
-				break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+			severityString = "[VULKAN VERBOSE]";
+			break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+			severityString = "[VULKAN INFO]";
+			break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+			severityString = "[VULKAN WARNING]";
+			break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+			severityString = "[VULKAN ERROR]";
+			break;
+		default:
+			severityString = "[VULKAN ??]";
+			break;
 		}
 		if (messageSeverity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
 			Console::log(
 				Console::LogLevel::none,
-				"%m %m\n",
+				"--------------\n"
+				"%m %m\n"
+				"--------------\n",
 				severityString,
 				pCallbackData->pMessage
 			);

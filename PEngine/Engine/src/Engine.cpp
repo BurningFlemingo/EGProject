@@ -1,3 +1,4 @@
+#include "AssetManager.h"
 #include "Core.h"
 #include "Engine.h"
 #include "ECS.h"
@@ -65,9 +66,13 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 		pAllocRegistry, &subsystemArena, scratchArena, *pPlatform
 	) };
 
+	AssetManager::State* pAssetManager{
+		AssetManager::startup(&subsystemArena, 1, 1024 * 1024 * 4)
+	};
+
 	Archetype renderableArchetype{ createArchetype(
 		&subsystemArena,
-		TransformComponent | ModelComponent,
+		TransformComponent | AssetComponent,
 		Engine::maxEntityCount
 	) };
 
@@ -95,6 +100,7 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 
 	Engine::Subsystems subsystems{
 		.pEngine = pEngine,
+		.pAssetManager = pAssetManager,
 		.pRenderer = pRenderer,
 		.pPlatform = pPlatform,
 	};
@@ -102,6 +108,7 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 	Game::State* pGameState{
 		pEngine->gameDll.api.startup(pAllocRegistry, subsystems)
 	};
+
 	pEngine->pGameState = pGameState;
 
 	auto meshes{ pstd::createArray<MeshData>(
@@ -110,15 +117,13 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 
 	for (size_t i{}; i < pEngine->archetypes.count; i++) {
 		Archetype archetype{ pEngine->archetypes[i] };
-		uint32_t renderableFlags{ TransformComponent | ModelComponent };
+		uint32_t renderableFlags{ TransformComponent | AssetComponent };
 		if ((archetype.componentFlags & renderableFlags) == renderableFlags) {
-			for (int j{}; j < archetype.models.count; j++) {
-				MeshData mesh{ loadMesh(
-					&pEngine->subsystemArena,
-					pEngine->scratchArena,
-					archetype.models[j]
+			for (int j{}; j < archetype.uidToIndex.count; j++) {
+				MeshData* pMesh{ AssetManager::retrieveMesh(
+					subsystems.pAssetManager, archetype.assetIDs[j]
 				) };
-				pstd::pushBack(&meshes, mesh);
+				pstd::pushBack(&meshes, *pMesh);
 			}
 		}
 	}
@@ -233,21 +238,12 @@ bool Engine::tick(
 		pEngine->isRunning &=
 			pEngine->gameDll.api.update(subsystems, pEngine->pGameState, dT);
 
-		for (size_t i{}; i < pEngine->archetypes.count; i++) {
-			Archetype archetype{ pEngine->archetypes[i] };
-			uint32_t renderableFlags{ TransformComponent | ModelComponent };
-			if ((archetype.componentFlags & renderableFlags) ==
-				renderableFlags) {
-				Renderer::setTransforms(pRenderer, archetype.transforms);
-			}
-		}
-
 		auto transforms{ pstd::createArray<Transform>(
 			&pEngine->scratchArena, Engine::maxEntityCount, 0
 		) };
 		for (size_t i{}; i < pEngine->archetypes.count; i++) {
 			Archetype archetype{ pEngine->archetypes[i] };
-			uint32_t renderableFlags{ TransformComponent | ModelComponent };
+			uint32_t renderableFlags{ TransformComponent | AssetComponent };
 			if ((archetype.componentFlags & renderableFlags) ==
 				renderableFlags) {
 				for (int j{}; j < archetype.transforms.count; j++) {

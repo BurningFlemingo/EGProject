@@ -23,6 +23,7 @@ set(SRC_FILES
 	${SRC_DIR}/ECS.cpp
 	${SRC_DIR}/Logging.cpp
 	${SRC_DIR}/AssetLoader.cpp
+	${SRC_DIR}/AssetManager.cpp
 	${SRC_DIR}/Platforms/Windows/Window.cpp
 	${SRC_DIR}/Platforms/Windows/VulkanSurface.cpp
 	${SRC_DIR}/Renderer/Vulkan/Vulkan.cpp

@@ -80,6 +80,7 @@ Image create2DImage(
 	uint32_t width,
 	uint32_t height,
 	VkFormat format,
+	VkImageAspectFlags aspect,
 	VkImageUsageFlags usage,
 	VkSampleCountFlagBits samples,
 	uint32_t mipLevels
@@ -122,9 +123,29 @@ Image create2DImage(
 	vkAllocateMemory(device.logical, &memAllocInfo, nullptr, &memory);
 	vkBindImageMemory(device.logical, image, memory, 0);
 
-	return Image{
-		.handle = image, .memory = memory, .width = width, .height = height
+	VkImageViewCreateInfo viewCI{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image = image, 
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = format, 
+		.subresourceRange = {
+							 .aspectMask = aspect,
+							 .baseMipLevel = 0,
+							 .levelCount = mipLevels,
+							 .baseArrayLayer = 0,
+							 .layerCount = 1,
+						 },
+
 	};
+	VkImageView view{};
+	res = vkCreateImageView(device.logical, &viewCI, nullptr, &view);
+	ASSERT(res == VK_SUCCESS);
+
+	return Image{ .handle = image,
+				  .view = view,
+				  .memory = memory,
+				  .width = width,
+				  .height = height };
 }
 
 void copyBuffer(

@@ -1,6 +1,7 @@
 #pragma once
 #include "PArray.h"
 #include "Logging.h"
+#include "POptional.h"
 
 namespace pstd {
 	template<typename K, typename T>
@@ -98,29 +99,33 @@ namespace pstd {
 	}
 
 	template<typename K, typename T>
-	bool exists(const HashMap<K, T>& hashmap, K key) {
+	T* find(HashMap<K, T>* pHashmap, K key) {
 		using ControlByte = typename HashMap<K, T>::ControlByte;
 
 		size_t hash{ pstd::hash(key) };
 		uint8_t byteHash{ ncast<uint8_t>(hash & 0b01111111) };
 
-		for (size_t i{}; i < hashmap.capacity; i++) {
-			size_t slot{ (hash + i) % hashmap.capacity };
-			uint8_t slotHash{ hashmap.pControls[slot] };
+		for (size_t i{}; i < pHashmap->capacity; i++) {
+			size_t slot{ (hash + i) % pHashmap->capacity };
+			uint8_t slotHash{ pHashmap->pControls[slot] };
 
 			if (slotHash == ControlByte::CB_EMPTY) {
 				break;
 			}
 
 			if (slotHash == byteHash) {
-				if (hashmap.pSlots[slot].key == key) {
-					LOG_INFO("%m", key);
-					return true;
+				if (pHashmap->pSlots[slot].key == key) {
+					return &pHashmap->pSlots[slot].value;
 				}
 			}
 		}
 
-		return false;
+		return nullptr;
+	}
+
+	template<typename K, typename T>
+	bool exists(HashMap<K, T> hashmap, K key) {
+		return find(&hashmap, key) != nullptr;
 	}
 
 }  // namespace pstd

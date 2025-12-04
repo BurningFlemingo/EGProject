@@ -6,7 +6,7 @@
 namespace Engine {
 	struct Transform {
 		pstd::Vec3 pos;
-		pstd::Vec3 scale;
+		float scale{ 1.f };
 		pstd::Rot3 rot;
 	};
 

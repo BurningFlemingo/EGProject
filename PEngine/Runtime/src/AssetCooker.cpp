@@ -36,14 +36,17 @@ namespace {
 
 	struct OBJ {
 		pstd::Array<pstd::Vec3> uniquePositions;
+		pstd::Array<pstd::Vec3> uniqueNormals;
 		pstd::Array<pstd::Vec2> uniqueUVs;
 
 		pstd::Array<uint32_t> positionIndices;
+		pstd::Array<uint32_t> normalIndices;
 		pstd::Array<uint32_t> uvIndices;
 	};
 
 	struct OBJMetadata {
 		uint32_t positionCount;
+		uint32_t normalCount;
 		uint32_t uvCount;
 		uint32_t vertexCount;
 	};
@@ -55,11 +58,16 @@ namespace {
 		const pstd::Span<pstd::String>& contents,
 		pstd::Arena scratchArena,
 		pstd::Array<uint32_t>* pPositionIndices,
+		pstd::Array<uint32_t>* pNormalIndices,
 		pstd::Array<uint32_t>* pUVIndices
 	);
 
 	void createDirectories(
 		pstd::Arena scratchArena, pstd::String nestedDirectorys
+	);
+
+	pstd::Vec3 calcTangent(
+		pstd::Span<pstd::Vec3> positions, pstd::Span<pstd::Vec2> uvs
 	);
 
 }  // namespace
@@ -71,7 +79,6 @@ void cookBMP(pstd::Arena scratchArena, const pstd::String path) {
 	ASSERT(rawBMP.block != nullptr);
 
 	BMPHeader* header{ rcast<BMPHeader*>(rawBMP.block) };
-	uint8_t* pPixels{ rcast<uint8_t*>(rawBMP.block) + header->pxOffset };
 
 	ASSERT(header->pxWidth > 0);
 	ASSERT(header->pxHeight > 0);
@@ -100,6 +107,8 @@ void cookBMP(pstd::Arena scratchArena, const pstd::String path) {
 		alphaMask = ~(redMask | greenMask | blueMask);
 	}
 
+	uint8_t* pPixels{ rcast<uint8_t*>(rawBMP.block) + header->pxOffset };
+
 	pstd::FirstSetBit redShift{ pstd::bitscanForward(redMask) };
 	pstd::FirstSetBit greenShift{ pstd::bitscanForward(greenMask) };
 	pstd::FirstSetBit blueShift{ pstd::bitscanForward(blueMask) };
@@ -122,21 +131,34 @@ void cookBMP(pstd::Arena scratchArena, const pstd::String path) {
 	textureHeader->width = absWidth;
 	textureHeader->height = absHeight;
 
+	LOG_INFO("File size: %u\n", header->fileSize);
+	LOG_INFO("Pixel offset: %u\n", header->pxOffset);
+	LOG_INFO("Header size: %u\n", header->headerSize);
+	LOG_INFO("Width: %f, Height: %f\n", header->pxWidth, header->pxHeight);
+	LOG_INFO("Bits per pixel: %u\n", (uint32_t)header->bitsPerPixel);
+	LOG_INFO("Compression: %u\n", header->compressionMethod);
+	LOG_INFO("Raw file size: %u\n", rawBMP.size);
+	LOG_INFO("Calculated stride: %u\n", absWidth * (header->bitsPerPixel / 8));
+	LOG_INFO(
+		"Actual stride (aligned): %u\n",
+		(absWidth * (header->bitsPerPixel / 8) + 3) & ~3
+	);
+
 	// BMP pixels are aligned to 4byte boundarys
 	size_t stride{ absWidth * (header->bitsPerPixel / 8) };
-	bool imageFlipped{ header->pxHeight < 0 };
+	bool topDown{ header->pxHeight < 0 };
 	stride = (stride + 3) & ~3;
 	for (size_t dstY{}; dstY < absHeight; dstY++) {
 		size_t srcY{ dstY };
-		if (imageFlipped) {
+		if (topDown) {
 			srcY = absHeight - dstY - 1;
 		}
 
-		for (int x{}; x < absWidth; x++) {
+		for (size_t x{}; x < absWidth; x++) {
 			size_t colorByteIndex{ (srcY * stride) +
 								   (x * (header->bitsPerPixel / 8)) };
 			uint32_t color{ *rcast<uint32_t*>(pPixels + colorByteIndex) };
-			if (header->compressionMethod == 0) {
+			if (header->bitsPerPixel == 24) {
 				color = color | 0xFF << 24;
 			}
 
@@ -147,6 +169,11 @@ void cookBMP(pstd::Arena scratchArena, const pstd::String path) {
 				(((color >> alphaShift.shift) & 0xFF) << 24);
 		}
 	}
+	uint32_t r{ pixelArray[0] & 0xFF };
+	uint32_t g{ pixelArray[0] >> 8 & 0xFF };
+	uint32_t b{ pixelArray[0] >> 16 & 0xFF };
+	uint32_t a{ pixelArray[0] >> 24 & 0xFF };
+	LOG_INFO("(%u, %u, %u, %u)\n", r, g, b, a);
 
 	pstd::String texturePath{ path };
 	pstd::readLastToken(&texturePath, ".");
@@ -195,6 +222,12 @@ void cookOBJ(
 	auto* pPositions{
 		pstd::alloc<pstd::Vec3>(&primaryScratchArena, indexCount, 8)
 	};
+	auto* pNormals{
+		pstd::alloc<pstd::Vec3>(&primaryScratchArena, indexCount, 8)
+	};
+	auto* pTangents{
+		pstd::alloc<pstd::Vec3>(&primaryScratchArena, indexCount, 8)
+	};
 
 	auto* pUVs{ pstd::alloc<pstd::Vec2>(&primaryScratchArena, indexCount, 8) };
 
@@ -212,7 +245,47 @@ void cookOBJ(
 		pPositions[i] = obj.uniquePositions[obj.positionIndices[i]];
 	}
 	for (uint32_t i{}; i < indexCount; i++) {
+		pNormals[i] = obj.uniqueNormals[obj.normalIndices[i]];
+	}
+	for (uint32_t i{}; i < indexCount; i++) {
 		pUVs[i] = obj.uniqueUVs[obj.uvIndices[i]];
+	}
+
+	for (size_t i{}; i < indexCount - 2; i += 3) {
+		ASSERT(pNormals[pIndices[i]] == pNormals[pIndices[i + 1]]);
+		ASSERT(pNormals[pIndices[i]] == pNormals[pIndices[i + 2]]);
+
+		pstd::Vec3 p1{ pPositions[pIndices[i]] };
+		pstd::Vec3 p2{ pPositions[pIndices[i + 1]] };
+		pstd::Vec3 p3{};
+
+		pstd::StaticArray<pstd::Vec3, 3> positions{
+			pPositions[pIndices[i]],
+			pPositions[pIndices[i + 1]],
+			pPositions[pIndices[i + 2]],
+		};
+
+		pstd::StaticArray<pstd::Vec2, 3> uvs{
+			pUVs[pIndices[i]],
+			pUVs[pIndices[i + 1]],
+			pUVs[pIndices[i + 2]],
+		};
+
+		pstd::Vec3 normal{ pNormals[pIndices[i]] };
+
+		pstd::Vec3 tangent{ pstd::calcNormalized(calcTangent(positions, uvs)) };
+		// gram-schmidt proccess / re-orthonormalization
+		tangent = pstd::calcNormalized(
+			tangent - (normal * pstd::dot(normal, tangent))
+		);
+
+		LOG_INFO("tangent: (%f, %f, %f)\n", tangent.x, tangent.y, tangent.z);
+		LOG_INFO("normal: (%f, %f, %f)\n", normal.x, normal.y, normal.z);
+		LOG_INFO("\n");
+
+		pTangents[i] = tangent;
+		pTangents[i + 1] = tangent;
+		pTangents[i + 2] = tangent;
 	}
 
 	pstd::String meshPath{ path };
@@ -239,6 +312,7 @@ namespace {
 
 	OBJMetadata parseOBJMetadata(pstd::String objString) {
 		uint32_t positionCount{};
+		uint32_t normalCount{};
 		uint32_t uvCount{};
 		uint32_t vertexCount{};
 		while (objString.size > 0) {
@@ -249,6 +323,8 @@ namespace {
 				positionCount++;
 			} else if (identifier == "vt") {
 				uvCount++;
+			} else if (identifier == "vn") {
+				normalCount++;
 			} else if (identifier == "f") {
 				size_t ngon{ pstd::countTokens(line, " ") };
 
@@ -266,6 +342,7 @@ namespace {
 		}
 
 		return OBJMetadata{ .positionCount = positionCount,
+							.normalCount = normalCount,
 							.uvCount = uvCount,
 							.vertexCount = vertexCount };
 	}
@@ -274,11 +351,13 @@ namespace {
 		const pstd::Span<pstd::String>& contents,
 		pstd::Arena scratchArena,
 		pstd::Array<uint32_t>* pPositionIndices,
+		pstd::Array<uint32_t>* pNormalIndices,
 		pstd::Array<uint32_t>* pUVIndices
 	) {
 		ASSERT(contents.count <= 4);
 
 		uint32_t positionIndices[4];
+		uint32_t normalIndices[4];
 		uint32_t uvIndices[4];
 
 		for (size_t i{}; i < contents.count; i++) {
@@ -289,34 +368,47 @@ namespace {
 			ASSERT(face.count == 3);
 
 			positionIndices[i] = pstd::parse<uint32_t>(face[0]);
+			normalIndices[i] = pstd::parse<uint32_t>(face[2]);
 			uvIndices[i] = pstd::parse<uint32_t>(face[1]);
 		}
 
 		if (contents.count == 3) {
-			// -1 because obj is 1 indexed, reverese index to do cw -> ccw
-			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
-			pstd::pushBack(pPositionIndices, positionIndices[1] - 1);
+			// -1 because obj is 1 indexed, front faces are assumed to be CCW
 			pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[1] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
 
-			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
-			pstd::pushBack(pUVIndices, uvIndices[1] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[0] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[1] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[2] - 1);
+
 			pstd::pushBack(pUVIndices, uvIndices[0] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[1] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
 		} else {
-			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
 			pstd::pushBack(pPositionIndices, positionIndices[1] - 1);
-			pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
-
-			pstd::pushBack(pPositionIndices, positionIndices[3] - 1);
 			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
+
 			pstd::pushBack(pPositionIndices, positionIndices[0] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[2] - 1);
+			pstd::pushBack(pPositionIndices, positionIndices[3] - 1);
 
-			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[0] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[1] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[2] - 1);
+
+			pstd::pushBack(pNormalIndices, normalIndices[0] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[2] - 1);
+			pstd::pushBack(pNormalIndices, normalIndices[3] - 1);
+
+			pstd::pushBack(pUVIndices, uvIndices[0] - 1);
 			pstd::pushBack(pUVIndices, uvIndices[1] - 1);
-			pstd::pushBack(pUVIndices, uvIndices[0] - 1);
-
-			pstd::pushBack(pUVIndices, uvIndices[3] - 1);
 			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
+
 			pstd::pushBack(pUVIndices, uvIndices[0] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[2] - 1);
+			pstd::pushBack(pUVIndices, uvIndices[3] - 1);
 		}
 	}
 
@@ -325,19 +417,18 @@ namespace {
 	) {
 		OBJMetadata meta{ parseOBJMetadata(lines) };
 
-		auto uniquePositions{
-			pstd::createArray<pstd::Vec3>(pArena, meta.positionCount, 0)
-		};
-
-		auto uniqueUVs{
-			pstd::createArray<pstd::Vec2>(pArena, meta.uvCount, 0)
-		};
-
-		auto positionIndices{
-			pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0)
-		};
-		auto uvIndices{
-			pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0)
+		OBJ obj{
+			.uniquePositions =
+				pstd::createArray<pstd::Vec3>(pArena, meta.positionCount, 0),
+			.uniqueNormals =
+				pstd::createArray<pstd::Vec3>(pArena, meta.normalCount, 0),
+			.uniqueUVs = pstd::createArray<pstd::Vec2>(pArena, meta.uvCount, 0),
+			.positionIndices =
+				pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0),
+			.normalIndices =
+				pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0),
+			.uvIndices =
+				pstd::createArray<uint32_t>(pArena, meta.vertexCount, 0)
 		};
 
 		while (lines.size > 0) {
@@ -349,23 +440,31 @@ namespace {
 			};
 
 			if (identifier == "f") {
-				parseFace(contents, scratchArena, &positionIndices, &uvIndices);
+				parseFace(
+					contents,
+					scratchArena,
+					&obj.positionIndices,
+					&obj.normalIndices,
+					&obj.uvIndices
+				);
 			} else if (identifier == "v") {
 				pstd::Vec3 position{ pstd::parse<float>(contents[0]),
 									 pstd::parse<float>(contents[1]),
 									 pstd::parse<float>(contents[2]) };
-				pstd::pushBack(&uniquePositions, position);
+				pstd::pushBack(&obj.uniquePositions, position);
+			} else if (identifier == "vn") {
+				pstd::Vec3 normal{ pstd::parse<float>(contents[0]),
+								   pstd::parse<float>(contents[1]),
+								   pstd::parse<float>(contents[2]) };
+				pstd::pushBack(&obj.uniqueNormals, normal);
 			} else if (identifier == "vt") {
 				pstd::Vec2 uv{ pstd::parse<float>(contents[0]),
 							   pstd::parse<float>(contents[1]) };
-				pstd::pushBack(&uniqueUVs, uv);
+				pstd::pushBack(&obj.uniqueUVs, uv);
 			}
 		}
 
-		return OBJ{ .uniquePositions = uniquePositions,
-					.uniqueUVs = uniqueUVs,
-					.positionIndices = positionIndices,
-					.uvIndices = uvIndices };
+		return obj;
 	}
 
 	void createDirectories(
@@ -377,5 +476,22 @@ namespace {
 				pstd::createDirectory(pstd::createCString(&scratchArena, path));
 			}
 		}
+	}
+
+	pstd::Vec3 calcTangent(
+		pstd::Span<pstd::Vec3> positions, pstd::Span<pstd::Vec2> uvs
+	) {
+		pstd::Vec3 e1{ positions[0] - positions[1] };
+		pstd::Vec3 e2{ positions[2] - positions[1] };
+		pstd::Vec2 duv1{ uvs[0] - uvs[1] };
+		pstd::Vec2 duv2{ uvs[2] - uvs[1] };
+
+		float f{ 1.f / ((duv1.x * duv2.y) - (duv2.x * duv1.y)) };
+
+		return pstd::Vec3{
+			(duv2.y * e1.x) - (duv1.y * e2.x),
+			(duv2.y * e1.y) - (duv1.y * e2.y),
+			(duv2.y * e1.z) - (duv1.y * e2.z),
+		} * f;
 	}
 }  // namespace
