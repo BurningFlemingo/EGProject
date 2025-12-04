@@ -28,9 +28,10 @@ namespace Renderer {
 	);
 
 	void setModels(
-		Renderer::State* pState,
+		State* pState,
+		AssetManager::State* pAssetManager,
 		pstd::Arena scratchArena,
-		pstd::Span<Engine::MeshData> meshes
+		pstd::Span<AssetManager::UID> meshIDs
 	);
 
 	void render(State* state, bool windowResized);

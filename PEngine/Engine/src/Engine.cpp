@@ -111,7 +111,7 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 
 	pEngine->pGameState = pGameState;
 
-	auto meshes{ pstd::createArray<MeshData>(
+	auto mesheIDs{ pstd::createArray<AssetManager::UID>(
 		&pEngine->scratchArena, Engine::maxEntityCount, 0
 	) };
 
@@ -120,14 +120,13 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 		uint32_t renderableFlags{ TransformComponent | AssetComponent };
 		if ((archetype.componentFlags & renderableFlags) == renderableFlags) {
 			for (int j{}; j < archetype.uidToIndex.count; j++) {
-				MeshData* pMesh{ AssetManager::retrieveMesh(
-					subsystems.pAssetManager, archetype.assetIDs[j]
-				) };
-				pstd::pushBack(&meshes, *pMesh);
+				pstd::pushBack(&mesheIDs, archetype.assetIDs[j]);
 			}
 		}
 	}
-	Renderer::setModels(pRenderer, pEngine->scratchArena, meshes);
+	Renderer::setModels(
+		pRenderer, pAssetManager, pEngine->scratchArena, mesheIDs
+	);
 
 	return subsystems;
 }
@@ -223,16 +222,20 @@ bool Engine::tick(
 		float dT{ beginFrameTime - pEngine->lastFrameTime };
 		pEngine->lastFrameTime = beginFrameTime;
 
-		// LOG_INFO("fps: %f\n", 1.f / (dT / 1000.f));
+		LOG_INFO("fps: %f\n", 1.f / (dT / 1000.f));
 
 		pstd::reset(&pEngine->scratchArena);
 
-		if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
-			pEngine->gameDll.lastWriteTime) {
-			unloadGameDll(pEngine->gameDll);
-			pEngine->gameDll = loadGameDll(pEngine->scratchArena);
-		}
-
+		// if (pstd::getLastFileWriteTime(pEngine->originalDllPathCString) !=
+		// 	pEngine->gameDll.lastWriteTime) {
+		// 	LOG_INFO(
+		// 		"last write time: %u, current write time %u\n",
+		// 		pstd::getLastFileWriteTime(pEngine->originalDllPathCString),
+		// 		pEngine->gameDll.lastWriteTime
+		// 	);
+		// 	unloadGameDll(pEngine->gameDll);
+		// 	pEngine->gameDll = loadGameDll(pEngine->scratchArena);
+		// }
 		pEngine->isRunning &= Engine::update(pAllocRegistry, subsystems);
 
 		pEngine->isRunning &=
@@ -251,6 +254,7 @@ bool Engine::tick(
 				}
 			}
 		}
+
 		Renderer::setTransforms(pRenderer, transforms);
 
 		Renderer::render(pRenderer, false);

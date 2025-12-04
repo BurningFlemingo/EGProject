@@ -531,8 +531,8 @@ Renderer::State* Renderer::startup(
 		);
 	}
 
-	auto renderables{ pstd::createArray<pstd::Array<Renderable>>(
-		pPersistArena, Renderer::State::maxFramesInFlight
+	auto renderables{ pstd::createArray<Renderable>(
+		pPersistArena, Renderer::State::maxRenderables
 	) };
 
 	State* state{ pstd::alloc<State>(pPersistArena) };
@@ -580,15 +580,18 @@ void Renderer::setCamera(State* pState, const Camera& camera) {
 
 void Renderer::setModels(
 	Renderer::State* pState,
+	AssetManager::State* pAssetManager,
 	pstd::Arena scratchArena,
-	pstd::Span<Engine::MeshData> meshes
+	pstd::Span<AssetManager::UID> meshIDs
 ) {
+	pstd::Array<Engine::MeshData> meshes{ pAssetManager->loadedMeshes };
+
 	if (meshes.count == 0) {
 		return;
 	}
 	pstd::Arena* pFrameArena{ &pState->frameArenas[pState->frameInFlight] };
 
-	auto renderables{
+	auto uniqueRenderables{
 		pstd::createArray<Renderable>(pFrameArena, meshes.count)
 	};
 
@@ -606,7 +609,7 @@ void Renderer::setModels(
 	uint32_t vertexOffset{};
 	for (size_t j{}; j < meshes.count; j++) {
 		Engine::MeshData mesh{ meshes[j] };
-		renderables[j] = {
+		uniqueRenderables[j] = {
 			.indexOffset = indexOffset,
 			.vertexOffset = vertexOffset,
 			.indexCount = ncast<uint32_t>(mesh.indexCount),
@@ -627,6 +630,15 @@ void Renderer::setModels(
 
 		indexOffset += mesh.indexCount;
 		vertexOffset += mesh.vertexCount;
+	}
+
+	auto renderables{
+		pstd::createArray<Renderable>(pFrameArena, meshIDs.count)
+	};
+
+	for (size_t i{}; i < renderables.count; i++) {
+		size_t index{ pAssetManager->uidToLoadedMeshIndex[meshIDs[i]] };
+		renderables[i] = uniqueRenderables[index];
 	}
 
 	size_t verticesByteSize{ vertices.count * sizeof(vertices[0]) };
@@ -665,9 +677,10 @@ void Renderer::setModels(
 			}
 		);
 
-		pState->renderables[i] = renderables;
 		pState->frameContexts[i] = frameCtx;
 	}
+
+	pState->renderables = renderables;
 }
 
 void Renderer::setTransforms(
@@ -676,12 +689,8 @@ void Renderer::setTransforms(
 	if (transforms.count == 0) {
 		return;
 	}
-	pstd::Array<Renderable>* pRenderables{
-		&pState->renderables[pState->frameInFlight]
-	};
-
 	for (size_t i{}; i < transforms.count; i++) {
-		Renderable* renderable{ &(*pRenderables)[i] };
+		Renderable* renderable{ &pState->renderables[i] };
 		renderable->transform = transforms[i];
 	}
 }
@@ -842,10 +851,6 @@ void Renderer::render(State* state, bool windowResized) {
 		VK_INDEX_TYPE_UINT32
 	);
 
-	const pstd::Array<Renderable>& renderables{
-		state->renderables[state->frameInFlight]
-	};
-
 	float ar{ ncast<float>(state->swapchain.createInfo.imageExtent.width) /
 
 			  ncast<float>(state->swapchain.createInfo.imageExtent.height) };
@@ -876,8 +881,8 @@ void Renderer::render(State* state, bool windowResized) {
 		nullptr
 	);
 
-	for (size_t i{}; i < renderables.count; i++) {
-		const Renderable& renderable{ renderables[i] };
+	for (size_t i{}; i < state->renderables.count; i++) {
+		const Renderable& renderable{ state->renderables[i] };
 
 		pstd::Mat4 rotMat{ pstd::calcRotationMatrix<4>(renderable.transform.rot
 		) };

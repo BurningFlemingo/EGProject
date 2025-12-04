@@ -60,7 +60,7 @@ namespace Renderer {
 
 		pstd::Array<FrameCtx> frameContexts;
 
-		pstd::Array<pstd::Array<Renderable>> renderables;
+		pstd::Array<Renderable> renderables;
 
 		Image depthImage;
 
