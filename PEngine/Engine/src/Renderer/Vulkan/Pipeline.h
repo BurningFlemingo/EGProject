@@ -15,5 +15,5 @@ VkPipeline createGraphicsPipeline(
 VkPipelineLayout createPipelineLayout(
 	const Device& device,
 	const pstd::Span<VkPushConstantRange> pushConstantRanges,
-	VkDescriptorSetLayout descriptorSetLayout
+	const pstd::Span<VkDescriptorSetLayout> descriptorSetLayouts
 );

@@ -80,20 +80,20 @@ namespace {
 
 			uint32_t currentDeviceScore{};
 			switch (physicalDeviceProps.deviceType) {
-				case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-					currentDeviceScore += 10000;
-					break;
-				case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-					currentDeviceScore += 1000;
-					break;
-				case VK_PHYSICAL_DEVICE_TYPE_CPU:
-					currentDeviceScore += 100;
-					break;
-				case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-					currentDeviceScore += 10;
-					break;
-				default:
-					break;
+			case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+				currentDeviceScore += 10000;
+				break;
+			case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+				currentDeviceScore += 1000;
+				break;
+			case VK_PHYSICAL_DEVICE_TYPE_CPU:
+				currentDeviceScore += 100;
+				break;
+			case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+				currentDeviceScore += 10;
+				break;
+			default:
+				break;
 			}
 
 			if (currentDeviceScore > maxDeviceScore) {
@@ -226,6 +226,10 @@ namespace {
 			.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
 			.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
 			.shaderStorageImageArrayNonUniformIndexing = VK_TRUE,
+			.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
 			.descriptorBindingPartiallyBound = VK_TRUE,
 			.runtimeDescriptorArray = VK_TRUE,
 			.bufferDeviceAddress = VK_TRUE,

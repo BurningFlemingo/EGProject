@@ -10,7 +10,8 @@ struct Buffer {
 	VkDeviceMemory memory;
 	size_t size;
 	size_t capacity;
-	size_t alignment;
+	void* pMappedData{ nullptr };
+	VkDeviceAddress deviceAddress{ 0 };
 };
 
 struct Image {
@@ -33,6 +34,9 @@ Buffer createBuffer(
 	VkMemoryPropertyFlags memoryProps,
 	size_t size
 );
+
+void destroyBuffer(const Device& device, const Buffer& buffer);
+void destroyImage(const Device& device, const Image& image);
 
 Image create2DImage(
 	const Device& device,

@@ -110,12 +110,12 @@ VkPipeline createGraphicsPipeline(
 VkPipelineLayout createPipelineLayout(
 	const Device& device,
 	const pstd::Span<VkPushConstantRange> pushConstantRanges,
-	VkDescriptorSetLayout descriptorSetLayout
+	const pstd::Span<VkDescriptorSetLayout> descriptorSetLayouts
 ) {
 	VkPipelineLayoutCreateInfo layoutCI{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		.setLayoutCount = 1,
-		.pSetLayouts = &descriptorSetLayout,
+		.setLayoutCount = ncast<uint32_t>(descriptorSetLayouts.count),
+		.pSetLayouts = descriptorSetLayouts.data,
 		.pushConstantRangeCount = ncast<uint32_t>(pushConstantRanges.count),
 		.pPushConstantRanges = pushConstantRanges.data,
 	};

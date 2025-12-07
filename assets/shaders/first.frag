@@ -8,10 +8,10 @@ layout (location = 3) in vec3 lightPos;
 
 layout (location = 0) out vec4 outColor;
 
-layout (set = 0, binding = 1) uniform sampler2D textureSampler;
+layout (set = 1, binding = 0) uniform sampler2D samplers[];
 
 void main() {
-	vec4 materialColor = texture(textureSampler, uv);
+	vec4 materialColor = texture(samplers[1], uv);
 	vec3 lightColor = vec3(1.0, 1.0, 1.0);
 	
 	vec3 lightDir = normalize(lightPos - fragPos);

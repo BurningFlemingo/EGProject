@@ -65,13 +65,30 @@ Buffer createBuffer(
 	vkAllocateMemory(device.logical, &memAllocInfo, nullptr, &memory);
 	vkBindBufferMemory(device.logical, buffer, memory, 0);
 
-	return Buffer{
-		.handle = buffer,
-		.memory = memory,
-		.size = size,
-		.capacity = memReqs.size,
-		.alignment = memReqs.alignment,
-	};
+	void* pMappedData{ nullptr };
+	if (memoryProps & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+		ASSERT(
+			memoryProps & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			"buffer not host coherent"
+		);
+		vkMapMemory(device.logical, memory, 0, size, 0, &pMappedData);
+	}
+
+	VkDeviceAddress address{};
+	if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+		VkBufferDeviceAddressInfo deviceAddressInfo{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+			.buffer = buffer
+		};
+		address = vkGetBufferDeviceAddress(device.logical, &deviceAddressInfo);
+	}
+
+	return Buffer{ .handle = buffer,
+				   .memory = memory,
+				   .size = size,
+				   .capacity = memReqs.size,
+				   .pMappedData = pMappedData,
+				   .deviceAddress = address };
 }
 
 Image create2DImage(
@@ -161,4 +178,14 @@ void copyBuffer(
 	VkCommandBuffer cmdBuffer{ beginTransientCmd(device, pool) };
 	vkCmdCopyBuffer(cmdBuffer, srcBuffer.handle, dstBuffer.handle, 1, &bufCopy);
 	endTransientCmd(device, cmdBuffer);
+}
+
+void destroyBuffer(const Device& device, const Buffer& buffer) {
+	vkDestroyBuffer(device.logical, buffer.handle, nullptr);
+	vkFreeMemory(device.logical, buffer.memory, nullptr);
+}
+void destroyImage(const Device& device, const Image& image) {
+	vkDestroyImageView(device.logical, image.view, nullptr);
+	vkDestroyImage(device.logical, image.handle, nullptr);
+	vkFreeMemory(device.logical, image.memory, nullptr);
 }

@@ -11,6 +11,7 @@
 #include "Types.h"
 #include "Pipeline.h"
 #include "Commands.h"
+#include "Descriptors.h"
 
 #include "STD/PContainer.h"
 #include "STD/PFileIO.h"
@@ -125,68 +126,121 @@ Renderer::State* Renderer::startup(
 		.data = { pushConstantRange }
 	};
 
-	VkDescriptorSetLayoutBinding descriptorLayoutBindings[2]{
-		{
-			.binding = 0,
-			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		},
-		{
-			.binding = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-		}
+	VkPhysicalDeviceProperties physicalDeviceProps{};
+	vkGetPhysicalDeviceProperties(device.physical, &physicalDeviceProps);
+
+	uint32_t maxUniformBufferRange{
+		physicalDeviceProps.limits.maxUniformBufferRange
 	};
 
-	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCI{
+	uint32_t maxStorageBuffers{
+		physicalDeviceProps.limits.maxDescriptorSetStorageBuffers
+	};
+	uint32_t maxSampledImages{
+		physicalDeviceProps.limits.maxDescriptorSetSampledImages
+	};
+	uint32_t maxStorageImages{
+		physicalDeviceProps.limits.maxDescriptorSetStorageImages
+	};
+
+	VkDescriptorSetLayoutBinding uniformBufferBinding{
+		.binding = 0,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+	};
+
+	VkDescriptorSetLayoutBinding bindlessDescriptorBinding{
+		.binding = 0,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = maxSampledImages,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	};
+
+	VkDescriptorBindingFlags bindlessBindingFlags{
+		VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+		VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+	};
+
+	VkDescriptorSetLayoutBindingFlagsCreateInfo bindlessSetLayoutSetFlags{
+		.sType =
+			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+		.bindingCount = 1,
+		.pBindingFlags = &bindlessBindingFlags
+	};
+
+	VkDescriptorSetLayoutCreateInfo bindlessSetLayoutCI{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.bindingCount = 2,
-		.pBindings = descriptorLayoutBindings,
+		.pNext = &bindlessSetLayoutSetFlags,
+		.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+		.bindingCount = 1,
+		.pBindings = &bindlessDescriptorBinding,
+	};
+	VkDescriptorSetLayoutCreateInfo uboSetLayoutCI{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.bindingCount = 1,
+		.pBindings = &uniformBufferBinding,
 	};
 
-	VkDescriptorSetLayout descriptorSetLayout{};
+	VkDescriptorSetLayout bindlessSetLayout{};
+	VkDescriptorSetLayout uboSetLayout{};
 	vkCreateDescriptorSetLayout(
-		device.logical, &descriptorSetLayoutCI, nullptr, &descriptorSetLayout
+		device.logical, &bindlessSetLayoutCI, nullptr, &bindlessSetLayout
+	);
+	vkCreateDescriptorSetLayout(
+		device.logical, &uboSetLayoutCI, nullptr, &uboSetLayout
 	);
 
-	VkPipelineLayout pipelineLayout{
-		createPipelineLayout(device, pushConstantRanges, descriptorSetLayout)
-	};
+	VkPipelineLayout pipelineLayout{ createPipelineLayout(
+		device,
+		pushConstantRanges,
+		pstd::StaticArray<VkDescriptorSetLayout, 2>{ uboSetLayout,
+													 bindlessSetLayout }
+	) };
 
 	VkPipeline graphicsPipeline{ createGraphicsPipeline(
 		device, pipelineLayout, shaderStages, colorFormats
 	) };
 
-	auto descriptorPoolSizes{ pstd::createArray<VkDescriptorPoolSize>(
-		pPersistArena, Renderer::State::maxFramesInFlight * 2, 0
+	VkDescriptorPoolSize bindlessPoolSize{
+		.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = maxSampledImages
+	};
+
+	auto uniformBufferSizes{ pstd::createArray<VkDescriptorPoolSize>(
+		pPersistArena, Renderer::State::maxFramesInFlight, 0
 	) };
 
 	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
 		pstd::pushBack(
-			&descriptorPoolSizes,
+			&uniformBufferSizes,
 			{ .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }
 		);
 	}
-	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
-		pstd::pushBack(
-			&descriptorPoolSizes,
-			{ .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			  .descriptorCount = 1 }
-		);
-	}
 
-	VkDescriptorPoolCreateInfo descriptorPoolCI{
+	VkDescriptorPoolCreateInfo bindlessPoolCI{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		.maxSets = Renderer::State::maxFramesInFlight,
-		.poolSizeCount = ncast<uint32_t>(descriptorPoolSizes.count),
-		.pPoolSizes = descriptorPoolSizes.data
+		.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
+		.maxSets = 1,
+		.poolSizeCount = 1,
+		.pPoolSizes = &bindlessPoolSize
 	};
 
-	VkDescriptorPool descriptorPool{};
+	VkDescriptorPoolCreateInfo uniformBufferPoolCI{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		.maxSets = State::maxFramesInFlight,
+		.poolSizeCount = ncast<uint32_t>(uniformBufferSizes.count),
+		.pPoolSizes = uniformBufferSizes.data
+	};
+
+	VkDescriptorPool uboPool{};
+	VkDescriptorPool bindlessPool{};
 	vkCreateDescriptorPool(
-		device.logical, &descriptorPoolCI, nullptr, &descriptorPool
+		device.logical, &uniformBufferPoolCI, nullptr, &uboPool
+	);
+
+	vkCreateDescriptorPool(
+		device.logical, &bindlessPoolCI, nullptr, &bindlessPool
 	);
 
 	VkCommandPoolCreateInfo transientCmdPoolCI{
@@ -208,17 +262,6 @@ Renderer::State* Renderer::startup(
 		1024 * 1024 * 256
 	) };
 
-	// change this name
-	void* mappedData{};
-	vkMapMemory(
-		device.logical,
-		stagingBuffer.memory,
-		0,
-		stagingBuffer.size,
-		0,
-		&mappedData
-	);
-
 	Engine::TextureData missingTexture{ Engine::loadTexture(
 		pPersistArena, "generated\\textures\\Cobblestone.texture"
 	) };
@@ -226,12 +269,9 @@ Renderer::State* Renderer::startup(
 	size_t missingTextureSize{ missingTexture.width * missingTexture.height *
 							   sizeof(missingTexture.pPixels[0]) };
 
-	memcpy(mappedData, missingTexture.pPixels, missingTextureSize);
-	uint32_t r{ missingTexture.pPixels[0] & 0xFF };
-	uint32_t g{ missingTexture.pPixels[0] >> 8 & 0xFF };
-	uint32_t b{ missingTexture.pPixels[0] >> 16 & 0xFF };
-	uint32_t a{ missingTexture.pPixels[0] >> 24 & 0xFF };
-	LOG_INFO("(%u, %u, %u, %u)\n", r, g, b, a);
+	memcpy(
+		stagingBuffer.pMappedData, missingTexture.pPixels, missingTextureSize
+	);
 
 	Image textureImage{ create2DImage(
 		device,
@@ -348,126 +388,6 @@ Renderer::State* Renderer::startup(
 
 	endTransientCmd(device, cmdBuffer);
 
-	auto uboBuffers{ pstd::createArray<Buffer>(
-		pPersistArena, Renderer::State::maxFramesInFlight
-	) };
-
-	auto mappedUBOs{ pstd::createArray<void*>(
-		pPersistArena, Renderer::State::maxFramesInFlight
-	) };
-	auto descriptorSets{ pstd::createArray<VkDescriptorSet>(
-		pPersistArena, Renderer::State::maxFramesInFlight
-	) };
-
-	for (size_t i{}; i < uboBuffers.count; i++) {
-		Buffer uboBuffer{ createBuffer(
-			device,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			sizeof(UniformBufferObject)
-		) };
-
-		void* mappedUBO{};
-		vkMapMemory(
-			device.logical, uboBuffer.memory, 0, VK_WHOLE_SIZE, 0, &mappedUBO
-		);
-
-		VkDescriptorSetAllocateInfo descriptorSetAllocInfo{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-			.descriptorPool = descriptorPool,
-			.descriptorSetCount = 1,
-			.pSetLayouts = &descriptorSetLayout,
-		};
-
-		VkDescriptorSet descriptorSet{};
-		vkAllocateDescriptorSets(
-			device.logical, &descriptorSetAllocInfo, &descriptorSet
-		);
-
-		VkDescriptorBufferInfo bufferInfo{ .buffer = uboBuffer.handle,
-										   .range =
-											   sizeof(UniformBufferObject) };
-		VkDescriptorImageInfo imageInfo{
-			.sampler = sampler,
-			.imageView = textureImage.view,
-			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		};
-
-		VkWriteDescriptorSet descriptorSetWrites[] = {
-			{
-				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-				.dstSet = descriptorSet,
-				.dstBinding = 0,
-				.dstArrayElement = 0,
-				.descriptorCount = 1,
-				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				.pBufferInfo = &bufferInfo,
-			},
-			{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			  .dstSet = descriptorSet,
-			  .dstBinding = 1,
-			  .dstArrayElement = 0,
-			  .descriptorCount = 1,
-			  .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			  .pImageInfo = &imageInfo }
-		};
-
-		vkUpdateDescriptorSets(
-			device.logical, 2, descriptorSetWrites, 0, nullptr
-		);
-
-		uboBuffers[i] = uboBuffer;
-		mappedUBOs[i] = mappedUBO;
-		descriptorSets[i] = descriptorSet;
-	}
-
-	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
-	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
-
-	auto frameContexts{
-		pstd::createArray<FrameCtx>(pPersistArena, State::maxFramesInFlight)
-	};
-
-	for (size_t i{}; i < State::maxFramesInFlight; i++) {
-		Buffer vBuffer{ createBuffer(
-			device,
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-				VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			Renderer::State::maxRenderables * sizeof(Vertex)
-		) };
-
-		Buffer iBuffer{ createBuffer(
-			device,
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			Renderer::State::maxRenderables * sizeof(uint32_t)
-
-		) };
-
-		VkBufferDeviceAddressInfo vAddressInfo{
-			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-			.buffer = vBuffer.handle,
-		};
-
-		VkDeviceAddress vertexDeviceAddress{
-			vkGetBufferDeviceAddress(device.logical, &vAddressInfo)
-		};
-
-		FrameCtx frameCtx{
-			.vertexBuffer = vBuffer,
-			.indexBuffer = iBuffer,
-			.vertexDeviceAddress = vertexDeviceAddress,
-
-		};
-
-		frameContexts[i] = frameCtx;
-	}
-
 	VkCommandPoolCreateInfo cmdPoolCI{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
@@ -489,32 +409,127 @@ Renderer::State* Renderer::startup(
 	VkFenceCreateInfo fenceCI{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 							   .flags = VK_FENCE_CREATE_SIGNALED_BIT };
 
-	auto cmdBuffers{ pstd::createArray<VkCommandBuffer>(
-		pPersistArena, swapchain.images.count
+	auto frameContexts{ pstd::createArray<FrameCtx>(
+		pPersistArena, Renderer::State::maxFramesInFlight
 	) };
-	auto cmdBufferAvailableFences{
-		pstd::createArray<VkFence>(pPersistArena, State::maxFramesInFlight)
+
+	Buffer vBuffer{ createBuffer(
+		device,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		Renderer::State::maxRenderables * sizeof(Vertex)
+	) };
+
+	Buffer iBuffer{ createBuffer(
+		device,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		Renderer::State::maxRenderables * sizeof(uint32_t)
+
+	) };
+
+	for (size_t i{}; i < State::maxFramesInFlight; i++) {
+		Buffer ubo{ createBuffer(
+			device,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			sizeof(UniformBufferObject)
+		) };
+
+		VkDescriptorSetAllocateInfo descriptorSetAllocInfo{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+			.descriptorPool = uboPool,
+			.descriptorSetCount = 1,
+			.pSetLayouts = &uboSetLayout,
+		};
+
+		VkDescriptorSet uboSet{};
+		vkAllocateDescriptorSets(
+			device.logical, &descriptorSetAllocInfo, &uboSet
+		);
+
+		VkDescriptorBufferInfo bufferInfo{ .buffer = ubo.handle,
+										   .range =
+											   sizeof(UniformBufferObject) };
+
+		VkWriteDescriptorSet uniformBufferWrite = {
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = uboSet,
+			.dstBinding = 0,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.pBufferInfo = &bufferInfo,
+		};
+
+		vkUpdateDescriptorSets(
+			device.logical, 1, &uniformBufferWrite, 0, nullptr
+		);
+
+		VkCommandBuffer cmdBuffer{};
+		VkFence renderFinishedFence{};
+		VkSemaphore imageAvailableSemaphore{};
+
+		vkAllocateCommandBuffers(
+			device.logical, &cmdBufferAllocInfo, &cmdBuffer
+		);
+		vkCreateFence(device.logical, &fenceCI, nullptr, &renderFinishedFence);
+		vkCreateSemaphore(
+			device.logical, &semaphoreCI, nullptr, &imageAvailableSemaphore
+		);
+
+		FrameCtx frameCtx{
+			.cmdBuffer = cmdBuffer,
+			.imageAvailableSemaphore = imageAvailableSemaphore,
+			.renderFinishedFence = renderFinishedFence,
+			.ubo = ubo,
+			.uboSet = uboSet,
+
+		};
+
+		frameContexts[i] = frameCtx;
+	}
+
+	VkDescriptorSetAllocateInfo bindlessDescriptorSetAllocInfo{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		.descriptorPool = bindlessPool,
+		.descriptorSetCount = 1,
+		.pSetLayouts = &bindlessSetLayout,
 	};
 
-	auto imageAvailableSemaphores{
-		pstd::createArray<VkSemaphore>(pPersistArena, State::maxFramesInFlight)
+	VkDescriptorSet bindlessSet{};
+	vkAllocateDescriptorSets(
+		device.logical, &bindlessDescriptorSetAllocInfo, &bindlessSet
+	);
+
+	VkDescriptorImageInfo imageInfo{
+		.sampler = sampler,
+		.imageView = textureImage.view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	};
+
+	VkWriteDescriptorSet descriptorSetWrite = {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = bindlessSet,
+		.dstBinding = 0,
+		.dstArrayElement = 1,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = &imageInfo
+	};
+
+	vkUpdateDescriptorSets(device.logical, 1, &descriptorSetWrite, 0, nullptr);
+
+	vkDestroyShaderModule(device.logical, fragShaderModule, nullptr);
+	vkDestroyShaderModule(device.logical, vertShaderModule, nullptr);
 
 	auto renderFinishedSemaphores{
 		pstd::createArray<VkSemaphore>(pPersistArena, swapchain.images.count)
 	};
-
-	for (uint32_t i{}; i < State::maxFramesInFlight; i++) {
-		vkAllocateCommandBuffers(
-			device.logical, &cmdBufferAllocInfo, &cmdBuffers[i]
-		);
-		vkCreateFence(
-			device.logical, &fenceCI, nullptr, &cmdBufferAvailableFences[i]
-		);
-		vkCreateSemaphore(
-			device.logical, &semaphoreCI, nullptr, &imageAvailableSemaphores[i]
-		);
-	}
 
 	for (uint32_t i{}; i < swapchain.images.count; i++) {
 		vkCreateSemaphore(
@@ -547,19 +562,20 @@ Renderer::State* Renderer::startup(
 			   .graphicsPipelineLayout = pipelineLayout,
 			   .cmdPool = cmdPool,
 			   .transientCmdPool = transientCmdPool,
-			   .cmdBuffers = cmdBuffers,
-			   .imageAvailableSemaphores = imageAvailableSemaphores,
+			   .uboSetLayout = uboSetLayout,
+			   .bindlessSetLayout = bindlessSetLayout,
+			   .uboDescriptorPool = uboPool,
+			   .bindlessDescriptorPool = bindlessPool,
+			   .bindlessSet = bindlessSet,
 			   .renderFinishedSemaphores = renderFinishedSemaphores,
-			   .cmdBufferAvailableFences = cmdBufferAvailableFences,
-			   .stagingBufferData = mappedData,
 			   .stagingBuffer = stagingBuffer,
-			   .descriptorPool = descriptorPool,
-			   .uboBuffers = uboBuffers,
-			   .mappedUBOs = mappedUBOs,
-			   .descriptorSets = descriptorSets,
+			   .staticVertexBuffer = vBuffer,
+			   .staticIndexBuffer = iBuffer,
 			   .frameContexts = frameContexts,
 			   .renderables = renderables,
-			   .depthImage = depthImage };
+			   .depthImage = depthImage,
+			   .textureImage = textureImage,
+			   .textureSampler = sampler };
 }
 
 void Renderer::setCamera(State* pState, const Camera& camera) {
@@ -644,41 +660,35 @@ void Renderer::setModels(
 	size_t verticesByteSize{ vertices.count * sizeof(vertices[0]) };
 	size_t indicesByteSize{ indices.count * sizeof(uint32_t) };
 
-	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
-		const FrameCtx& frameCtx{ pState->frameContexts[i] };
+	memcpy(
+		pState->stagingBuffer.pMappedData, vertices.data, verticesByteSize
 
-		memcpy(
-			pState->stagingBufferData, vertices.data, verticesByteSize
+	);
 
-		);
+	copyBuffer(
+		pState->device,
+		pState->transientCmdPool,
+		pState->stagingBuffer,
+		pState->staticVertexBuffer,
+		{
+			.size = verticesByteSize,
+		}
+	);
 
-		copyBuffer(
-			pState->device,
-			pState->transientCmdPool,
-			pState->stagingBuffer,
-			frameCtx.vertexBuffer,
-			{
-				.size = verticesByteSize,
-			}
-		);
+	memcpy(
+		pState->stagingBuffer.pMappedData, indices.data, indicesByteSize
 
-		memcpy(
-			pState->stagingBufferData, indices.data, indicesByteSize
+	);
 
-		);
-
-		copyBuffer(
-			pState->device,
-			pState->transientCmdPool,
-			pState->stagingBuffer,
-			frameCtx.indexBuffer,
-			{
-				.size = indicesByteSize,
-			}
-		);
-
-		pState->frameContexts[i] = frameCtx;
-	}
+	copyBuffer(
+		pState->device,
+		pState->transientCmdPool,
+		pState->stagingBuffer,
+		pState->staticIndexBuffer,
+		{
+			.size = indicesByteSize,
+		}
+	);
 
 	pState->renderables = renderables;
 }
@@ -696,12 +706,14 @@ void Renderer::setTransforms(
 }
 
 void Renderer::render(State* state, bool windowResized) {
+	const FrameCtx& frame{ state->frameContexts[state->frameInFlight] };
+
 	constexpr uint64_t uint64Max{ ~ncast<uint64_t>(0) };
 
 	vkWaitForFences(
 		state->device.logical,
 		1,
-		&state->cmdBufferAvailableFences[state->frameInFlight],
+		&frame.renderFinishedFence,
 		VK_TRUE,
 		UINT64_MAX
 	);
@@ -711,7 +723,7 @@ void Renderer::render(State* state, bool windowResized) {
 		state->device.logical,
 		state->swapchain.handle,
 		uint64Max,
-		state->imageAvailableSemaphores[state->frameInFlight],
+		frame.imageAvailableSemaphore,
 		VK_NULL_HANDLE,
 		&currentImageIndex
 	) };
@@ -721,8 +733,8 @@ void Renderer::render(State* state, bool windowResized) {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 	};
 
-	vkResetCommandBuffer(state->cmdBuffers[state->frameInFlight], 0);
-	vkBeginCommandBuffer(state->cmdBuffers[state->frameInFlight], &cmdBufferBI);
+	vkResetCommandBuffer(frame.cmdBuffer, 0);
+	vkBeginCommandBuffer(frame.cmdBuffer, &cmdBufferBI);
 
 	const uint32_t nMemoryBarriers{ 2 };
 	VkImageMemoryBarrier2
@@ -783,9 +795,7 @@ void Renderer::render(State* state, bool windowResized) {
 		.pImageMemoryBarriers = preFormatBarriers,
 	};
 
-	vkCmdPipelineBarrier2(
-		state->cmdBuffers[state->frameInFlight], &preRenderDependency
-	);
+	vkCmdPipelineBarrier2(frame.cmdBuffer, &preRenderDependency);
 
 	constexpr VkClearValue colorClearValue{
 		.color =
@@ -821,11 +831,9 @@ void Renderer::render(State* state, bool windowResized) {
 		.pDepthAttachment = &depthAttachmentInfo,
 	};
 
-	vkCmdBeginRendering(
-		state->cmdBuffers[state->frameInFlight], &renderingInfo
-	);
+	vkCmdBeginRendering(frame.cmdBuffer, &renderingInfo);
 	vkCmdBindPipeline(
-		state->cmdBuffers[state->frameInFlight],
+		frame.cmdBuffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		state->graphicsPipeline
 	);
@@ -839,44 +847,40 @@ void Renderer::render(State* state, bool windowResized) {
 	};
 	VkRect2D scissor{ .extent = state->swapchain.createInfo.imageExtent };
 
-	vkCmdSetViewport(state->cmdBuffers[state->frameInFlight], 0, 1, &viewport);
-	vkCmdSetScissor(state->cmdBuffers[state->frameInFlight], 0, 1, &scissor);
+	vkCmdSetViewport(frame.cmdBuffer, 0, 1, &viewport);
+	vkCmdSetScissor(frame.cmdBuffer, 0, 1, &scissor);
 
 	const FrameCtx& frameCtx{ state->frameContexts[state->frameInFlight] };
 
 	vkCmdBindIndexBuffer(
-		state->cmdBuffers[state->frameInFlight],
-		frameCtx.indexBuffer.handle,
+		frame.cmdBuffer,
+		state->staticIndexBuffer.handle,
 		0,
 		VK_INDEX_TYPE_UINT32
 	);
 
-	float ar{ ncast<float>(state->swapchain.createInfo.imageExtent.width) /
-
-			  ncast<float>(state->swapchain.createInfo.imageExtent.height) };
-
-	pstd::Mat4 perspProjMatrix{
-
-		pstd::calcPerspectiveMatrix(pstd::toRadians(90), ar, 0.001, 25)
-
-	};
-
 	UniformBufferObject ubo{ .viewMatrix = state->viewMatrix,
 							 .projectionMatrix = state->projectionMatrix };
 
-	memcpy(
-		state->mappedUBOs[state->frameInFlight],
-		&ubo,
-		sizeof(UniformBufferObject)
-	);
+	memcpy(frame.ubo.pMappedData, &ubo, sizeof(UniformBufferObject));
 
 	vkCmdBindDescriptorSets(
-		state->cmdBuffers[state->frameInFlight],
+		frame.cmdBuffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		state->graphicsPipelineLayout,
 		0,
 		1,
-		&state->descriptorSets[state->frameInFlight],
+		&frame.uboSet,
+		0,
+		nullptr
+	);
+	vkCmdBindDescriptorSets(
+		frame.cmdBuffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		state->graphicsPipelineLayout,
+		1,
+		1,
+		&state->bindlessSet,
 		0,
 		nullptr
 	);
@@ -897,11 +901,12 @@ void Renderer::render(State* state, bool windowResized) {
 
 		pstd::Mat4 modelMat{ translationMat * scaleMat * rotMat };
 
-		PushConstants pushConstants{ .vertexBufferAddress =
-										 frameCtx.vertexDeviceAddress,
-									 .modelMatrix = modelMat };
+		PushConstants pushConstants{
+			.vertexBufferAddress = state->staticVertexBuffer.deviceAddress,
+			.modelMatrix = modelMat
+		};
 		vkCmdPushConstants(
-			state->cmdBuffers[state->frameInFlight],
+			frame.cmdBuffer,
 			state->graphicsPipelineLayout,
 			VK_SHADER_STAGE_VERTEX_BIT,
 			0,
@@ -910,7 +915,7 @@ void Renderer::render(State* state, bool windowResized) {
 		);
 
 		vkCmdDrawIndexed(
-			state->cmdBuffers[state->frameInFlight],
+			frame.cmdBuffer,
 			renderable.indexCount,
 			1,
 			renderable.indexOffset,
@@ -919,7 +924,7 @@ void Renderer::render(State* state, bool windowResized) {
 		);
 	}
 
-	vkCmdEndRendering(state->cmdBuffers[state->frameInFlight]);
+	vkCmdEndRendering(frame.cmdBuffer);
 
 	VkImageMemoryBarrier
 		presentFormatBarrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -944,7 +949,7 @@ void Renderer::render(State* state, bool windowResized) {
 							  } };
 
 	vkCmdPipelineBarrier(
-		state->cmdBuffers[state->frameInFlight],
+		frame.cmdBuffer,
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
 		0,
@@ -956,7 +961,7 @@ void Renderer::render(State* state, bool windowResized) {
 		&presentFormatBarrier
 	);
 
-	res = vkEndCommandBuffer(state->cmdBuffers[state->frameInFlight]);
+	res = vkEndCommandBuffer(frame.cmdBuffer);
 	ASSERT(res == VK_SUCCESS);
 
 	VkPipelineStageFlags waitStages[] = {
@@ -965,26 +970,21 @@ void Renderer::render(State* state, bool windowResized) {
 	VkSubmitInfo renderSubmitInfo{
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 		.waitSemaphoreCount = 1,
-		.pWaitSemaphores =
-			&state->imageAvailableSemaphores[state->frameInFlight],
+		.pWaitSemaphores = &frame.imageAvailableSemaphore,
 		.pWaitDstStageMask = waitStages,
 		.commandBufferCount = 1,
-		.pCommandBuffers = &state->cmdBuffers[state->frameInFlight],
+		.pCommandBuffers = &frame.cmdBuffer,
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores =
 			&state->renderFinishedSemaphores[currentImageIndex],
 	};
 
-	vkResetFences(
-		state->device.logical,
-		1,
-		&state->cmdBufferAvailableFences[state->frameInFlight]
-	);
+	vkResetFences(state->device.logical, 1, &frame.renderFinishedFence);
 	vkQueueSubmit(
 		state->device.queues[QueueFamily::graphics],
 		1,
 		&renderSubmitInfo,
-		state->cmdBufferAvailableFences[state->frameInFlight]
+		frame.renderFinishedFence
 	);
 
 	VkPresentInfoKHR presentInfo{
@@ -1009,39 +1009,39 @@ void Renderer::render(State* state, bool windowResized) {
 void Renderer::shutdown(State* state) {
 	vkDeviceWaitIdle(state->device.logical);
 
-	vkUnmapMemory(state->device.logical, state->stagingBuffer.memory);
-
 	for (size_t i{}; i < State::maxFramesInFlight; i++) {
-		const FrameCtx& frameCtx{ state->frameContexts[i] };
+		const FrameCtx& frame{ state->frameContexts[i] };
 
-		vkDestroyBuffer(
-			state->device.logical, frameCtx.vertexBuffer.handle, nullptr
-		);
-		vkFreeMemory(
-			state->device.logical, frameCtx.vertexBuffer.memory, nullptr
-		);
-
-		vkDestroyBuffer(
-			state->device.logical, frameCtx.indexBuffer.handle, nullptr
-		);
-		vkFreeMemory(
-			state->device.logical, frameCtx.indexBuffer.memory, nullptr
-		);
-	}
-
-	vkDestroyBuffer(
-		state->device.logical, state->stagingBuffer.handle, nullptr
-	);
-	vkFreeMemory(state->device.logical, state->stagingBuffer.memory, nullptr);
-
-	for (uint32_t i{}; i < state->maxFramesInFlight; i++) {
 		vkDestroyFence(
-			state->device.logical, state->cmdBufferAvailableFences[i], nullptr
+			state->device.logical, frame.renderFinishedFence, nullptr
 		);
 		vkDestroySemaphore(
-			state->device.logical, state->imageAvailableSemaphores[i], nullptr
+			state->device.logical, frame.imageAvailableSemaphore, nullptr
 		);
+		destroyBuffer(state->device, frame.ubo);
 	}
+
+	destroyBuffer(state->device, state->stagingBuffer);
+	destroyBuffer(state->device, state->staticVertexBuffer);
+	destroyBuffer(state->device, state->staticIndexBuffer);
+
+	destroyImage(state->device, state->depthImage);
+	destroyImage(state->device, state->textureImage);
+	vkDestroySampler(state->device.logical, state->textureSampler, nullptr);
+
+	vkDestroyDescriptorPool(
+		state->device.logical, state->uboDescriptorPool, nullptr
+	);
+	vkDestroyDescriptorPool(
+		state->device.logical, state->bindlessDescriptorPool, nullptr
+	);
+
+	vkDestroyDescriptorSetLayout(
+		state->device.logical, state->bindlessSetLayout, nullptr
+	);
+	vkDestroyDescriptorSetLayout(
+		state->device.logical, state->uboSetLayout, nullptr
+	);
 
 	for (uint32_t i{}; i < state->swapchain.images.count; i++) {
 		vkDestroySemaphore(
@@ -1053,6 +1053,7 @@ void Renderer::shutdown(State* state) {
 	vkDestroyCommandPool(
 		state->device.logical, state->transientCmdPool, nullptr
 	);
+
 	vkDestroyPipeline(state->device.logical, state->graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(
 		state->device.logical, state->graphicsPipelineLayout, nullptr

@@ -10,11 +10,15 @@
 #include "EngineState.h"
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 struct FrameCtx {
-	Buffer vertexBuffer;
-	Buffer indexBuffer;
-	VkDeviceAddress vertexDeviceAddress;
+	VkCommandBuffer cmdBuffer;
+	VkSemaphore imageAvailableSemaphore;
+	VkFence renderFinishedFence;
+
+	Buffer ubo;
+	VkDescriptorSet uboSet;
 };
 
 struct Renderable {
@@ -45,31 +49,31 @@ namespace Renderer {
 		VkCommandPool cmdPool;
 		VkCommandPool transientCmdPool;
 
-		pstd::Array<VkCommandBuffer> cmdBuffers;
-		pstd::Array<VkSemaphore> imageAvailableSemaphores;
+		VkDescriptorSetLayout uboSetLayout;
+		VkDescriptorSetLayout bindlessSetLayout;
+
+		VkDescriptorPool uboDescriptorPool;
+		VkDescriptorPool bindlessDescriptorPool;
+
+		VkDescriptorSet bindlessSet;
+
 		pstd::Array<VkSemaphore> renderFinishedSemaphores;
-		pstd::Array<VkFence> cmdBufferAvailableFences;
 
-		void* stagingBufferData;
 		Buffer stagingBuffer;
-
-		VkDescriptorPool descriptorPool;
-		pstd::Array<Buffer> uboBuffers;
-		pstd::Array<void*> mappedUBOs;
-		pstd::Array<VkDescriptorSet> descriptorSets;
+		Buffer staticVertexBuffer;
+		Buffer staticIndexBuffer;
 
 		pstd::Array<FrameCtx> frameContexts;
 
 		pstd::Array<Renderable> renderables;
 
 		Image depthImage;
+		Image textureImage;
+		VkSampler textureSampler;
 
 		pstd::Mat4 viewMatrix;
 		pstd::Mat4 projectionMatrix;
 
 		uint32_t frameInFlight;
-		pstd::DArray<pstd::Delegate<void()>*> deleters;
-
-		pstd::Arena frameArena;
 	};
 }  // namespace Renderer
