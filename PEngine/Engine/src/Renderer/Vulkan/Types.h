@@ -1,6 +1,6 @@
 #pragma once
 #include "STD/PArray.h"
-#include "STD/PArray.h"
+#include "STD/PHashMap.h"
 #include "STD/PFunction.h"
 #include "STD/PMatrix.h"
 
@@ -8,6 +8,8 @@
 #include "Allocation.h"
 #include "Device.h"
 #include "EngineState.h"
+
+#include "AssetManager.h"
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -26,6 +28,7 @@ struct Renderable {
 	uint32_t vertexOffset;
 
 	uint32_t indexCount;
+	uint32_t textureID;
 
 	Engine::Transform transform;
 };
@@ -62,6 +65,8 @@ namespace Renderer {
 		Buffer stagingBuffer;
 		Buffer staticVertexBuffer;
 		Buffer staticIndexBuffer;
+
+		pstd::HashMap<AssetManager::UID, uint32_t> assetIDToTextureID;
 
 		pstd::Array<FrameCtx> frameContexts;
 

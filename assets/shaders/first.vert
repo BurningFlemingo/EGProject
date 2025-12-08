@@ -16,6 +16,7 @@ layout(buffer_reference, std430) buffer readonly VertexBuffer {
 layout (std430, push_constant) uniform Constants {
 	VertexBuffer vertexBuffer;
 	mat4 modelMatrix;
+	uint textureID;
 };
 
 layout (std140, set = 0, binding = 0) uniform UBO {
@@ -23,10 +24,11 @@ layout (std140, set = 0, binding = 0) uniform UBO {
 	mat4 projectionMatrix; 
 };
 
-layout (location = 0) out vec2 outUV;
-layout (location = 1) out vec3 outViewPos;
-layout (location = 2) out vec3 outNormal;
-layout (location = 3) out vec3 outLightPos;
+layout (location = 0) out uint outTextureID;
+layout (location = 1) out vec2 outUV;
+layout (location = 2) out vec3 outViewPos;
+layout (location = 3) out vec3 outNormal;
+layout (location = 4) out vec3 outLightPos;
 
 void main() {
 	Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
@@ -39,6 +41,7 @@ void main() {
 	
 	gl_Position = projectionMatrix * viewPos;
 	
+	outTextureID = textureID;
 	outUV = uv;
 	outViewPos = (modelViewMatrix * vec4(vertex.pos, 1.0)).xyz;
 	outNormal = normalize(modelViewMatrix * vec4(normalize(vertex.normal), 0.0)).xyz;

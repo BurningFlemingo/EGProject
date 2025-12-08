@@ -131,19 +131,6 @@ void cookBMP(pstd::Arena scratchArena, const pstd::String path) {
 	textureHeader->width = absWidth;
 	textureHeader->height = absHeight;
 
-	LOG_INFO("File size: %u\n", header->fileSize);
-	LOG_INFO("Pixel offset: %u\n", header->pxOffset);
-	LOG_INFO("Header size: %u\n", header->headerSize);
-	LOG_INFO("Width: %f, Height: %f\n", header->pxWidth, header->pxHeight);
-	LOG_INFO("Bits per pixel: %u\n", (uint32_t)header->bitsPerPixel);
-	LOG_INFO("Compression: %u\n", header->compressionMethod);
-	LOG_INFO("Raw file size: %u\n", rawBMP.size);
-	LOG_INFO("Calculated stride: %u\n", absWidth * (header->bitsPerPixel / 8));
-	LOG_INFO(
-		"Actual stride (aligned): %u\n",
-		(absWidth * (header->bitsPerPixel / 8) + 3) & ~3
-	);
-
 	// BMP pixels are aligned to 4byte boundarys
 	size_t stride{ absWidth * (header->bitsPerPixel / 8) };
 	bool topDown{ header->pxHeight < 0 };
@@ -252,6 +239,7 @@ void cookOBJ(
 	}
 
 	for (size_t i{}; i < indexCount - 2; i += 3) {
+		// TODO: fix this, but not till we need normal maps.
 		ASSERT(pNormals[pIndices[i]] == pNormals[pIndices[i + 1]]);
 		ASSERT(pNormals[pIndices[i]] == pNormals[pIndices[i + 2]]);
 

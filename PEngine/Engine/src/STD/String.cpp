@@ -25,6 +25,10 @@ namespace {
 	);
 
 	pstd::String pushLetter(pstd::Arena* pArena, char letter);
+
+	float readNumeric(pstd::String* pString);
+	float readSign(String* pString);
+
 }  // namespace
 
 pstd::String::String(const String& string)
@@ -312,59 +316,71 @@ pstd::Array<String> pstd::split(
 	return items;
 }
 
-float pstd::stringToFloat(String stringNum) {
+size_t
+	pstd::split(pstd::Span<String> contents, String line, String delimiters) {
+	size_t count{};
+
+	for (size_t i{}; i < contents.count; i++) {
+		pstd::String token{ pstd::readToken(&line, delimiters) };
+		if (token.size != 0) {
+			count++;
+		}
+		contents[i] = token;
+	}
+
+	return count;
+}
+
+template<>
+float pstd::parse(String stringNum) {
+	pstd::trimLeading(&stringNum);
+
 	if (stringNum.size == 0) {
 		return 0;
 	}
 
 	float wholePart{};
+	float wholePartSign{};
 	float fractionalNumerator{};
 	float fractionalDenominator{ 1 };
-	bool wholePartDone{ false };
-	float isNegative{ false };
+	float exponent{ 0 };
 
-	size_t offset{};
-	while (offset < (stringNum.size - 1)) {
-		char ch{ stringNum.buffer[offset] };
-		if (ch <= '9' && ch >= '0') {
-			break;
-		}
+	wholePartSign = readSign(&stringNum);
+	wholePart = readNumeric(&stringNum);
 
-		isNegative = ch == '-';
-		offset++;
-	}
+	if (stringNum.size > 0 && stringNum[0] == '.') {
+		readChar(&stringNum);
 
-	for (size_t i{ offset }; i < stringNum.size; i++) {
-		char ch{ stringNum.buffer[i] };
-		if (ch == '.' && !wholePartDone) {
-			wholePartDone = true;
-			continue;
-		}
+		while (stringNum.size > 0) {
+			char ch{ stringNum[0] };
 
-		if (ch > '9' || ch < '0') {
-			break;
-		}
+			if (ch > '9' || ch < '0') {
+				break;
+			}
 
-		float num{ ncast<float>(stringNum.buffer[i] - '0') };
-		if (!wholePartDone) {
-			wholePart *= 10;
-			wholePart += num;
-		} else {
+			float num{ ncast<float>(ch - '0') };
 			fractionalNumerator *= 10;
 			fractionalDenominator *= 10;
 			fractionalNumerator += num;
+
+			readChar(&stringNum);
 		}
 	}
 
+	if (stringNum.size > 0 && toLower(stringNum[0]) == 'e') {
+		readChar(&stringNum);
+
+		float exponentSign{ readSign(&stringNum) };
+		exponent = readNumeric(&stringNum) * exponentSign;
+	}
+
 	float num{ wholePart + (fractionalNumerator / fractionalDenominator) };
-	num = isNegative ? -num : num;
+	num *= wholePartSign;
+	if (exponent != 0.f) {
+		num *= pstd::pow(10.f, exponent);
+	}
 
 	return num;
-}
-
-template<>
-float pstd::parse(String string) {
-	return stringToFloat(string);
 }
 
 template<>
@@ -419,7 +435,7 @@ void pstd::trimTrailing(String* pString, const pstd::String& delimiters) {
 }
 
 void pstd::trim(String* pString, const pstd::String& delimiters) {
-	trimTrailing(pString);
+	trimTrailing(pString, delimiters);
 	trimLeading(pString, delimiters);
 }
 
@@ -473,6 +489,14 @@ size_t pstd::countTokens(String string, const String& delimiters) {
 	}
 
 	return tokenCount;
+}
+
+char pstd::toLower(char ch) {
+	if (ch >= 'A' && ch <= 'Z') {
+		return ch - 'a' + 'A';
+	}
+
+	return ch;
 }
 
 size_t pstd::hash(String string) {
@@ -606,6 +630,45 @@ namespace {
 
 		String res{ pushString(pArena, normalString) };
 		return res;
+	}
+
+	float readNumeric(pstd::String* pString) {
+		ASSERT(pString);
+		if (pString->size == 0) {
+			return 0;
+		}
+
+		float val{};
+		while (pString->size > 0) {
+			char ch{ (*pString)[0] };
+			if (ch > '9' || ch < '0') {
+				break;
+			}
+
+			float num{ ncast<float>(ch - '0') };
+			val *= 10;
+			val += num;
+
+			readChar(pString);
+		}
+
+		return val;
+	}
+
+	float readSign(String* pString) {
+		float sign{ 1.f };
+
+		if (pString->size > 0) {
+			char signCh{ (*pString)[0] };
+			if (signCh == '-') {
+				readChar(pString);
+				sign = -1.f;
+			} else if (signCh == '+') {
+				readChar(pString);
+			}
+		}
+
+		return sign;
 	}
 }  // namespace
 

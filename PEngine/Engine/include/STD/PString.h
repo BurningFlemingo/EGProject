@@ -148,6 +148,11 @@ namespace pstd {
 		String delimiters = " "
 	);
 
+	// returns the number of tokens split / new count of contents
+	size_t split(
+		pstd::Span<String> contents, String line, String delimiters = " "
+	);
+
 	float stringToFloat(String stringNum);
 
 	template<typename T>
@@ -160,6 +165,8 @@ namespace pstd {
 	String readToken(String* string, const String& delimiters = " ");
 	String readLastToken(String* pString, const String& delimiters = " ");
 	size_t countTokens(String string, const String& delimiters = " ");
+
+	char toLower(char ch);
 
 	size_t hash(String string);
 }  // namespace pstd

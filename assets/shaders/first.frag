@@ -1,17 +1,19 @@
 #version 450
+#extension GL_EXT_nonuniform_qualifier : require
 
-layout (location = 0) in vec2 uv;
+layout (location = 0) in flat uint textureID;
+layout (location = 1) in vec2 uv;
 // in view space
-layout (location = 1) in vec3 fragPos;
-layout (location = 2) in vec3 normal;
-layout (location = 3) in vec3 lightPos;
+layout (location = 2) in vec3 fragPos;
+layout (location = 3) in vec3 normal;
+layout (location = 4) in vec3 lightPos;
 
 layout (location = 0) out vec4 outColor;
 
 layout (set = 1, binding = 0) uniform sampler2D samplers[];
 
 void main() {
-	vec4 materialColor = texture(samplers[1], uv);
+	vec4 materialColor = texture(samplers[textureID], uv);
 	vec3 lightColor = vec3(1.0, 1.0, 1.0);
 	
 	vec3 lightDir = normalize(lightPos - fragPos);

@@ -65,9 +65,13 @@ namespace pstd {
 
 		template<size_t n>
 		Span(T (&array)[n]) : data{ array }, count{ n } {}
+
 		template<size_t n>
 		Span(T (&array)[n], size_t countParam)
 			: data{ array }, count{ countParam } {}
+
+		Span(T* dataParam, size_t countParam)
+			: data{ dataParam }, count{ countParam } {}
 
 		const T& operator[](I index) const {
 			ASSERT(data);

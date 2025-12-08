@@ -9,15 +9,6 @@ namespace pstd {
 	constexpr float HALF_PI{ PI / 2.f };
 
 	template<typename T>
-	T pow(const T num, const uint32_t power) {
-		T res{ 1 };
-		for (uint32_t i{}; i < power; i++) {
-			res *= num;
-		}
-		return res;
-	}
-
-	template<typename T>
 	constexpr float roundf(const T num) {
 		float res{ (int)(num + 0.5f) };
 		if (num < 0) {
@@ -39,6 +30,16 @@ namespace pstd {
 	}
 
 	template<typename T>
+	constexpr T abs(const T num) {
+		T res{ num };
+		if (num < 0) {
+			return -res;
+		}
+
+		return res;
+	}
+
+	template<typename T>
 	constexpr float absf(const T num) {
 		float res{ num };
 		if (num < 0) {
@@ -54,6 +55,24 @@ namespace pstd {
 		if (num < 0) {
 			res = -1;
 			return res;
+		}
+		return res;
+	}
+
+	template<typename T>
+	T pow(const T num, const int32_t power) {
+		T res{ 1 };
+
+		if (power < 0) {
+			int32_t absPower{ -power };
+
+			for (int i{}; i < absPower; i++) {
+				res /= num;
+			}
+		} else {
+			for (int i{}; i < power; i++) {
+				res *= num;
+			}
 		}
 		return res;
 	}

@@ -1,3 +1,4 @@
+#include "STD/PHashMap.h"
 #include "STD/PMemory.h"
 #include "STD/PVector.h"
 #include "Camera.h"
@@ -33,6 +34,7 @@
 struct PushConstants {
 	VkDeviceAddress vertexBufferAddress;
 	alignas(16) pstd::Mat4 modelMatrix;
+	alignas(16) uint32_t textureID;
 };
 
 struct UniformBufferObject {
@@ -551,31 +553,35 @@ Renderer::State* Renderer::startup(
 	) };
 
 	State* state{ pstd::alloc<State>(pPersistArena) };
-	return new (state)
-		State{ .frameArenas = frameArenas,
-			   .swapchain = swapchain,
-			   .device = device,
-			   .surface = surface,
-			   .instance = instance,
-			   .debugMessenger = debugMessenger,
-			   .graphicsPipeline = graphicsPipeline,
-			   .graphicsPipelineLayout = pipelineLayout,
-			   .cmdPool = cmdPool,
-			   .transientCmdPool = transientCmdPool,
-			   .uboSetLayout = uboSetLayout,
-			   .bindlessSetLayout = bindlessSetLayout,
-			   .uboDescriptorPool = uboPool,
-			   .bindlessDescriptorPool = bindlessPool,
-			   .bindlessSet = bindlessSet,
-			   .renderFinishedSemaphores = renderFinishedSemaphores,
-			   .stagingBuffer = stagingBuffer,
-			   .staticVertexBuffer = vBuffer,
-			   .staticIndexBuffer = iBuffer,
-			   .frameContexts = frameContexts,
-			   .renderables = renderables,
-			   .depthImage = depthImage,
-			   .textureImage = textureImage,
-			   .textureSampler = sampler };
+	return new (state) State{
+		.frameArenas = frameArenas,
+		.swapchain = swapchain,
+		.device = device,
+		.surface = surface,
+		.instance = instance,
+		.debugMessenger = debugMessenger,
+		.graphicsPipeline = graphicsPipeline,
+		.graphicsPipelineLayout = pipelineLayout,
+		.cmdPool = cmdPool,
+		.transientCmdPool = transientCmdPool,
+		.uboSetLayout = uboSetLayout,
+		.bindlessSetLayout = bindlessSetLayout,
+		.uboDescriptorPool = uboPool,
+		.bindlessDescriptorPool = bindlessPool,
+		.bindlessSet = bindlessSet,
+		.renderFinishedSemaphores = renderFinishedSemaphores,
+		.stagingBuffer = stagingBuffer,
+		.staticVertexBuffer = vBuffer,
+		.staticIndexBuffer = iBuffer,
+		.assetIDToTextureID = pstd::createHashMap<AssetManager::UID, uint32_t>(
+			pPersistArena, State::maxRenderables
+		),
+		.frameContexts = frameContexts,
+		.renderables = renderables,
+		.depthImage = depthImage,
+		.textureImage = textureImage,
+		.textureSampler = sampler,
+	};
 }
 
 void Renderer::setCamera(State* pState, const Camera& camera) {
@@ -610,6 +616,7 @@ void Renderer::setModels(
 	auto uniqueRenderables{
 		pstd::createArray<Renderable>(pFrameArena, meshes.count)
 	};
+	LOG_INFO("unique renderables count %u\n", uniqueRenderables.count);
 
 	uint32_t vertexCount{};
 	uint32_t indexCount{};
@@ -640,6 +647,7 @@ void Renderer::setModels(
 			};
 			pstd::pushBack(&vertices, vertex);
 		}
+
 		for (size_t i{}; i < mesh.indexCount; i++) {
 			pstd::pushBack(&indices, mesh.pIndices[i]);
 		}
@@ -903,7 +911,8 @@ void Renderer::render(State* state, bool windowResized) {
 
 		PushConstants pushConstants{
 			.vertexBufferAddress = state->staticVertexBuffer.deviceAddress,
-			.modelMatrix = modelMat
+			.modelMatrix = modelMat,
+			.textureID = 1
 		};
 		vkCmdPushConstants(
 			frame.cmdBuffer,
