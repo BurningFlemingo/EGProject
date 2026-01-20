@@ -29,16 +29,17 @@ Engine::Entity Engine::createEntity(
 
 	Archetype* pArchetype{};
 	size_t archetypeIndex{ ncast<size_t>(-1) };
-	bool found{};
+	bool archetypeExists{};
 	for (size_t i{}; i < pEngine->archetypes.count; i++) {
 		pArchetype = &pEngine->archetypes[i];
 		if (pArchetype->componentFlags == componentFlags) {
 			archetypeIndex = i;
-			found = true;
+			archetypeExists = true;
 			break;
 		}
 	}
-	if (!found) {
+
+	if (!archetypeExists) {
 		archetypeIndex = pEngine->archetypes.count;
 
 		Archetype archetype{ createArchetype(
@@ -129,6 +130,7 @@ Engine::Archetype Engine::createArchetype(
 	size_t maxEntityCount
 ) {
 	using namespace Engine;
+
 	Archetype archetype{
 		.componentFlags = componentFlags,
 		.uidToIndex = pstd::createHashMap<UID, size_t>(pArena, maxEntityCount)

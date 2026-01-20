@@ -20,21 +20,6 @@ namespace Engine {
 	// 	pstd::Array<pstd::Vec2> uvs;
 	// };
 
-	struct MeshHeader {
-		enum MagicNumber : uint32_t { MAGIC = 0x4D455348 };
-		enum VersionNumber : uint32_t { VERSION = 0 };
-		uint32_t magic;
-		uint32_t version;
-		uint32_t vertexCount;
-		uint32_t indexCount;
-		alignas(8) uint8_t data[];
-		// indices
-		// positions
-		// normals
-		// tangents
-		// uvs
-	};
-
 	struct TextureHeader {
 		enum MagicNumber : uint32_t { MAGIC = 0x544558 };
 		enum VersionNumber : uint32_t { VERSION = 0 };
@@ -44,6 +29,22 @@ namespace Engine {
 		uint32_t height;
 		alignas(8) uint8_t data[];
 		// pixels
+	};
+
+	struct MeshHeader {
+		enum MagicNumber : uint32_t { MAGIC = 0x4D455348 };
+		enum VersionNumber : uint32_t { VERSION = 0 };
+		uint32_t magic;
+		uint32_t version;
+		uint32_t vertexCount;
+		uint32_t indexCount;
+		// uint32_t textureHash;
+		alignas(8) uint8_t data[];
+		// indices
+		// positions
+		// normals
+		// tangents
+		// uvs
 	};
 
 	struct TextureData {

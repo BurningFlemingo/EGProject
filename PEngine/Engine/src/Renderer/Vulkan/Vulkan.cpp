@@ -713,8 +713,18 @@ void Renderer::setTransforms(
 	}
 }
 
-void Renderer::render(State* state, bool windowResized) {
+void Renderer::render(
+	State* state, const Platform::State& platformState, bool windowResized
+) {
 	const FrameCtx& frame{ state->frameContexts[state->frameInFlight] };
+	pstd::Arena framelocalArena{ state->frameArenas[state->frameInFlight] };
+	if (windowResized) {
+		vkDeviceWaitIdle(state->device.logical);
+		refreshSwapchain(
+			&state->swapchain, state->device, state->surface, platformState
+		);
+		return;
+	}
 
 	constexpr uint64_t uint64Max{ ~ncast<uint64_t>(0) };
 
@@ -744,7 +754,7 @@ void Renderer::render(State* state, bool windowResized) {
 	vkResetCommandBuffer(frame.cmdBuffer, 0);
 	vkBeginCommandBuffer(frame.cmdBuffer, &cmdBufferBI);
 
-	const uint32_t nMemoryBarriers{ 2 };
+	constexpr uint32_t nMemoryBarriers{ 2 };
 	VkImageMemoryBarrier2
 		preFormatBarriers[nMemoryBarriers]{ {.sType =
 										  VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -805,10 +815,8 @@ void Renderer::render(State* state, bool windowResized) {
 
 	vkCmdPipelineBarrier2(frame.cmdBuffer, &preRenderDependency);
 
-	constexpr VkClearValue colorClearValue{
-		.color =
-			VkClearColorValue{ { 135 / 255.f, 206 / 255.f, 235 / 255.f, 1.f } }
-	};
+	constexpr VkClearValue colorClearValue{ .color = VkClearColorValue{
+												{ 0.f, 0.f, 0.f, 0.f } } };
 	VkClearValue depthClearValue{ .depthStencil = VkClearDepthStencilValue{
 									  .depth = 1.f, .stencil = 1 } };
 

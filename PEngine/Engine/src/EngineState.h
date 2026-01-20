@@ -25,7 +25,7 @@ namespace Engine {
 		bool keyWasDown;
 	};
 
-	static constexpr size_t maxEntityCount{ 1024 };
+	static constexpr size_t maxEntityCount{ 20000 };
 
 	struct State {
 		pstd::Arena scratchArena;
@@ -33,7 +33,6 @@ namespace Engine {
 		GameDll gameDll;
 		Game::State* pGameState;
 		pstd::String originalDllPath;
-		const char* originalDllPathCString;
 		bool isRunning;
 
 		KeyTransitionState physicalKeyTransition[ncast<size_t>(KeyCode::COUNT)];
@@ -46,7 +45,7 @@ namespace Engine {
 
 		pstd::Array<Archetype> archetypes;
 
-		pstd::HashMap<pstd::String, Entity> nameToEntity{};
+		pstd::HashMap<pstd::String, Entity> nameToEntity;
 
 		float lastFrameTime;
 	};

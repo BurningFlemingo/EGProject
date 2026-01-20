@@ -10,6 +10,8 @@ namespace pstd {
 		void* block;
 		size_t size;
 		uint32_t offset;
+		uint32_t commitOffset;
+		uint32_t reserveSize;
 	};
 
 	template<typename T>

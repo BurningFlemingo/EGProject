@@ -14,8 +14,16 @@ int main() {
 		pstd::allocateArena(&allocRegistry, 1024 * 1024)
 	};
 
-	cookBMP(primaryScratchArena, "assets\\textures\\Missing_Texture.bmp");
-	cookBMP(primaryScratchArena, "assets\\textures\\Cobblestone.bmp");
+	cookBMP(
+		primaryScratchArena,
+		secondaryScratchArena,
+		"assets\\textures\\Missing_Texture.bmp"
+	);
+	cookBMP(
+		primaryScratchArena,
+		secondaryScratchArena,
+		"assets\\textures\\Cobblestone.bmp"
+	);
 	cookOBJ(
 		primaryScratchArena, secondaryScratchArena, "assets\\models\\cube.obj"
 	);

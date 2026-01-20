@@ -54,10 +54,6 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 		pstd::getDllExtensionName()
 	) };
 
-	const char* originalDllPathCString{
-		pstd::createCString(&scratchArena, originalDllPath)
-	};
-
 	Platform::State* pPlatform{
 		Platform::startup(&subsystemArena, "window", 1920 / 2, 1080 / 2)
 	};
@@ -92,7 +88,6 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 			.subsystemArena = subsystemArena,
 			.gameDll = gameDll,
 			.originalDllPath = originalDllPath,
-			.originalDllPathCString = originalDllPathCString,
 			.isRunning = true,
 			.archetypes = archetypes,
 			.nameToEntity = nameToEntity,
@@ -257,7 +252,7 @@ bool Engine::tick(
 
 		Renderer::setTransforms(pRenderer, transforms);
 
-		Renderer::render(pRenderer, false);
+		Renderer::render(pRenderer, *pPlatform, false);
 	}
 
 	return pEngine->isRunning;

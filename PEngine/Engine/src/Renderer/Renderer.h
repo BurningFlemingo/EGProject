@@ -34,6 +34,8 @@ namespace Renderer {
 		pstd::Span<AssetManager::UID> meshIDs
 	);
 
-	void render(State* state, bool windowResized);
+	void render(
+		State* state, const Platform::State& platformState, bool windowResized
+	);
 	void shutdown(State* state);
 }  // namespace Renderer

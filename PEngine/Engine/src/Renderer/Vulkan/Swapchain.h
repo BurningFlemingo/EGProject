@@ -23,4 +23,11 @@ Swapchain createSwapchain(
 	const Platform::State& platformState
 );
 
+void refreshSwapchain(
+	Swapchain* pOldSwapchain,
+	const Device& device,
+	VkSurfaceKHR surface,
+	const Platform::State& platformState
+);
+
 void destroySwapchain(Swapchain* swapchain, VkDevice device);

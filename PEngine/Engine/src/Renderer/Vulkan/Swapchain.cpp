@@ -104,6 +104,68 @@ Swapchain createSwapchain(
 					  .createInfo = swapchainCI };
 }
 
+void refreshSwapchain(
+	Swapchain* pOldSwapchain,
+	const Device& device,
+	VkSurfaceKHR surface,
+	const Platform::State& platformState
+) {
+	VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+		device.physical, surface, &surfaceCapabilities
+	);
+	VkExtent2D surfaceExtent{
+		calcSurfaceExtent(surfaceCapabilities, platformState)
+	};
+
+	VkSwapchainCreateInfoKHR swapchainCI{ pOldSwapchain->createInfo };
+	swapchainCI.oldSwapchain = pOldSwapchain->handle;
+	swapchainCI.imageExtent = surfaceExtent;
+
+	VkSwapchainKHR swapchainHandle{};
+	VkResult res{ vkCreateSwapchainKHR(
+		device.logical, &swapchainCI, nullptr, &swapchainHandle
+	) };
+	ASSERT(res == VK_SUCCESS);
+
+	uint32_t imageCount{};
+	vkGetSwapchainImagesKHR(
+		device.logical, swapchainHandle, &imageCount, nullptr
+	);
+
+	ASSERT(imageCount <= pOldSwapchain->images.count);
+
+	pstd::Array<VkImage> images{ pOldSwapchain->images };
+
+	vkGetSwapchainImagesKHR(
+		device.logical, swapchainHandle, &imageCount, images.data
+	);
+
+	VkImageViewCreateInfo
+		imageViewCI{ .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+					 .viewType = VK_IMAGE_VIEW_TYPE_2D,
+					 .format = swapchainCI.imageFormat,
+					 .subresourceRange = {
+						 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+						 .levelCount = 1,
+						 .layerCount = 1,
+					 } };
+
+	pstd::Array<VkImageView> imageViews{ pOldSwapchain->imageViews };
+
+	for (uint32_t i{}; i < imageCount; i++) {
+		imageViewCI.image = images[i];
+		vkCreateImageView(
+			device.logical, &imageViewCI, nullptr, &imageViews[i]
+		);
+	}
+
+	*pOldSwapchain = Swapchain{ .handle = swapchainHandle,
+								.images = images,
+								.imageViews = imageViews,
+								.createInfo = swapchainCI };
+}
+
 void destroySwapchain(Swapchain* swapchain, VkDevice device) {
 	ASSERT(swapchain);
 	for (uint32_t i{}; i < swapchain->imageViews.count; i++) {
