@@ -40,12 +40,13 @@ namespace pstd {
 				pSet->count++;
 				pSet->pControls[slot] = byteHash;
 				pSet->pSlots[slot] = { .key = key };
-				return pSet->pSlots[slot].value;
+
+				return;
 			}
 
 			if (control == byteHash) {
 				if (pSet->pSlots[slot].key == key) {
-					return pSet->pSlots[slot].value;
+					return;
 				}
 			}
 		}

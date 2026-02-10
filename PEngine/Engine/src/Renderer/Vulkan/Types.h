@@ -39,7 +39,8 @@ namespace Renderer {
 		constexpr static uint32_t maxRenderables{ 1024 * 4 };
 		constexpr static uint32_t maxFramesInFlight{ 2 };
 		constexpr static size_t frameArenaSize{ 1024 * 1024 };
-		pstd::StaticArray<pstd::Arena, maxFramesInFlight> frameArenas;
+		pstd::Array<pstd::Arena> frameArenas;
+		pstd::Arena staticArena;
 
 		Swapchain swapchain;
 		Device device;

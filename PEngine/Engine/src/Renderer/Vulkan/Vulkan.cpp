@@ -3,6 +3,7 @@
 #include "STD/PHashMap.h"
 #include "STD/PMemory.h"
 #include "STD/PVector.h"
+#include "STD/PSet.h"
 #include "Camera.h"
 #include "Renderer/Renderer.h"
 
@@ -32,6 +33,8 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <new>
+
+#include "STD/PSparseArray.h"
 
 struct PushConstants {
 	VkDeviceAddress vertexBufferAddress;
@@ -541,13 +544,15 @@ Renderer::State* Renderer::startup(
 		);
 	}
 
-	pstd::StaticArray<pstd::Arena, Renderer::State::maxFramesInFlight>
-		frameArenas;
+	auto frameArenas{ pstd::createArray<pstd::Arena>(
+		pPersistArena, Renderer::State::maxFramesInFlight
+	) };
 
 	for (size_t i{}; i < Renderer::State::maxFramesInFlight; i++) {
-		frameArenas[i] = pstd::allocateArena(
-			pAllocRegistry, Renderer::State::frameArenaSize
-		);
+		pstd::Arena frameArena{
+			pstd::allocateArena(pAllocRegistry, Renderer::State::frameArenaSize)
+		};
+		frameArenas[i] = frameArena;
 	}
 
 	auto renderables{ pstd::createArray<Renderable>(
@@ -557,6 +562,8 @@ Renderer::State* Renderer::startup(
 	State* state{ pstd::alloc<State>(pPersistArena) };
 	return new (state) State{
 		.frameArenas = frameArenas,
+		.staticArena =
+			pstd::createArena(pPersistArena, Renderer::State::frameArenaSize),
 		.swapchain = swapchain,
 		.device = device,
 		.surface = surface,
@@ -608,45 +615,66 @@ void Renderer::setModels(
 	pstd::Arena scratchArena,
 	pstd::Span<AssetManager::UID> meshIDs
 ) {
+	pstd::reset(&pState->staticArena);
+
 	if (meshIDs.count == 0) {
 		return;
 	}
 
-	// pstd::HashMap<AssetManager::UID, Renderable> renderables;
+	auto renderables{ pstd::createArray<Renderable>(
+		&pState->staticArena, State::maxRenderables, 0
+	) };
 
-	pstd::Arena* pFrameArena{ &pState->frameArenas[pState->frameInFlight] };
-	// pstd::HashMap<AssetManager::UID> uniqueUIDs;
-
-	auto uniqueRenderables{
-		pstd::createArray<Renderable>(pFrameArena, meshIDs.count)
+	auto uniqueUIDSet{
+		pstd::createSet<AssetManager::UID>(&scratchArena, State::maxRenderables)
 	};
+
+	auto uniqueUIDs{ pstd::createArray<AssetManager::UID>(
+		&scratchArena, State::maxRenderables, 0
+	) };
 
 	uint32_t vertexCount{};
 	uint32_t indexCount{};
 	for (size_t i{}; i < meshIDs.count; i++) {
+		AssetManager::UID uid{ meshIDs[i] };
 		Engine::MeshData* pMesh{
-			AssetManager::retrieveMesh(pAssetManager, meshIDs[i])
+			AssetManager::retrieveMesh(pAssetManager, uid)
 		};
 
-		vertexCount += pMesh->vertexCount;
-		indexCount += pMesh->indexCount;
+		if (!pstd::contains(uniqueUIDSet, uid)) {
+			pstd::pushBack(&uniqueUIDs, uid);
+			pstd::insert(&uniqueUIDSet, uid);
+
+			vertexCount += pMesh->vertexCount;
+			indexCount += pMesh->indexCount;
+		}
+
+		// TODO: fix this
+		Renderable renderable{ .indexOffset = 0,
+							   .vertexOffset = 0,
+							   .indexCount = pMesh->indexCount };
+
+		pstd::pushBack(&renderables, renderable);
+
+		LOG_INFO(
+			"renderable (%u, %u, %u)\n",
+			renderables[uid].indexOffset,
+			renderables[uid].vertexOffset,
+			renderables[uid].indexCount
+		);
 	}
-	LOG_INFO("unique renderables count %u\n", uniqueRenderables.count);
+	LOG_INFO(
+		"renderable count %u, unique mesh count %u",
+		renderables.count,
+		uniqueUIDs.count
+	);
 
 	auto vertices{ pstd::createArray<Vertex>(&scratchArena, vertexCount, 0) };
 	auto indices{ pstd::createArray<uint32_t>(&scratchArena, indexCount, 0) };
 
-	uint32_t indexOffset{};
-	uint32_t vertexOffset{};
-	for (size_t j{}; j < uniqueRenderables.count; j++) {
+	for (size_t j{}; j < uniqueUIDs.count; j++) {
 		Engine::MeshData* pMesh{
-			AssetManager::retrieveMesh(pAssetManager, meshIDs[j])
-		};
-
-		uniqueRenderables[j] = {
-			.indexOffset = indexOffset,
-			.vertexOffset = vertexOffset,
-			.indexCount = ncast<uint32_t>(pMesh->indexCount),
+			AssetManager::retrieveMesh(pAssetManager, uniqueUIDs[j])
 		};
 
 		for (size_t i{}; i < pMesh->vertexCount; i++) {
@@ -662,21 +690,9 @@ void Renderer::setModels(
 		for (size_t i{}; i < pMesh->indexCount; i++) {
 			pstd::pushBack(&indices, pMesh->pIndices[i]);
 		}
-
-		indexOffset += pMesh->indexCount;
-		vertexOffset += pMesh->vertexCount;
 	}
 
-	auto renderables{
-		pstd::createArray<Renderable>(pFrameArena, meshIDs.count)
-	};
-
-	for (size_t i{}; i < renderables.count; i++) {
-		size_t index{ pAssetManager->uidToLoadedMeshIndex[meshIDs[i]] };
-		renderables[i] = uniqueRenderables[index];
-	}
-
-	size_t verticesByteSize{ vertices.count * sizeof(vertices[0]) };
+	size_t verticesByteSize{ vertices.count * sizeof(Vertex) };
 	size_t indicesByteSize{ indices.count * sizeof(uint32_t) };
 
 	memcpy(
