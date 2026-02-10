@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "EngineState.h"
 #include "AssetCooker.h"
+#include "FileLoader.h"
 #include "STD/PArena.h"
 
 int main() {
@@ -14,22 +15,31 @@ int main() {
 		pstd::allocateArena(&allocRegistry, 1024 * 1024)
 	};
 
-	cookBMP(
-		primaryScratchArena,
-		secondaryScratchArena,
-		"assets\\textures\\Missing_Texture.bmp"
-	);
-	cookBMP(
-		primaryScratchArena,
-		secondaryScratchArena,
-		"assets\\textures\\Cobblestone.bmp"
-	);
-	cookOBJ(
-		primaryScratchArena, secondaryScratchArena, "assets\\models\\cube.obj"
-	);
-	cookOBJ(
-		primaryScratchArena, secondaryScratchArena, "assets\\models\\quad.obj"
-	);
+	{
+		cookBMP(
+			primaryScratchArena,
+			secondaryScratchArena,
+			"assets\\textures\\Cobblestone.bmp"
+		);
+		cookBMP(
+			primaryScratchArena,
+			secondaryScratchArena,
+			"assets\\textures\\Missing_Texture.bmp"
+		);
+	}
+
+	{
+		cookOBJ(
+			primaryScratchArena,
+			secondaryScratchArena,
+			"assets\\models\\cube.obj"
+		);
+		cookOBJ(
+			primaryScratchArena,
+			secondaryScratchArena,
+			"assets\\models\\quad.obj"
+		);
+	}
 
 	Engine::Subsystems subsystems{ Engine::startup(&allocRegistry) };
 	Engine::State* pEngine{ subsystems.pEngine };

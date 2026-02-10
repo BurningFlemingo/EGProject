@@ -2,6 +2,7 @@
 #include "STD/PString.h"
 #include "STD/PVector.h"
 #include "STD/PArena.h"
+#include "AssetLoader.h"
 
 void cookBMP(
 	pstd::Arena primaryScratchArena,

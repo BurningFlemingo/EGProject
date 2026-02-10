@@ -86,29 +86,33 @@ Engine::MeshHeader* loadOBJ(
 	};
 	uint32_t vertexCount{ indexCount };
 
+	uint32_t initialArenaOffset{ pPersistArena->offset };
+
 	auto* pMeshHeader{ pstd::alloc<Engine::MeshHeader>(pPersistArena) };
 	auto* pIndices{ pstd::alloc<uint32_t>(pPersistArena, indexCount, 8) };
 	auto* pPositions{ pstd::alloc<pstd::Vec3>(pPersistArena, indexCount, 8) };
 	auto* pNormals{ pstd::alloc<pstd::Vec3>(pPersistArena, indexCount, 8) };
 	auto* pTangents{ pstd::alloc<pstd::Vec3>(pPersistArena, indexCount, 8) };
-
 	auto* pUVs{ pstd::alloc<pstd::Vec2>(pPersistArena, indexCount, 8) };
+
+	uint32_t fileSize{ pPersistArena->offset - initialArenaOffset };
 
 	pMeshHeader->magic = Engine::MeshHeader::MAGIC;
 	pMeshHeader->version = Engine::MeshHeader::VERSION;
 	pMeshHeader->indexCount = indexCount;
 	pMeshHeader->vertexCount = vertexCount;
+	pMeshHeader->fileSize = fileSize;
 
-	for (uint32_t i{}; i < indexCount; i++) {
+	for (size_t i{}; i < indexCount; i++) {
 		pIndices[i] = i;
 	}
-	for (uint32_t i{}; i < indexCount; i++) {
+	for (size_t i{}; i < indexCount; i++) {
 		pPositions[i] = obj.uniquePositions[obj.positionIndices[i]];
 	}
-	for (uint32_t i{}; i < indexCount; i++) {
+	for (size_t i{}; i < indexCount; i++) {
 		pNormals[i] = obj.uniqueNormals[obj.normalIndices[i]];
 	}
-	for (uint32_t i{}; i < indexCount; i++) {
+	for (size_t i{}; i < indexCount; i++) {
 		pUVs[i] = obj.uniqueUVs[obj.uvIndices[i]];
 	}
 
@@ -194,13 +198,18 @@ Engine::TextureHeader* loadBMP(
 
 	uint8_t* pPixels{ rcast<uint8_t*>(rawBMP.block) + header->pxOffset };
 
+	uint32_t initialArenaOffset{ pPersistArena->offset };
+
 	auto* textureHeader{ pstd::alloc<Engine::TextureHeader>(pPersistArena) };
 	auto* pixelArray{ pstd::alloc<uint32_t>(pPersistArena, nPixels, 8) };
+
+	uint32_t fileSize{ pPersistArena->offset - initialArenaOffset };
 
 	textureHeader->magic = Engine::TextureHeader::MAGIC;
 	textureHeader->version = Engine::TextureHeader::VERSION;
 	textureHeader->width = absWidth;
 	textureHeader->height = absHeight;
+	textureHeader->fileSize = fileSize;
 
 	pstd::FirstSetBit redShift{ pstd::bitscanForward(redMask) };
 	pstd::FirstSetBit greenShift{ pstd::bitscanForward(greenMask) };

@@ -86,12 +86,14 @@ String pstd::makeNullTerminated(pstd::Arena* pArena, String string) {
 }
 
 bool pstd::stringsMatch(const String& a, const String& b) {
-	ASSERT(a.buffer);
-	ASSERT(b.buffer);
+	if (!a.buffer || !b.buffer) {
+		return a.buffer == b.buffer;
+	}
 
 	if (a.size != b.size) {
 		return false;
 	}
+
 	return memcmp(a.buffer, b.buffer, a.size) == 0;
 }
 

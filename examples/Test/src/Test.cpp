@@ -31,17 +31,12 @@ namespace Game {
 
 using namespace Engine;
 
-void makeCube(const Subsystems& subsystems, pstd::Vec3 pos) {
+void makeCube(const Subsystems& subsystems, pstd::Vec3 pos, UID assetUID) {
 	Engine::State* pEngine{ subsystems.pEngine };
 	AssetManager::State* pAssetManager{ subsystems.pAssetManager };
 
 	Entity cube{ createEntity(pEngine, TransformComponent | AssetComponent) };
-
 	setComponent<Transform>(pEngine, cube, { .pos = pos });
-	AssetManager::UID assetUID{
-		AssetManager::load(pAssetManager, ".\\generated\\models\\cube.mesh")
-	};
-
 	setComponent<AssetManager::UID>(pEngine, cube, assetUID);
 }
 
@@ -51,15 +46,26 @@ GAME_API Game::State* Game::startup(
 	Engine::State* pEngine{ subsystems.pEngine };
 	pstd::Arena gameArena{ pstd::allocateArena(pAllocRegistry, 1024) };
 
-	constexpr size_t floorHeight{ 20 };
+	AssetManager::UID cubeUID{ AssetManager::registerMesh(
+		subsystems.pAssetManager, ".\\generated\\models\\cube.mesh", 0
+	) };
+
+	AssetManager::registerTexture(
+		subsystems.pAssetManager,
+		".\\generated\\textures\\Cobblestone.texture",
+		cubeUID
+	);
+
+	constexpr size_t floorHeight{ 2 };
 	constexpr size_t floorWidth{ 50 };
 	for (size_t i{}; i < floorHeight; i++) {
 		for (size_t j{}; j < floorWidth; j++) {
-			makeCube(subsystems, { (float)j, 0, (float)i });
+			pstd::Vec3 pos{ .x = (float)j, .y = 0.f, .z = (float)i };
+			makeCube(subsystems, pos, cubeUID);
 		}
 	}
 
-	makeCube(subsystems, { 0, 5, 3 });
+	makeCube(subsystems, { 0.f, 5.f, 3.f }, cubeUID);
 
 	Platform::hideCursor(subsystems.pPlatform);
 	Platform::captureCursor(subsystems.pPlatform);

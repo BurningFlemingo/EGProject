@@ -7,8 +7,9 @@ namespace AssetManager {
 
 	struct State;
 
-	State*
-		startup(pstd::Arena* pArena, size_t maxAssets, size_t bytesAllocated);
 	UID getUID(State* pState, pstd::String assetName);
-	UID load(State* pState, pstd::String name);
+	void loadAsset(State* pState, UID uid);
+
+	UID registerTexture(State* pState, pstd::String path, UID uid);
+	UID registerMesh(State* pState, pstd::String path, UID uid);
 }  // namespace AssetManager

@@ -1,4 +1,5 @@
 #include "AssetManager.h"
+#include "Assets.h"
 #include "Core.h"
 #include "Engine.h"
 #include "ECS.h"
@@ -106,7 +107,7 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 
 	pEngine->pGameState = pGameState;
 
-	auto mesheIDs{ pstd::createArray<AssetManager::UID>(
+	auto assetIDs{ pstd::createArray<AssetManager::UID>(
 		&pEngine->scratchArena, Engine::maxEntityCount, 0
 	) };
 
@@ -114,13 +115,14 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 		Archetype archetype{ pEngine->archetypes[i] };
 		uint32_t renderableFlags{ TransformComponent | AssetComponent };
 		if ((archetype.componentFlags & renderableFlags) == renderableFlags) {
-			for (int j{}; j < archetype.uidToIndex.count; j++) {
-				pstd::pushBack(&mesheIDs, archetype.assetIDs[j]);
+			for (int j{}; j < archetype.assetIDs.count; j++) {
+				UID uid{ archetype.assetIDs[j] };
+				pstd::pushBack(&assetIDs, uid);
 			}
 		}
 	}
 	Renderer::setModels(
-		pRenderer, pAssetManager, pEngine->scratchArena, mesheIDs
+		pRenderer, pAssetManager, pEngine->scratchArena, assetIDs
 	);
 
 	return subsystems;

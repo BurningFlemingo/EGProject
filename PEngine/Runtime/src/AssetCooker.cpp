@@ -22,11 +22,9 @@ void cookBMP(
 	pstd::Arena secondaryScratchArena,
 	const pstd::String path
 ) {
-	size_t initialArenaOffset{ primaryScratchArena.offset };
-	Engine::TextureHeader* textureHeader{
+	Engine::TextureHeader* pTextureHeader{
 		loadBMP(&primaryScratchArena, secondaryScratchArena, path)
 	};
-	size_t textureFileSize{ primaryScratchArena.offset - initialArenaOffset };
 
 	pstd::String texturePath{ path };
 	pstd::readLastToken(&texturePath, ".");
@@ -47,7 +45,7 @@ void cookBMP(
 		pstd::FileAccess::none,
 		pstd::FileCreate::createAlways
 	) };
-	pstd::writeFile(handle, textureHeader, textureFileSize);
+	pstd::writeFile(handle, pTextureHeader, pTextureHeader->fileSize);
 	pstd::closeFile(handle);
 }
 
@@ -56,13 +54,9 @@ void cookOBJ(
 	pstd::Arena secondaryScratchArena,
 	const pstd::String path
 ) {
-	size_t initialArenaOffset{ primaryScratchArena.offset };
-
 	Engine::MeshHeader* pMeshHeader{
 		loadOBJ(&primaryScratchArena, secondaryScratchArena, path)
 	};
-
-	size_t meshFileSize{ primaryScratchArena.offset - initialArenaOffset };
 
 	pstd::String meshPath{ path };
 	pstd::readLastToken(&meshPath, ".");
@@ -80,7 +74,7 @@ void cookOBJ(
 		pstd::FileAccess::none,
 		pstd::FileCreate::createAlways
 	) };
-	pstd::writeFile(handle, pMeshHeader, meshFileSize);
+	pstd::writeFile(handle, pMeshHeader, pMeshHeader->fileSize);
 	pstd::closeFile(handle);
 }
 

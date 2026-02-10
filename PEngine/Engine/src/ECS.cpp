@@ -13,7 +13,8 @@ Engine::Entity Engine::createEntity(
 	Entity entity{ createEntity(pEngine, componentFlags) };
 
 	ASSERT(
-		!pstd::exists(pEngine->nameToEntity, name), "component already created"
+		!pstd::contains(pEngine->nameToEntity, name),
+		"component already created"
 	);
 
 	pEngine->nameToEntity[name] = entity;

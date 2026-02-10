@@ -54,7 +54,7 @@ namespace pstd {
 				size_t slot{ (hash + i) % capacity };
 
 				uint8_t control{ pControls[slot] };
-				if (control == CB_EMPTY) {
+				if (control == CB_EMPTY || control == CB_SENTINEL) {
 					ASSERT(count < capacity);
 
 					count++;
@@ -124,7 +124,59 @@ namespace pstd {
 	}
 
 	template<typename K, typename T>
-	bool exists(HashMap<K, T> hashmap, K key) {
+	void remove(HashMap<K, T>* pHashmap, K key) {
+		using ControlByte = typename HashMap<K, T>::ControlByte;
+
+		size_t hash{ pstd::hash(key) };
+		uint8_t byteHash{ ncast<uint8_t>(hash & 0b01111111) };
+
+		for (size_t i{}; i < pHashmap->capacity; i++) {
+			size_t slot{ (hash + i) % pHashmap->capacity };
+			uint8_t slotHash{ pHashmap->pControls[slot] };
+
+			if (slotHash == ControlByte::CB_EMPTY) {
+				break;
+			}
+
+			if (slotHash == byteHash) {
+				if (pHashmap->pSlots[slot].key == key) {
+					ASSERT(pHashmap->count > 0, "hashmap count got corrupted");
+
+					pHashmap->pControls[slot] = ControlByte::CB_SENTINEL;
+					pHashmap->count--;
+				}
+			}
+		}
+	}
+
+	template<typename K, typename T>
+	bool find(HashMap<K, T>* pHashmap, K key, T* pOut) {
+		using ControlByte = typename HashMap<K, T>::ControlByte;
+
+		size_t hash{ pstd::hash(key) };
+		uint8_t byteHash{ ncast<uint8_t>(hash & 0b01111111) };
+
+		for (size_t i{}; i < pHashmap->capacity; i++) {
+			size_t slot{ (hash + i) % pHashmap->capacity };
+			uint8_t slotHash{ pHashmap->pControls[slot] };
+
+			if (slotHash == ControlByte::CB_EMPTY) {
+				break;
+			}
+
+			if (slotHash == byteHash) {
+				if (pHashmap->pSlots[slot].key == key) {
+					*pOut = pHashmap->pSlots[slot].value;
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	template<typename K, typename T>
+	bool contains(HashMap<K, T> hashmap, K key) {
 		return find(&hashmap, key) != nullptr;
 	}
 

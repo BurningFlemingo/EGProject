@@ -1,3 +1,5 @@
+#include "AssetManager.h"
+#include "STD/PCircularBuffer.h"
 #include "STD/PHashMap.h"
 #include "STD/PMemory.h"
 #include "STD/PVector.h"
@@ -606,54 +608,63 @@ void Renderer::setModels(
 	pstd::Arena scratchArena,
 	pstd::Span<AssetManager::UID> meshIDs
 ) {
-	pstd::Array<Engine::MeshData> meshes{ pAssetManager->loadedMeshes };
-
-	if (meshes.count == 0) {
+	if (meshIDs.count == 0) {
 		return;
 	}
+
+	// pstd::HashMap<AssetManager::UID, Renderable> renderables;
+
 	pstd::Arena* pFrameArena{ &pState->frameArenas[pState->frameInFlight] };
+	// pstd::HashMap<AssetManager::UID> uniqueUIDs;
 
 	auto uniqueRenderables{
-		pstd::createArray<Renderable>(pFrameArena, meshes.count)
+		pstd::createArray<Renderable>(pFrameArena, meshIDs.count)
 	};
-	LOG_INFO("unique renderables count %u\n", uniqueRenderables.count);
 
 	uint32_t vertexCount{};
 	uint32_t indexCount{};
-	for (size_t i{}; i < meshes.count; i++) {
-		vertexCount += meshes[i].vertexCount;
-		indexCount += meshes[i].indexCount;
+	for (size_t i{}; i < meshIDs.count; i++) {
+		Engine::MeshData* pMesh{
+			AssetManager::retrieveMesh(pAssetManager, meshIDs[i])
+		};
+
+		vertexCount += pMesh->vertexCount;
+		indexCount += pMesh->indexCount;
 	}
+	LOG_INFO("unique renderables count %u\n", uniqueRenderables.count);
 
 	auto vertices{ pstd::createArray<Vertex>(&scratchArena, vertexCount, 0) };
 	auto indices{ pstd::createArray<uint32_t>(&scratchArena, indexCount, 0) };
 
 	uint32_t indexOffset{};
 	uint32_t vertexOffset{};
-	for (size_t j{}; j < meshes.count; j++) {
-		Engine::MeshData mesh{ meshes[j] };
+	for (size_t j{}; j < uniqueRenderables.count; j++) {
+		Engine::MeshData* pMesh{
+			AssetManager::retrieveMesh(pAssetManager, meshIDs[j])
+		};
+
 		uniqueRenderables[j] = {
 			.indexOffset = indexOffset,
 			.vertexOffset = vertexOffset,
-			.indexCount = ncast<uint32_t>(mesh.indexCount),
+			.indexCount = ncast<uint32_t>(pMesh->indexCount),
 		};
 
-		for (size_t i{}; i < mesh.vertexCount; i++) {
+		for (size_t i{}; i < pMesh->vertexCount; i++) {
 			Vertex vertex{
-				.position = mesh.pPositions[i],
-				.u = mesh.pUVs[i].x,
-				.normal = mesh.pNormals[i],
-				.v = mesh.pUVs[i].y,
+				.position = pMesh->pPositions[i],
+				.u = pMesh->pUVs[i].x,
+				.normal = pMesh->pNormals[i],
+				.v = pMesh->pUVs[i].y,
 			};
 			pstd::pushBack(&vertices, vertex);
 		}
 
-		for (size_t i{}; i < mesh.indexCount; i++) {
-			pstd::pushBack(&indices, mesh.pIndices[i]);
+		for (size_t i{}; i < pMesh->indexCount; i++) {
+			pstd::pushBack(&indices, pMesh->pIndices[i]);
 		}
 
-		indexOffset += mesh.indexCount;
-		vertexOffset += mesh.vertexCount;
+		indexOffset += pMesh->indexCount;
+		vertexOffset += pMesh->vertexCount;
 	}
 
 	auto renderables{

@@ -27,6 +27,7 @@ namespace Engine {
 		uint32_t version;
 		uint32_t width;
 		uint32_t height;
+		uint32_t fileSize;
 		alignas(8) uint8_t data[];
 		// pixels
 	};
@@ -38,7 +39,7 @@ namespace Engine {
 		uint32_t version;
 		uint32_t vertexCount;
 		uint32_t indexCount;
-		// uint32_t textureHash;
+		uint32_t fileSize;
 		alignas(8) uint8_t data[];
 		// indices
 		// positions
