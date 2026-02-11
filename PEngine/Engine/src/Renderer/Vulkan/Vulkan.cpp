@@ -633,8 +633,12 @@ void Renderer::setModels(
 		&scratchArena, State::maxRenderables, 0
 	) };
 
-	uint32_t vertexCount{};
-	uint32_t indexCount{};
+	// TODO: make this 1. instanced and 2. into seperate drawcall struct
+	uint32_t totalVertexCount{};
+	uint32_t totalIndexCount{};
+
+	uint32_t indexOffset{};
+	uint32_t vertexOffset{};
 	for (size_t i{}; i < meshIDs.count; i++) {
 		AssetManager::UID uid{ meshIDs[i] };
 		Engine::MeshData* pMesh{
@@ -645,20 +649,26 @@ void Renderer::setModels(
 			pstd::pushBack(&uniqueUIDs, uid);
 			pstd::insert(&uniqueUIDSet, uid);
 
-			vertexCount += pMesh->vertexCount;
-			indexCount += pMesh->indexCount;
+			indexOffset = totalIndexCount;
+
+			totalVertexCount += pMesh->vertexCount;
+			totalIndexCount += pMesh->indexCount;
 		}
 
 		// TODO: fix this
-		Renderable renderable{ .indexOffset = 0,
+		Renderable renderable{ .indexOffset = indexOffset,
 							   .vertexOffset = 0,
 							   .indexCount = pMesh->indexCount };
 
 		pstd::pushBack(&renderables, renderable);
 	}
 
-	auto vertices{ pstd::createArray<Vertex>(&scratchArena, vertexCount, 0) };
-	auto indices{ pstd::createArray<uint32_t>(&scratchArena, indexCount, 0) };
+	auto vertices{
+		pstd::createArray<Vertex>(&scratchArena, totalVertexCount, 0)
+	};
+	auto indices{
+		pstd::createArray<uint32_t>(&scratchArena, totalIndexCount, 0)
+	};
 
 	for (size_t j{}; j < uniqueUIDs.count; j++) {
 		Engine::MeshData* pMesh{

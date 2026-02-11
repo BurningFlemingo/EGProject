@@ -56,6 +56,16 @@ GAME_API Game::State* Game::startup(
 		1
 	);
 
+	AssetManager::UID quadUID{ AssetManager::registerAsset(
+		subsystems.pAssetManager, ".\\generated\\models\\quad.mesh", 2
+	) };
+
+	AssetManager::registerAsset(
+		subsystems.pAssetManager,
+		".\\generated\\textures\\MissingTexture.texture",
+		3
+	);
+
 	constexpr size_t floorHeight{ 20 };
 	constexpr size_t floorWidth{ 50 };
 	for (size_t i{}; i < floorHeight; i++) {

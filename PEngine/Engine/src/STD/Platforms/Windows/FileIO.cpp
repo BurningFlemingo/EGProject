@@ -53,7 +53,7 @@ pstd::FileHandle pstd::openFile(
 	if (hFile == INVALID_HANDLE_VALUE) {
 		DWORD errorCode{ GetLastError() };
 		LOG_ERROR(
-			"%m could not be opened: error code %u",
+			"%m could not be opened: error code %u\n",
 			pstd::createString(filepath),
 			ncast<uint32_t>(errorCode)
 		);
