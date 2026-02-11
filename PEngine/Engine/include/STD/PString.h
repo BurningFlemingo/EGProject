@@ -107,6 +107,8 @@ namespace pstd {
 	}
 
 	String getFileName(const String& string);
+	String getExtension(String string);
+
 	String getFileName(const char* cString);
 
 	inline bool stringsMatch(const char* a, const char* b) {
@@ -130,6 +132,7 @@ namespace pstd {
 	}
 
 	String getLine(String lines);
+
 	// consumes the line
 	inline String readLine(String* pLines) {
 		ASSERT(pLines);

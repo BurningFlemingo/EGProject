@@ -8,8 +8,6 @@ namespace AssetManager {
 	struct State;
 
 	UID getUID(State* pState, pstd::String assetName);
-	void loadAsset(State* pState, UID uid);
 
-	UID registerTexture(State* pState, pstd::String path, UID uid);
-	UID registerMesh(State* pState, pstd::String path, UID uid);
+	UID registerAsset(State* pState, pstd::String path, UID uid);
 }  // namespace AssetManager

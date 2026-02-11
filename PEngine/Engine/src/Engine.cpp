@@ -64,7 +64,7 @@ Engine::Subsystems Engine::startup(pstd::AllocationRegistry* pAllocRegistry) {
 	) };
 
 	AssetManager::State* pAssetManager{
-		AssetManager::startup(&subsystemArena, 1, 1024 * 1024 * 4)
+		AssetManager::startup(&subsystemArena, 10, 1024 * 1024 * 4)
 	};
 
 	Archetype renderableArchetype{ createArchetype(

@@ -46,17 +46,17 @@ GAME_API Game::State* Game::startup(
 	Engine::State* pEngine{ subsystems.pEngine };
 	pstd::Arena gameArena{ pstd::allocateArena(pAllocRegistry, 1024) };
 
-	AssetManager::UID cubeUID{ AssetManager::registerMesh(
+	AssetManager::UID cubeUID{ AssetManager::registerAsset(
 		subsystems.pAssetManager, ".\\generated\\models\\cube.mesh", 0
 	) };
 
-	AssetManager::registerTexture(
+	AssetManager::registerAsset(
 		subsystems.pAssetManager,
 		".\\generated\\textures\\Cobblestone.texture",
-		cubeUID
+		1
 	);
 
-	constexpr size_t floorHeight{ 2 };
+	constexpr size_t floorHeight{ 20 };
 	constexpr size_t floorWidth{ 50 };
 	for (size_t i{}; i < floorHeight; i++) {
 		for (size_t j{}; j < floorWidth; j++) {

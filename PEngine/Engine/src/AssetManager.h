@@ -10,22 +10,10 @@
 namespace AssetManager {
 	using UID = size_t;
 
-	struct AssetPath {
-		pstd::String meshPath;
-		pstd::String texturePath;
-
-		bool operator=(const AssetPath& other) {
-			bool matches{ pstd::stringsMatch(this->meshPath, other.meshPath) };
-			matches &= pstd::stringsMatch(this->texturePath, other.texturePath);
-
-			return matches;
-		}
-	};
-
 	struct State {
 		pstd::Arena arena;
 
-		pstd::HashMap<UID, AssetPath> uidToPath;
+		pstd::HashMap<UID, pstd::String> uidToPath;
 
 		pstd::HashMap<UID, size_t> uidToLoadedMeshIndex;
 		pstd::HashMap<UID, size_t> uidToLoadedTextureIndex;

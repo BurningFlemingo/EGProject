@@ -655,19 +655,7 @@ void Renderer::setModels(
 							   .indexCount = pMesh->indexCount };
 
 		pstd::pushBack(&renderables, renderable);
-
-		LOG_INFO(
-			"renderable (%u, %u, %u)\n",
-			renderables[uid].indexOffset,
-			renderables[uid].vertexOffset,
-			renderables[uid].indexCount
-		);
 	}
-	LOG_INFO(
-		"renderable count %u, unique mesh count %u",
-		renderables.count,
-		uniqueUIDs.count
-	);
 
 	auto vertices{ pstd::createArray<Vertex>(&scratchArena, vertexCount, 0) };
 	auto indices{ pstd::createArray<uint32_t>(&scratchArena, indexCount, 0) };

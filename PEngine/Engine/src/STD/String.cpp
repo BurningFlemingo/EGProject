@@ -217,6 +217,10 @@ String pstd::getFileName(const char* cString) {
 	return getFileName(pstd::createString(cString));
 }
 
+String pstd::getExtension(String string) {
+	return pstd::readLastToken(&string, ".");
+}
+
 bool pstd::substringMatchForward(
 	const char a, const String& b, uint32_t* outIndex
 ) {
